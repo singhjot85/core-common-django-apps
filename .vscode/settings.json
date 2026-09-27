@@ -1,0 +1,24 @@
+{
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/__pycache__": true,
+        "**/.pytest_cache": true
+    },
+    "python.languageServer": "Pylance",
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.defaultPackageManager": "ms-python.python:pip",
+    "python.defaultInterpreterPath": "", // Above two should handle, if need be set this also
+    "python.terminal.activateEnvironment": false, // true: makes the shell opening slow
+    "black-formatter.interpreter": [
+        "python3"
+    ],
+    // These are set in pyproject.toml, but still keeping them here if that breaks somehow
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.extraPaths": [
+        "backend",
+    ]
+}

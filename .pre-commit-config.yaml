@@ -1,0 +1,78 @@
+exclude: "documentation|node_modules|.git|.agents|.github"
+default_stages: [pre-commit, pre-push]
+fail_fast: false
+
+repos:
+  # Formating Python Files.
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+        args: ["--target-version", "py312"]
+
+  # To automatically upgrade syntax for newer versions of the language.
+  # Dont, think we need this as of now,
+  # - repo: https://github.com/asottile/pyupgrade
+  #   rev: v3.20.0
+  #   hooks:
+  #     - id: pyupgrade
+
+  # General Pre-Commit hooks ensuring file consistency
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: mixed-line-ending
+
+  # Wrapper around multiple-python formatting tools
+  # Description for each ignore:
+  #   E501: line too long (98 > 79 characters)
+  #   W503: line break before binary operator
+  #   F403: import *
+  #   F405: import * used and not able to resolve
+  #   E203: whitespace before ':'
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.2.0
+    hooks:
+      - id: flake8
+        # additional_dependencies: [flake8-isort, flake8-print]
+        additional_dependencies: [flake8-print]
+        args: ["--ignore=E501,W503,F403,F405,E203"]
+
+  # Dont think we need this, we already have isort through flake8
+  # Isort from flake8 only flags and not fix import(s), figure out why it does so
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+
+  # Validate Code complexity
+  - repo: https://github.com/yunojuno/pre-commit-xenon
+    rev: v0.1
+    hooks:
+      - id: xenon
+        args: ["--max-average=A", "--max-modules=C", "--max-absolute=F"]
+
+  # Formatter and linter for HTML templates
+  - repo: https://github.com/djlint/djLint
+    rev: v1.36.4
+    hooks:
+      - id: djlint-reformat-django
+        exclude: '^frontend/index\.html$'
+      - id: djlint-django
+        exclude: '^frontend/index\.html$'
+
+  # Check for any secrete leak(s) inside repo
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        name: detect-secrets
+        args:
+          - "--baseline"
+          - ".secrets.baseline"
+        exclude: '^package-lock.json'

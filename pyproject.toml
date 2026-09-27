@@ -1,0 +1,67 @@
+[project]
+name = "core-apps-django"
+version = "0.1.0"
+description = "Core django apps"
+requires-python = ">=3.12,<4"
+dependencies = [
+    "django ( = =5.2.16)",
+    "djangorestframework (> = 3.17.1,<4.0.0)",
+    "django-tenants (> = 3.10.2,<4.0.0)",
+    "django-model-utils (> = 5.0.0,<6.0.0)",
+    "pytest (> = 9.1.1,<10.0.0)",
+    "pytest-django (> = 4.12.0,<5.0.0)",
+    "dj-rest-auth (> = 7.2.0,<8.0.0)",
+    "psycopg2-binary (> = 2.9.12,<3.0.0)",
+    "watchdog (> = 6.0.0,<7.0.0)",
+    "valkey (> = 6.1.1,<7.0.0)",
+    "django-celery-results (> = 2.6.0,<3.0.0)",
+    "celery (> = 5.6.3,<6.0.0)",
+    "django-celery-beat (> = 2.9.0,<3.0.0)",
+    "redis (> = 8.0.1,<9.0.0)",
+    "factory-boy (> = 3.3.3,<4.0.0)",
+    "django-constance (> = 4.3.5,<5.0.0)",
+    "django-redis (> = 7.0.0,<8.0.0)",
+    "debugpy (> = 1.8.21,<2.0.0)",
+]
+
+
+[[project.authors]]
+name = "Gurjot Singh"
+email = "gurjotsingh855855@gmail.com"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+[dependency-groups]
+dev = ["pre-commit (>=4.6.2,<5.0.0)", "black (>=26.5.1,<27.0.0)"]
+
+
+[tool.isort]
+profile = "black"
+atomic = true
+skip_glob = ["*/migrations/*"]
+
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py", "*_tests.py"]
+python_classes = ["Test*", "*Tests"]
+python_functions = ["test_*"]
+testpaths = ["tests", "apps/core/tests"]
+addopts = [
+    "-v",
+    "--tb = short",
+    "--strict-markers",
+    "--reuse-db",
+    "--import-mode = importlib",
+    "-p no:warnings",
+]
+markers = [
+    "slow: marks tests that take longer to run",
+    "integration: marks tests that hit multiple components",
+    "unit: marks tests for isolated functions",
+    "celery: marks tests that involve celery tasks",
+]
