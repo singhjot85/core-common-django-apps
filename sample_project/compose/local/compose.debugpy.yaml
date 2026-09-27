@@ -1,0 +1,17 @@
+services:
+
+  django:
+    stdin_open: true
+    tty: true
+    environment:
+      - ENABLE_DEBUGPY=1
+    ports:
+      - "${DEBUGPY_DJANGO_PORT:-2253}:5678"
+
+  celeryworker:
+    stdin_open: false
+    tty: false
+    environment:
+      - ENABLE_DEBUGPY=1
+    ports:
+      - "${DEBUGPY_CELERY_PORT:-2254}:5678"

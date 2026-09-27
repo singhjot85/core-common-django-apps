@@ -45,7 +45,7 @@ INSTALLED_APPS = [
 # -----------------------------
 SHARED_APPS = DJANGO_TENANT_PUBLIC_APPS
 TENANT_APPS = DJANGO_TENANT_PRIVATE_APPS
-TENANT_SYNC_ROUTER = "django_tenants.routers.TenantSyncRouter"
+DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
 DATABASES = {
     "default": {

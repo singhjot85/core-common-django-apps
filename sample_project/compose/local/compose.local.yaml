@@ -1,0 +1,123 @@
+volumes:
+  pg_data:
+    name: ${STACK_NAME:-core}_local_pg_data
+
+secrets:
+  global-env:
+    file: ../../.env
+
+services:
+  django: &Django
+    build:
+      context: ../..
+      dockerfile: compose/local/backend/Dockerfile
+      secrets:
+        - global-env
+    container_name: ${STACK_NAME:-core}_django
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+      - ./database/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    # volumes:
+    #   - ../../backend:/backend
+    #   - ../../compose/local/backend/scripts:/scripts
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - DJANGO_DEBUG=True
+      - WATCHFILES_FORCE_POLLING=true
+      - PYTHONPATH=/
+      - ENABLE_DEBUGPY=0
+    ports:
+      - "${DJANGO_PORT:-8000}:8000"
+
+  postgres:
+    build:
+      context: ../../
+      dockerfile: compose/local/database/Dockerfile
+      secrets:
+        - global-env
+    container_name: ${STACK_NAME:-core}_postgres
+    env_file:
+      - ./database/.env
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+
+  cache:
+    image: valkey/valkey:8.1.5-alpine
+    pull_policy: if_not_present
+    container_name: ${STACK_NAME:-core}_valkey_cache
+    ports:
+      - "${CACHE_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-p", "6379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  broker:
+    image: valkey/valkey:8.1.5-alpine
+    pull_policy: if_not_present
+    container_name: ${STACK_NAME:-core}_valkey_broker
+    command: valkey-server --port 6378 --appendonly yes
+    ports:
+      - "${BROKER_PORT:-6378}:6378"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-p", "6378", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  celeryworker:
+    <<: *Django
+    command: /scripts/worker-start.sh
+    container_name: ${STACK_NAME:-core}_celeryworker
+    ports:
+      - "${CELERY_PORT:-5555}:5555"
+    depends_on:
+      django:
+        condition: service_started
+      broker:
+        condition: service_healthy
+
+  # TODO: CronJobs will setup at last using celerybeat
+  # celerybeat:
+  #   <<: *Django
+  #   command: scripts/beat-start.sh
+  #   container_name: unfo_celerybeat
+  #   depends_on:
+  #     django:
+  #       condition: service_started
+  #     broker:
+  #       condition: service_healthy
+
+  # TODO: Think of a better way to containerize this,
+  # or should we skip frontend containerization, they already ship stable dev-server's
+  # frontend:
+  #   build:
+  #     context: ../../
+  #     dockerfile: compose/local/frontend/Dockerfile
+  #   container_name: unfo_frontend
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ../../frontend:/frontend
+  #     # - ../../frontend/node_modules:/frontend/node_modules
+  #     - ../../compose/local/frontend/scripts:/scripts
+  #   ports:
+  #     - "5173:5173"
+  #   env_file:
+  #     - ./frontend/.env
