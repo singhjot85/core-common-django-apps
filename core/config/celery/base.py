@@ -81,11 +81,11 @@ class TenantAwareCeleryApp(Celery):
     into the task arguments before sending it to the broker.
     """
 
-    task_cls = "config.celery.base.TenantAwareTask"
+    task_cls = "core.config.celery.base.TenantAwareTask"
 
     def create_task_cls(self):
         return self.subclass_with_self(
-            "config.celery.base.TenantAwareTask",
+            "core.config.celery.base.TenantAwareTask",
             abstract=True,
             name="TenantAwareTask",
             attribute="_app",

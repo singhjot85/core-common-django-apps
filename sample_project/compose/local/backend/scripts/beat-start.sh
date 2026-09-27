@@ -6,4 +6,4 @@ set -o nounset
 
 echo "Running Beat now..."
 
-exec celery -A config.celery beat --loglevel=info
+exec celery -A core.config.celery beat --loglevel=info

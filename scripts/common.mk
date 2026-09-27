@@ -20,8 +20,8 @@ DEBUGPY_COMPOSE_CMD ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(DE
 
 docker-start-new-app:
 	@echo "⌛ Creating app ${APP_LABEL}...\n"
-	mkdir -p apps/${APP_LABEL}
-	$(TEMP_DJANGO_CONTAINER) python sample_project/manage.py startapp $(APP_LABEL) apps/$(APP_LABEL)
+	mkdir -p core/apps/${APP_LABEL}
+	$(TEMP_DJANGO_CONTAINER) python sample_project/manage.py startapp $(APP_LABEL) core/apps/$(APP_LABEL)
 start-app: docker-start-new-app
 
 
@@ -63,7 +63,7 @@ run: docker-run
 docker-detached-run:
 	@echo "⌛ Starting containers...\n"
 	${COMPOSE_COMMAND} up -d
-drun: docker-detached-run
+rund: docker-detached-run
 
 docker-debugpy-vscode-debug:
 	@echo "⌛ Running containers and attaching debugpy...\n"

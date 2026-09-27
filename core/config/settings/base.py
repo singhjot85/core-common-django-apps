@@ -11,6 +11,7 @@ from .task_queues import *
 APP_NAME = "apps"
 PROJECT_NAME = os.getenv("PROJECT_NAME")
 PROJECT_LABEL = os.getenv("PROJECT_LABEL")
+DJANGO_ENV = os.getenv("DJANGO_ENV", "dev")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # Path to /backend
 APP_DIR = os.path.join(BASE_DIR, APP_NAME)  # Path to /backend/apps
@@ -25,7 +26,10 @@ APPLICATION_TIMEZONE = os.getenv("TIME_ZONE", "UTC")
 USE_TZ = True
 USE_I18N = True
 LANGUAGE_CODE = "en-us"
-DEBUG = os.getenv("DEBUG", False)
+
+WSGI_APPLICATION = "config.wsgi.application"
+DEBUG = os.getenv("DEBUG", DJANGO_ENV == "dev")
+ALLOWED_HOSTS = []
 
 TIME_ZONE = APPLICATION_TIMEZONE
 TEMPLATES_DIR = os.path.join(BASE_DIR, "django_templates", "templates")
@@ -165,7 +169,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # -----------------------------
 #   dj-rest-auth
 # -----------------------------
-REST_AUTH = {"USER_DETAILS_SERIALIZER": "apps.tenants.serializers.UserSerializer"}
+REST_AUTH = {"USER_DETAILS_SERIALIZER": "core.apps.tenants.serializers.UserSerializer"}
 
 
 # ------------------

@@ -7,7 +7,7 @@
 
 
 # Django Tenants App
-APP_TENANTS = "apps.tenants"
+APP_TENANTS = "core.apps.tenants"
 TENANTS_TENANT = "tenants.Tenants"
 TENANTS_DOMAIN = "tenants.Domain"
 TENANTS_CONTACT_INFO = "tenants.TenantContactInfo"
