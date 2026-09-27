@@ -3,7 +3,7 @@ ARG PYTHON_VERSION=3.12
 # ==================================================
 # Stage 0: Fetch the official python docker image
 # ==================================================
-FROM python:${PYTHON_VERSION} AS python-image
+FROM python:${PYTHON_VERSION}-slim AS python-image
 
 
 # =====================================================
@@ -13,6 +13,8 @@ FROM python-image AS python-build-stage
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
+    build-essential \
+    libpq-dev \
     pipx \
     && rm -rf /var/lib/apt/lists/*
 
@@ -23,7 +25,7 @@ RUN pipx install poetry==2.4.1 && \
 # ENV PATH="$(pipx environment --value PIPX_BIN_DIR):${PATH}"
 ENV PATH="/root/.local/bin:${PATH}"
 
-COPY ./backend/pyproject.toml ./backend/poetry.lock /
+COPY pyproject.toml poetry.lock /
 
 RUN poetry export \
     -f requirements.txt \
@@ -35,9 +37,14 @@ RUN pip wheel \
     -r requirements.txt
 
 # ===============================================================================
-# Step 3 (Run Stage): Whatever is installed, ship in final image along with code
+# Step 2 (Run Stage): Whatever is installed, ship in final image along with code
 # ================================================================================
 FROM python-image AS python-run-stage
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy installed wheels
 COPY --from=python-build-stage /usr/src/app/wheels /wheels
@@ -46,10 +53,13 @@ COPY --from=python-build-stage /usr/src/app/wheels /wheels
 RUN pip install --no-cache-dir \
     --no-index \
     --find-links=/wheels \
-    /wheels/*
+    /wheels/* \
+    && rm -rf /wheels
 
 # Set a work-directory and copy backend code
 WORKDIR /backend
-COPY ./backend /backend
+COPY . /backend
+COPY ./sample_project/compose/local/backend/scripts /scripts
+RUN chmod +x /scripts/*.sh
 
 CMD ["/scripts/django-start.sh"]

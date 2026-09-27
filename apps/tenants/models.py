@@ -29,8 +29,8 @@ class Tenants(TenantMixin, BaseModel):
         super().save(verbosity, *args, **kwargs)
 
         # queue a task to create schema
-        queue_task( # noqa: F821
-            TaskNames.MIGRATE_SCHEMA, # noqa: F821
+        queue_task(  # noqa: F821
+            TaskNames.MIGRATE_SCHEMA,  # noqa: F821
             schema_name=self.schema_name,
             is_active=self.is_active,
             public_id=self.public_id,

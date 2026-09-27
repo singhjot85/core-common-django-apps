@@ -1,23 +1,27 @@
 # Default Values (use ?= so root Makefile overrides take effect)
+PROJECT_NAME ?=
 DEV_YAML_PATH ?= compose/local/compose.local.yaml
+DEBUGPY_YAML_PATH ?= compose/local/debugpy.local.yaml
 
 # Common Variables
 COMPOSE_YAML ?= $(DEV_YAML_PATH)
 DJANGO_SERVICE ?= django
 
-COMPOSE_COMMAND:=docker compose -f $(or $(COMPOSE_YAML),$(DEV_YAML_PATH))
-TEMP_DJANGO_CONTAINER = docker compose -f $(COMPOSE_YAML) run -rm $(DJANGO_SERVICE)
+COMPOSE_COMMAND := docker compose --env-file .env -p $(PROJECT_NAME) -f $(or $(COMPOSE_YAML),$(DEV_YAML_PATH))
+TEMP_DJANGO_CONTAINER = docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) run --rm $(DJANGO_SERVICE)
+DJANGO_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(DJANGO_SERVICE)
+DEBUGPY_COMPOSE_CMD ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(DEV_YAML_PATH) -f $(DEBUGPY_YAML_PATH)
 
 
 # --------------------------
-# Develoment Targets
+# Development Targets
 # --------------------------
 .PHONY: start-app
 
 docker-start-new-app:
-	@echo "⌛ Creatiung app ${APP_LABEL}...\n"
+	@echo "⌛ Creating app ${APP_LABEL}...\n"
 	mkdir -p apps/${APP_LABEL}
-	$(TEMP_DJANGO_CONTAINER) python manange.py startapp $(APP_LABEL) apps/$(APP_LABEL)
+	$(TEMP_DJANGO_CONTAINER) python sample_project/manage.py startapp $(APP_LABEL) apps/$(APP_LABEL)
 start-app: docker-start-new-app
 
 
@@ -79,18 +83,18 @@ db-destroy: docker-destroy-database
 docker-django-makemigrations:
 	@echo "⌛ Making migrations in App: ➡️[${APP_LABEL}]...\n"
 	@echo "⚠️ If this was not intended use command with APP_LABEL= flag"
-	${DJANGO_CONTAINER_COMMAND} python manage.py makemigrations ${APP_LABEL}
+	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py makemigrations ${APP_LABEL}
 mm: docker-django-makemigrations
 
 docker-django-migrate:
 	@echo "⌛ Migrating Schema's now...\n"
-	${DJANGO_CONTAINER_COMMAND} python manage.py migrate
+	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py migrate
 m: docker-django-migrate
 
 docker-django-makemigrations-empty:
 	@echo "⌛ Making an empty migration in App: ➡️[${APP_LABEL}] with Name: ➡️[${EMN}]...\n"
 	@echo "⚠️ If this was not intended use command with 'APP_LABEL=' or 'emn=' flags"
-	${DJANGO_CONTAINER_COMMAND} python manage.py makemigrations --empty ${APP_LABEL} --name ${EMN}
+	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py makemigrations --empty ${APP_LABEL} --name ${EMN}
 mme: docker-django-makemigrations-empty
 
 
@@ -106,10 +110,10 @@ bash: docker-django-bash
 
 docker-django-shell:
 	@echo "⌛ Launching Django shell...\n"
-	${DJANGO_CONTAINER_COMMAND} python manage.py shell
+	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py shell
 s: docker-django-shell
 
 docker-django-shell-plus:
 	@echo "⌛ Launching Django shell-plus...\n"
-	${DJANGO_CONTAINER_COMMAND} python manage.py shell_plus --ipython
+	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py shell_plus --ipython
 sp: docker-django-shell-plus

@@ -2,17 +2,11 @@ volumes:
   pg_data:
     name: ${STACK_NAME:-core}_local_pg_data
 
-secrets:
-  global-env:
-    file: ../../.env
-
 services:
   django: &Django
     build:
-      context: ../..
-      dockerfile: compose/local/backend/Dockerfile
-      secrets:
-        - global-env
+      context: ../../..
+      dockerfile: sample_project/compose/local/backend/Dockerfile
     container_name: ${STACK_NAME:-core}_django
     restart: unless-stopped
     env_file:
@@ -23,25 +17,23 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
-    # volumes:
-    #   - ../../backend:/backend
-    #   - ../../compose/local/backend/scripts:/scripts
+    volumes:
+      - ../../..:/backend
+      - ./backend/scripts:/scripts
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - DJANGO_DEBUG=True
       - WATCHFILES_FORCE_POLLING=true
-      - PYTHONPATH=/
+      - PYTHONPATH=/backend
       - ENABLE_DEBUGPY=0
     ports:
       - "${DJANGO_PORT:-8000}:8000"
 
   postgres:
     build:
-      context: ../../
-      dockerfile: compose/local/database/Dockerfile
-      secrets:
-        - global-env
+      context: ./database
+      dockerfile: Dockerfile
     container_name: ${STACK_NAME:-core}_postgres
     env_file:
       - ./database/.env
@@ -51,9 +43,10 @@ services:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 30s
+      interval: 5s
+      timeout: 5s
       retries: 5
+      start_period: 5s
 
   cache:
     image: valkey/valkey:8.1.5-alpine
