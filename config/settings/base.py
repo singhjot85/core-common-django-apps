@@ -5,23 +5,30 @@ from .base_models import *
 from .databases import *
 from .task_queues import *
 
+# ------------------
+#  Custom Settings
+# ------------------
+APP_NAME = "apps"
+PROJECT_NAME = os.getenv("PROJECT_NAME")
+PROJECT_LABEL = os.getenv("PROJECT_LABEL")
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # Path to /backend
+APP_DIR = os.path.join(BASE_DIR, APP_NAME)  # Path to /backend/apps
+
+SENSITIVE_PHRASES = os.getenv("SENSITIVE_PHRASES", [])
+APPLICATION_TIMEZONE = os.getenv("TIME_ZONE", "UTC")
+
+
 # -----------------------------
-#   Project Specific Configuration
+#   Common Django Settings
 # -----------------------------
 USE_TZ = True
 USE_I18N = True
 LANGUAGE_CODE = "en-us"
 DEBUG = os.getenv("DEBUG", False)
-PROJECT_NAME = os.getenv("PROJECT_NAME")
-PROJECT_LABEL = os.getenv("PROJECT_LABEL")
 
-APP_NAME = "apps"
-BASE_DIR = Path(__file__).resolve().parent.parent.parent  # Path to /backend
-APP_DIR = os.path.join(BASE_DIR, APP_NAME)  # Path to /backend/apps
-
-APPLICATION_TIMEZONE = os.getenv("TIME_ZONE", "UTC")
-TEMPLATES_DIR = os.path.join(BASE_DIR, "django_templates", "templates")
 TIME_ZONE = APPLICATION_TIMEZONE
+TEMPLATES_DIR = os.path.join(BASE_DIR, "django_templates", "templates")
 
 STATIC_URL = "static/"
 ROOT_URLCONF = "config.urls"
