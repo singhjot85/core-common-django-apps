@@ -1,7 +1,7 @@
 # Default Values (use ?= so root Makefile overrides take effect)
 PROJECT_NAME ?=
 DEV_YAML_PATH ?= compose/local/compose.local.yaml
-DEBUGPY_YAML_PATH ?= compose/local/debugpy.local.yaml
+DEBUGPY_YAML_PATH ?= $(dir $(DEV_YAML_PATH))compose.debugpy.yaml
 
 # Common Variables
 COMPOSE_YAML ?= $(DEV_YAML_PATH)
@@ -63,7 +63,7 @@ run: docker-run
 docker-detached-run:
 	@echo "⌛ Starting containers...\n"
 	${COMPOSE_COMMAND} up -d
-d-run: docker-detached-run
+drun: docker-detached-run
 
 docker-debugpy-vscode-debug:
 	@echo "⌛ Running containers and attaching debugpy...\n"

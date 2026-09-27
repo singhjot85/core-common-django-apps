@@ -14,17 +14,18 @@ if [ "$ENABLE_DEBUGPY" = "1" ]; then
         --directory=apps \
         --directory=config \
         --directory=utils \
+        --directory=sample_project \
         --pattern="*.py" \
         --recursive -- \
         python -m debugpy --listen 0.0.0.0:5678 -m \
-        celery -A config.celery worker --loglevel=info --concurrency=1 \
-        # -P solo  # Let's see if vscode can catch multiple threads, if it can't we can uncomment this
+        celery -A config.celery worker --loglevel=info --concurrency=1
 else
     echo "Starting Celery Worker with watchmedo auto-reload..."
     exec watchmedo auto-restart \
         --directory=apps \
         --directory=config \
         --directory=utils \
+        --directory=sample_project \
         --pattern="*.py" \
         --recursive -- \
         celery -A config.celery worker --loglevel=info --concurrency=4

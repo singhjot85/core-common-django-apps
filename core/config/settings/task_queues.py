@@ -5,14 +5,14 @@ from django.core.exceptions import ImproperlyConfigured
 # -----------------------------
 #   Celery Broker Settings
 # -----------------------------
-BROKER_PROTOCOL = os.getenv("BROKER_PROTOCOL", "")
-BROKER_HOST = os.getenv("BROKER_HOST", "")
+BROKER_PROTOCOL = os.getenv("BROKER_PROTOCOL", "redis")
+BROKER_HOST = os.getenv("BROKER_HOST", "broker")
 BROKER_PORT = os.getenv("BROKER_PORT", "6378")
 BROKER_DATABASE = os.getenv("BROKER_DATABASE", 0)
 
 
 def get_broker_url():
-    if not any([BROKER_PROTOCOL, BROKER_HOST, BROKER_PORT]):
+    if not all([BROKER_PROTOCOL, BROKER_HOST, BROKER_PORT]):
         raise ImproperlyConfigured("Celery Broker url is incorrect")
 
     return f"{BROKER_PROTOCOL}://{BROKER_HOST}:{BROKER_PORT}/{BROKER_DATABASE}"

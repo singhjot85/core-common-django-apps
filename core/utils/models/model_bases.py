@@ -55,7 +55,7 @@ class BaseModel(UUIDModel, TimeStampedModel, DeletionTrackingModel):
         Raises:
             ObjectNotFound
         """
-        from utils.models.helpers import safe_get_object_or_raise
+        from core.utils.models.helpers import safe_get_object_or_raise
 
         return safe_get_object_or_raise(cls, **unique_filters)
 

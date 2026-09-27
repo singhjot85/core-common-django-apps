@@ -2,8 +2,9 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django_tenants.models import DomainMixin, TenantMixin
 
-from apps.tenants.constants import TenantContactInfoChoices
-from utils.models import BaseModel
+from core.apps.tenants.constants import TenantContactInfoChoices
+from core.utils.models import BaseModel
+from core.utils.tasks import queue_task
 
 
 class Tenants(TenantMixin, BaseModel):
@@ -29,7 +30,7 @@ class Tenants(TenantMixin, BaseModel):
         super().save(verbosity, *args, **kwargs)
 
         # queue a task to create schema
-        queue_task(  # noqa: F821
+        queue_task(
             TaskNames.MIGRATE_SCHEMA,  # noqa: F821
             schema_name=self.schema_name,
             is_active=self.is_active,

@@ -1,6 +1,5 @@
-from tenants.views import TenantBrandingViewSet
-
-from utils.routers import get_api_router_instance
+from core.apps.tenants.views import TenantBrandingViewSet
+from core.utils.routers import get_api_router_instance
 
 tenants_router = get_api_router_instance()
 

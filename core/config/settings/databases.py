@@ -15,14 +15,14 @@ DATABASE_PORT = os.getenv("POSTGRES_PORT")
 # -----------------------------
 #   Redis/Valkey Database Settings
 # -----------------------------
-CACHE_PROTCOL = os.getenv("CACHE_PROTCOL", "redis")
-CACHE_HOST = os.getenv("CACHE_HOST", "unfo_cache")
+CACHE_PROTCOL = os.getenv("CACHE_PROTOCOL", "redis")
+CACHE_HOST = os.getenv("CACHE_HOST", "cache")
 CACHE_PORT = os.getenv("CACHE_PORT", "6379")
 CACHE_DATABASE = os.getenv("CACHE_DATABASE", 0)
 
 
 def get_cache_url():
-    if not any([CACHE_PROTCOL, CACHE_HOST, CACHE_PORT]):
+    if not all([CACHE_PROTCOL, CACHE_HOST, CACHE_PORT]):
         raise ImproperlyConfigured("Cache url is incorrect")
 
     return f"{CACHE_PROTCOL}://{CACHE_HOST}:{CACHE_PORT}/{CACHE_DATABASE}"

@@ -1,5 +1,5 @@
-from apps.tenants.models import TenantBranding, TenantContactInfo, Tenants
-from utils.serializers import ReadOnlyModelSerializer
+from core.apps.tenants.models import TenantBranding, TenantContactInfo, Tenants
+from core.utils.serializers import ReadOnlyModelSerializer
 
 
 class TenantContactInfoSerializer(ReadOnlyModelSerializer):

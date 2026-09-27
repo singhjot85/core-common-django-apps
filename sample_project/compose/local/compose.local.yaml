@@ -26,6 +26,7 @@ services:
       - DJANGO_DEBUG=True
       - WATCHFILES_FORCE_POLLING=true
       - PYTHONPATH=/backend
+      - DJANGO_SETTINGS_MODULE=sample_project.config.settings.local
       - ENABLE_DEBUGPY=0
     ports:
       - "${DJANGO_PORT:-8000}:8000"

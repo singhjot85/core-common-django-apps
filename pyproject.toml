@@ -46,17 +46,18 @@ skip_glob = ["*/migrations/*"]
 
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings.test"
+pythonpath = ["."]
+DJANGO_SETTINGS_MODULE = "sample_project.config.settings.local"
 python_files = ["test_*.py", "*_tests.py"]
 python_classes = ["Test*", "*Tests"]
 python_functions = ["test_*"]
 testpaths = ["tests", "apps/core/tests"]
 addopts = [
     "-v",
-    "--tb = short",
+    "--tb=short",
     "--strict-markers",
     "--reuse-db",
-    "--import-mode = importlib",
+    "--import-mode=importlib",
     "-p no:warnings",
 ]
 markers = [
