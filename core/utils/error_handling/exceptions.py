@@ -3,7 +3,7 @@ from django.db import models
 from .content_masking import ContentMaskingUtils
 
 
-class InvalidTypeError(ValueError):
+class InvalidTypeError(TypeError):
     """
     Common Error util to raise an invalid type error
     """
