@@ -1,3 +1,5 @@
+import typing
+
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
@@ -24,21 +26,48 @@ class ConfigurationManager(
     """
 
     def get_latest(
-        self, ordering=None, **filters
+        self, interface_type: str, name: str = None
     ) -> models.QuerySet["AbstractConfiguration"]:
         """
         Get latest configurations based on given parameters
         """
         Configuration = get_configuration_model()
 
-        if not ordering:
-            ordering = "interface_type"
+        filters = {"interface_type": interface_type}
+        if name:
+            filters.update({"name": name})
 
         return (
             self.filter(**filters)
-            .order_by(*ordering, *Configuration.DEFAULT_ORDERING)
-            .distinct(*ordering)
+            .order_by("interface_type", *Configuration.DEFAULT_ORDERING)
+            .distinct("interface_type")
         )
+
+    def update_latest(
+        self, interface_type: str, details: dict, name: str = None, create: bool = False
+    ) -> typing.Optional["AbstractConfiguration"]:
+        """
+        Update latest config based on given filters
+        """
+        Configuration = get_configuration_model()
+
+        latest_config = self.get_latest(interface_type, name).first()
+        if latest_config:
+            old_details = latest_config.details
+            old_details.update(details)
+            latest_config.details = old_details
+            latest_config.save(update_fields=["details"])
+
+        elif not latest_config and not create:
+            return None
+
+        elif not latest_config and create:
+
+            latest_config = Configuration.objects.create(
+                interface_type=interface_type, name=name, details=details
+            )
+
+        return latest_config
 
 
 class AbstractConfiguration(BaseVersioningModel):
@@ -100,6 +129,32 @@ class AbstractConfiguration(BaseVersioningModel):
         return Configuration.get_latest_version(interface_type=interface_type)
 
     @classmethod
+    def set_config(
+        cls,
+        interface_type: str,
+        details: dict,
+        name: str = None,
+        set_cache: bool = True,
+        create_config: bool = True,
+    ) -> "AbstractConfiguration":
+        """
+        Create a new configuration object.
+        """
+        config_obj = cls.objects.update_latest(
+            interface_type=interface_type,
+            details=details,
+            name=name,
+            create=create_config,
+        )
+
+        cache_key = cls.get_cache_key(interface_type=interface_type)
+        cache.delete(cache_key)
+        if set_cache:
+            cache.set(cache_key, details, timeout=settings.CACHE_LARGE_LARGE_TIMEOUT)
+
+        return config_obj
+
+    @classmethod
     def get_configuration(cls, interface_type: str, version: str = None) -> dict:
         """
         Get a configuration from database or cache.
@@ -111,7 +166,7 @@ class AbstractConfiguration(BaseVersioningModel):
         config_details = cache.get(cache_key)
 
         if config_details is None:
-            config = cls.objects.get_latest(interface_type=interface_type)
+            config = cls.objects.get_latest(interface_type=interface_type).first()
             if not config:
                 ImproperlyConfigured(
                     f"Cannot find any configuration for: {interface_type}"

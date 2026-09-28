@@ -56,11 +56,14 @@ class BaseDescriptor:
 
         self.validate(self.default)
 
-    def validate(self, value):
+    def validate(self, value: typing.Any = None):
         """
         Validate if setting is formed correctly
         """
         from core.utils.error_handling.exceptions import InvalidTypeError
+
+        if value is None:
+            value = self.default
 
         if not isinstance(value, self.data_type):
             raise InvalidTypeError(type=type(value), expected=type(self.data_type))
@@ -99,7 +102,7 @@ class BaseDescriptor:
 
         return value
 
-    def get_raw_value(self, instance: BaseSettings) -> typing.Any:
+    def get_raw_value(self, instance: BaseSettings = None) -> typing.Any:
         """Get the resolved raw value of a setting, It gives priority to ``django.conf.settings``
         If ``django.conf.settings`` doesn't have this then the default value passed is used.
 
@@ -107,13 +110,23 @@ class BaseDescriptor:
         it's always present even before object creation.
 
         Args:
-            instance (BaseSettings): Instance of the Settings class implementing the setting
+            instance (BaseSettings, optional): Instance of the Settings class implementing the setting
 
         Returns:
             resolved raw setting value
         """
-        overrides = getattr(settings, instance.SETTINGS_KEY, {})
-        return overrides.get(self.name, self.default)
+        settings_key = self.app_settings_key
+        if not settings_key:
+            raise AppSettingException(
+                "Setting Key not defined", setting_label=self.name
+            )
+
+        if settings_key:
+            overrides = getattr(settings, settings_key, {})
+            if isinstance(overrides, dict):
+                return overrides.get(self.name, self.default)
+
+        return self.default
 
     def resolve(self, raw_value: typing.Any) -> typing.Any:
         """Per-type resolution hook. Must be implemented by subclasses.
@@ -129,7 +142,7 @@ class BaseDescriptor:
             f"resolve not implemented for setting descriptor: {self.__class__.__name__}"
         )
 
-    def autodiscovery(self):
+    def autodiscovery(self, instance: BaseSettings = None):
         """
         Auto Discovery logic required for any descriptor
         """
@@ -180,6 +193,10 @@ class SettingsMeta(type):
         # Create the class
         cls: type[BaseSettings] = super().__new__(mcs, name, bases, attrs)
 
+        if name == "BaseSettings":
+            cls._descriptors = {}
+            return cls
+
         # Validate if it has a valid settings key
         if not hasattr(cls, "SETTINGS_KEY"):
             raise AppSettingException("SETTINGS_KEY is required to define app_settings")
@@ -224,7 +241,7 @@ class BaseSettings(metaclass=SettingsMeta):
         for descriptor in self._descriptors.values():
             descriptor: BaseDescriptor
             descriptor.validate()
-            descriptor.autodiscovery()
+            descriptor.autodiscovery(self)
 
     @classmethod
     def load_interface_types(cls):

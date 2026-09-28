@@ -1,13 +1,22 @@
 import logging
+import typing
 from enum import Enum
 from functools import cached_property
 
 from constance import config
 from django.apps import apps
+from django.conf import settings
 from django.utils.module_loading import import_string
 
 from core.apps.configurations import get_configuration_model
-from core.utils.app_settings.base import AppSettingException, BaseDescriptor
+from core.utils.app_settings.base import (
+    AppSettingException,
+    BaseDescriptor,
+    BaseSettings,
+)
+
+# (default, help_text, data-type)
+CONSTANCE_CONFIG_ENTRY: typing.TypeAlias = tuple[typing.Any, str, type]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,17 +42,83 @@ class Constance(BaseDescriptor):
         ... config.CORE_CRM_FLAG
         """
         if not hasattr(self, "name"):
-            raise RuntimeError("Attribte `name` not found on descriptor")
+            raise RuntimeError("Attribute `name` not found on descriptor")
 
-        if not hasattr(self, "app_settings_name"):
-            raise RuntimeError("Attribte `app_settings_name` not found on descriptor")
+        settings_key = getattr(self, "app_settings_key", None)
+        if not settings_key:
+            raise RuntimeError("Attribute `app_settings_key` not found on descriptor")
 
-        return f"{self.name.upper()}_{self.app_settings_key.upper()}"
+        prefix = settings_key.removesuffix("_SETTINGS")
+        return f"{prefix}_{self.name}".upper()
 
-    def autodiscovery(self):
+    def _update_constance_configfieldsets(self):
         """
-        AutoDiscover and register constances
+        Update the ``CONSTANCE_CONFIG_FIELDSETS`` provided by ``django-constances``.
+
+        Example ```CONSTANCE_CONFIG_FIELDSETS```:
+        >>> CONSTANCE_CONFIG_FIELDSETS = {
+        ...     'General Options': {
+        ...         'fields': ('SITE_NAME', 'SITE_DESCRIPTION'),
+        ...         'collapse': True
+        ...     },
+        ...     'Theme Options': ('THEME',),
+        ... }
+
         """
+        fieldset_key = getattr(self, "app_settings_key")
+        fieldsets = getattr(settings, "CONSTANCE_CONFIG_FIELDSETS", {})
+
+        if not isinstance(fieldsets, dict):
+            raise AppSettingException(
+                "Malformed CONSTANCE_CONFIG_FIELDSETS", self.app_settings_key
+            )
+
+        fieldset_val = fieldsets.get(fieldset_key, None)
+
+        if fieldset_val is None:
+            fieldsets[fieldset_key] = {
+                "fields": tuple(self.constance_key),
+                "collapse": False,
+            }
+
+        elif (
+            isinstance(fieldset_val, (list, tuple))
+            and self.constance_key not in fieldset_val
+        ):
+            fieldset_val = list(fieldset_val).append(self.constance_key)
+            fieldsets[fieldset_key] = tuple(fieldset_val)
+
+        elif isinstance(fieldset_val, dict) and "fields" in fieldset_val:
+            fields = fieldset_val["fields"]
+            fieldset_val["collapse"] = True
+            if isinstance(fields, (list, tuple)) and self.constance_key not in fields:
+                fields = list(fields).append(self.constance_key)
+                fieldset_val["fields"] = tuple(fields)
+
+        setattr(settings, "CONSTANCE_CONFIG_FIELDSETS", fieldsets)
+
+    def _update_constance_config(self, config_entry: CONSTANCE_CONFIG_ENTRY):
+        """
+        Update the ``CONSTANCE_CONFIG`` provided by ``django-constances``.
+        """
+        constance_config = getattr(settings, "CONSTANCE_CONFIG", {})
+        constance_config[self.constance_key] = config_entry
+        setattr(settings, "CONSTANCE_CONFIG", constance_config)
+
+    def autodiscovery(self, instance: BaseSettings = None):
+        """
+        AutoDiscover and register constances into django settings and constance settings.
+        Adds the constance values to CONSTANCE_CONFIG, and CONSTANCE_CONFIG_FIELDSET / CONSTANCE_CONFIG_FIELDSETS.
+        Uses get_raw_value to account for project overrides.
+        """
+        raw_value = self.get_raw_value(instance)
+        config_entry: CONSTANCE_CONFIG_ENTRY = (
+            raw_value,
+            self.help_text,
+            self.data_type,
+        )
+        self._update_constance_config(config_entry)
+        self._update_constance_configfieldsets()
 
     def resolve(self, raw_value):
         """
@@ -94,11 +169,15 @@ class Settings(BaseDescriptor):
     Ex: Choices, Model, Serializer Class imports, or just a normal True/False flag.
     """
 
-    def validate(self, value):
+    def validate(self, value=None):
         """
         Validate and check if import is valid.
         """
         super().validate(value)
+
+        if value is None:
+            value = self.default
+
         if self.data_type == SettingsType.MODEL_IMPORT.value:
             try:
                 apps.get_model(value, require_ready=False)
@@ -134,10 +213,29 @@ class Configuration(BaseDescriptor):
         self.interface_type = interface_type
         super().__init__(default, data_type, help_text)
 
-    def autodiscovery(self):
+    def autodiscovery(self, instance: BaseSettings = None):
         """
-        Save the given default value to the configuration object in database
+        Save the given default/raw value to the configuration object in database.
+        If config object does not exist for the interface_type, creates it.
+        If config object exists, appends that key to details dict if not present.
+        Uses get_raw_value to account for project overrides.
         """
+        raw_value = self.get_raw_value(instance)
+        key = self.name.lower()
+
+        try:
+            Configuration = get_configuration_model()
+            Configuration.set_config(
+                interface_type=self.interface_type,
+                details={key: raw_value},
+                create_config=True,
+                set_cache=False,  # NOTE: This Can cause cache stempede, config will be cached when retrieved
+            )
+        except Exception as e:
+            LOGGER.warning(
+                f"Configuration autodiscovery skipped for {self.name} "
+                f"({self.interface_type}): {e}"
+            )
 
     def resolve(self, raw_value):
         """

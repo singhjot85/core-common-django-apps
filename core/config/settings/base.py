@@ -201,3 +201,8 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 #  django-constance
 # ------------------
 CONSTANCE_REDIS_CONNECTION = get_cache_url()
+
+# NOTE: Avoid adding anything to these set them in app_settings
+# If the setting is to be made app_wide then only add it here.
+CONSTANCE_CONFIG = {}
+CONSTANCE_CONFIG_FIELDSETS = {}
