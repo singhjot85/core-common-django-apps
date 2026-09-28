@@ -11,10 +11,20 @@ class SimpleVersionModelMixin(models.Model):
     DEFAULT_ORDERING = ("-version_major", "-version_minor", "-version_patch")
     DEFAULT_VERSION = (1, 0, 0)
 
-    version_major = models.IntegerField(default=DEFAULT_VERSION[0])
-    version_minor = models.IntegerField(default=DEFAULT_VERSION[1])
-    version_patch = models.IntegerField(default=DEFAULT_VERSION[2])
-    version = models.CharField(null=True, blank=True)
+    version_major = models.IntegerField(
+        null=True, blank=True, default=DEFAULT_VERSION[0]
+    )
+    version_minor = models.IntegerField(
+        null=True, blank=True, default=DEFAULT_VERSION[1]
+    )
+    version_patch = models.IntegerField(
+        null=True, blank=True, default=DEFAULT_VERSION[2]
+    )
+    version = models.CharField(
+        null=True,
+        blank=True,
+        default=f"{DEFAULT_VERSION[0]}.{DEFAULT_VERSION[1]}.{DEFAULT_VERSION[2]}",
+    )
 
     class Meta:
         abstract = True

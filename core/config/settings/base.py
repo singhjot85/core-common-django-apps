@@ -38,8 +38,8 @@ STATIC_URL = "static/"
 ROOT_URLCONF = "config.urls"
 PUBLIC_SCHEMA_URLCONF = "config.public_urls"
 
-TENANT_MODEL = TENANTS_TENANT
-TENANT_DOMAIN_MODEL = TENANTS_DOMAIN
+TENANT_MODEL = TENANTS_TENANT_MODEL
+TENANT_DOMAIN_MODEL = TENANTS_DOMAIN_MODEL
 
 INSTALLED_APPS = [
     *SHARED_DJANGO_APPS,
@@ -74,13 +74,19 @@ DATABASES = {
 # -----------------------------
 CACHE_URL = get_cache_url()
 CACHE_BACKEND, RESOLVED_CACHE_OPTIONS = get_cache_ops()
+
+CACHE_SMALL_SMALL_TIMEOUT = os.getenv("CACHE_SMALL_SMALL_TIMEOUT", 30)  # 30 seconds
+CACHE_SMALL_TIMEOUT = os.getenv("CACHE_SMALL_TIMEOUT", 30 * 2)  # 2 mins
+CACHE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_TIMEOUT", 60 * 20)  # 20 mins
+CACHE_LARGE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_LARGE_TIMEOUT", 60 * 60)  # 1 hour
+
 CACHES = {
     "default": {
         "BACKEND": CACHE_BACKEND,
         "LOCATION": CACHE_URL,
         "OPTIONS": RESOLVED_CACHE_OPTIONS,
         "IGNORE_EXCEPTIONS": True,
-        "TIMEOUT": 3600,
+        "TIMEOUT": CACHE_LARGE_TIMEOUT,
     },
 }
 
@@ -195,3 +201,8 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 #  django-constance
 # ------------------
 CONSTANCE_REDIS_CONNECTION = get_cache_url()
+
+# NOTE: Avoid adding anything to these set them in app_settings
+# If the setting is to be made app_wide then only add it here.
+CONSTANCE_CONFIG = {}
+CONSTANCE_CONFIG_FIELDSETS = {}

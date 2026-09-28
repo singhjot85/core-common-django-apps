@@ -1,0 +1,138 @@
+import uuid
+
+from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db import models
+from django_tenants.models import DomainMixin, TenantMixin
+from model_utils.models import StatusModel
+
+from core.apps.tenants.constants import TenantContactInfoChoices, TenantStatus
+from core.apps.tenants.tasks import provision_tenant_schema
+from core.utils.models import BaseModel
+from core.utils.tasks import queue_task
+
+
+class AbstractTenants(TenantMixin, BaseModel, StatusModel):
+    """
+    Abstract model for Tenant's and their schema's.
+    This model is intended to be inherited by other models and should not be used directly.
+    """
+
+    auto_create_schema = False
+
+    status = TenantStatus.choices
+    label = models.CharField(max_length=255, null=True, blank=True)
+    is_active = models.BooleanField(default=True, null=True, blank=True)
+    public_id = models.CharField(max_length=124, null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        verbose_name = "Tenant"
+        verbose_name_plural = "Tenants"
+
+    def __str__(self):
+        return "%s - %s", self.label, self.public_id
+
+    def generate_public_id(self, retry: int = 0):
+        """
+        Generate public id for current tenant.
+        """
+        if retry >= 5:
+            raise Exception(f"Error Creating unique {self.__name__}")
+
+        public_id = f"Tenant-{self.label}-{uuid.uuid4().hex}"
+
+        try:
+            self.objects.get(public_id)
+        except self.DoesNotExist:
+            self.public_id = public_id
+            return self.public_id
+
+        retry += 1
+        self.generate_public_id(retry)
+
+    def save(self, verbosity=1, *args, **kwargs):
+        """
+        Schema migration is a slow process, and even slower when migrations grow in number
+        So using a seperate thread (async thread) to create schema's instead of blocking main thread.
+        """
+        self.generate_public_id()
+
+        # Save the model instance first
+        super().save(verbosity, *args, **kwargs)
+
+        # queue a task to create schema
+        queue_task(
+            provision_tenant_schema,
+            on_commit=True,
+            idempotency_key=str(self.pk),
+            task_kwargs={"tenant_id": str(self.pk)},
+        )
+
+
+class AbstractDomain(DomainMixin, BaseModel):
+    """
+    Abstract model for Backend Domains for tenants.
+    This model is intended to be inherited by other models and should not be used directly.
+    """
+
+    label = models.CharField(max_length=124, null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        verbose_name = "Domain"
+        verbose_name_plural = "Domains"
+
+
+class AbstractTenantContactInfo(BaseModel):
+    """
+    Abstract model for Tenant Contact Information.
+    This model is intended to be inherited by other models and should not be used directly.
+    """
+
+    order = models.IntegerField(null=False, blank=False, default=1)
+    tenant = models.ForeignKey(
+        settings.TENANTS_TENANT_MODEL,
+        on_delete=models.PROTECT,
+        null=False,
+        blank=False,
+        related_name="contact_info",
+    )
+    contact_type = models.CharField(
+        null=False, blank=False, choices=TenantContactInfoChoices.choices
+    )
+    contact_info = models.JSONField(
+        encoder=DjangoJSONEncoder,
+        default=dict,
+        blank=True,
+        null=True,
+        help_text="Contact information for the tenant in JSON format.",
+    )
+
+    class Meta:
+        abstract = True
+        verbose_name = "Tenant Contact Info"
+        verbose_name_plural = "Tenant Contact Infos"
+
+
+class AbstractTenantBranding(BaseModel):
+    """
+    Abstract model for Tenant Branding.
+    This model is intended to be inherited by other models and should not be used directly.
+    """
+
+    tenant = models.OneToOneField(
+        settings.TENANTS_TENANT_MODEL,
+        on_delete=models.CASCADE,
+        null=False,
+        blank=False,
+        related_name="branding",
+    )
+    details = models.JSONField(
+        default=dict, encoder=DjangoJSONEncoder, null=True, blank=True
+    )
+
+    class Meta:
+        abstract = True
+        verbose_name = "Tenant Branding"
+        verbose_name_plural = "Tenant Brandings"
