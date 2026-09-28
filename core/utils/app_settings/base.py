@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import enum
 import typing
 
 from django.conf import settings
+
+from core.utils.file_handling import classes_from_file, load_file_from_package
 
 T = typing.TypeVar("T")
 
@@ -126,6 +129,11 @@ class BaseDescriptor:
             f"resolve not implemented for setting descriptor: {self.__class__.__name__}"
         )
 
+    def autodiscovery(self):
+        """
+        Auto Discovery logic required for any descriptor
+        """
+
 
 class SettingsMeta(type):
     """
@@ -198,6 +206,9 @@ class BaseSettings(metaclass=SettingsMeta):
     SETTINGS_KEY: str
     _descriptors: dict = {}
 
+    INTERFACES_FILE_NAME = "interfaces"
+    ERROR_CODES_FILE_NAME = "error_codes"
+
     @property
     def override_settings_name(self):
         return self.SETTINGS_KEY
@@ -206,9 +217,32 @@ class BaseSettings(metaclass=SettingsMeta):
         """
         Validate the descriptors before creating settings instance.
         """
+        # TODO: Implement autodiscovery of ErrorCodes Loading from error files
+        # self.load_error_codes()
+        self.load_interface_types()
+
         for descriptor in self._descriptors.values():
             descriptor: BaseDescriptor
             descriptor.validate()
+            descriptor.autodiscovery()
+
+    @classmethod
+    def load_interface_types(cls):
+        """
+        Load Configuration Interface types from given module.
+        and contribute them to Configuration InterfaceTypes
+        """
+        file = load_file_from_package("interfaces", target_class=cls)
+
+        if not file:
+            return
+
+        from core.apps.configurations.constants import InterfaceTypeChoices
+
+        interface_classes = classes_from_file(file)
+        for kls in interface_classes:
+            if isinstance(kls, (dict, enum.EnumType)):
+                InterfaceTypeChoices.contribute(kls)
 
     def raw(self, setting_name: str) -> typing.Any:
         """Get raw value instead of the resolved one for given ``setting_name``<br/>

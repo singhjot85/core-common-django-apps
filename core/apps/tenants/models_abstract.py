@@ -4,15 +4,11 @@ from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django_tenants.models import DomainMixin, TenantMixin
-from django_tenants.utils import schema_context
 from model_utils.models import StatusModel
-from rest_framework.exceptions import ValidationError
 
-from core.apps.configurations import get_configuration_model
-from core.apps.tenants import get_tenant_model
 from core.apps.tenants.constants import TenantContactInfoChoices, TenantStatus
 from core.apps.tenants.tasks import provision_tenant_schema
-from core.utils.models import BaseModel, BaseVersioningModel
+from core.utils.models import BaseModel
 from core.utils.tasks import queue_task
 
 
@@ -140,90 +136,3 @@ class AbstractTenantBranding(BaseModel):
         abstract = True
         verbose_name = "Tenant Branding"
         verbose_name_plural = "Tenant Brandings"
-
-
-class AbstractTenantConfiguration(BaseVersioningModel):
-    """
-    Abstract Class for a tenant configuration.
-    """
-
-    tenant = models.ForeignKey(
-        settings.TENANTS_TENANT_MODEL,
-        on_delete=models.CASCADE,
-        null=False,
-        blank=False,
-        related_name="tenant_configs",
-    )
-    details = models.JSONField(
-        null=False, blank=False, default=dict, encoder=DjangoJSONEncoder
-    )
-
-    def clean(self):
-        """
-        Validations for JSON saved in details.
-        TODO: Implement JSONSchema Validators and avoid this pattern going forward.
-        """
-        from apps.configurations.constants import InterfaceTypeChoices
-
-        if not self.details:
-            raise ValidationError("Tenant Configuration cannot be empty.")
-
-        if not isinstance(self.details, dict):
-            raise ValidationError("Tenant Configuration should be a valid dict.")
-
-        for key, val in self.details.items():
-            if not isinstance(key, str) or key not in InterfaceTypeChoices.values:
-                raise ValidationError(
-                    "Tenant Configuration should be a valid configuration interface_type"
-                )
-
-            if not isinstance(val, dict):
-                raise ValidationError(
-                    f"Invalid Tenant Configuration for interface: {key}"
-                )
-
-            for sub_key in ["name", "interface_type", "version"]:
-                if sub_key not in val.keys():
-                    raise ValidationError(
-                        f"{sub_key} is required to form a valid conguration for interface: {key}"
-                    )
-
-    @classmethod
-    def sync_tenant_configuration(
-        cls, schema_name: str
-    ) -> "AbstractTenantConfiguration":
-        """
-        Create a tenant configuration object that is synced from configuration database.
-        """
-        Tenant = get_tenant_model()
-
-        tenant = Tenant.objects.get(schema_name=schema_name)
-
-        def create_config() -> dict:
-            tenant_config = {}
-
-            with schema_context(schema_name):
-
-                Configuration = get_configuration_model()
-                configs = Configuration.objects.get_latest().values_list(
-                    ["version", "name"]
-                )
-
-                for config in configs:
-                    tenant_config.update(
-                        {
-                            config.interface_type: {
-                                "name": config.name,
-                                "interface_type": config.interface_type,
-                                "version": config.version,
-                            }
-                        }
-                    )
-
-            return tenant_config
-
-        return cls.objects.create(
-            tenant=tenant,
-            details=create_config(),
-            version=cls.get_latest_version(tenant=tenant),
-        )

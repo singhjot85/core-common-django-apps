@@ -74,13 +74,19 @@ DATABASES = {
 # -----------------------------
 CACHE_URL = get_cache_url()
 CACHE_BACKEND, RESOLVED_CACHE_OPTIONS = get_cache_ops()
+
+CACHE_SMALL_SMALL_TIMEOUT = os.getenv("CACHE_SMALL_SMALL_TIMEOUT", 30)  # 30 seconds
+CACHE_SMALL_TIMEOUT = os.getenv("CACHE_SMALL_TIMEOUT", 30 * 2)  # 2 mins
+CACHE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_TIMEOUT", 60 * 20)  # 20 mins
+CACHE_LARGE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_LARGE_TIMEOUT", 60 * 60)  # 1 hour
+
 CACHES = {
     "default": {
         "BACKEND": CACHE_BACKEND,
         "LOCATION": CACHE_URL,
         "OPTIONS": RESOLVED_CACHE_OPTIONS,
         "IGNORE_EXCEPTIONS": True,
-        "TIMEOUT": 3600,
+        "TIMEOUT": CACHE_LARGE_TIMEOUT,
     },
 }
 

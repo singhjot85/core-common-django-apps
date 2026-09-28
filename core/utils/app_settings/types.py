@@ -6,21 +6,10 @@ from constance import config
 from django.apps import apps
 from django.utils.module_loading import import_string
 
+from core.apps.configurations import get_configuration_model
 from core.utils.app_settings.base import AppSettingException, BaseDescriptor
 
 LOGGER = logging.getLogger(__name__)
-
-
-class SettingsType(Enum):
-    """
-    Differnt types of settings, django settings are classified into multiple types.
-    - Import (Settings can be available at time of __get__).
-    - Deffered Import (Setting should be available during descriptor __init__ time).
-    """
-
-    IMPORT = "import"
-    DEFFERED_IMPORT = "deffered_import"
-    MODEL_IMPORT = "model_import"
 
 
 class Constance(BaseDescriptor):
@@ -51,6 +40,11 @@ class Constance(BaseDescriptor):
 
         return f"{self.name.upper()}_{self.app_settings_key.upper()}"
 
+    def autodiscovery(self):
+        """
+        AutoDiscover and register constances
+        """
+
     def resolve(self, raw_value):
         """
         Resolve Constance, i.e. __get__ for constace returns what
@@ -75,6 +69,18 @@ class Constance(BaseDescriptor):
             raise AppSettingException(str(e), self.app_settings_key) from e
 
         return constance_value
+
+
+class SettingsType(Enum):
+    """
+    Differnt types of settings, django settings are classified into multiple types.
+    - Import (Settings can be available at time of __get__).
+    - Deffered Import (Setting should be available during descriptor __init__ time).
+    """
+
+    IMPORT = "import"
+    DEFFERED_IMPORT = "deffered_import"
+    MODEL_IMPORT = "model_import"
 
 
 class Settings(BaseDescriptor):
@@ -113,3 +119,36 @@ class Settings(BaseDescriptor):
             return apps.get_model(raw_value, require_ready=True)
 
         return import_string(raw_value)
+
+
+class Configuration(BaseDescriptor):
+    """
+    Configuration Settings to get a json configuration setting from database.
+    These Settings contain large mappings that need to be version maintained.
+    """
+
+    def __init__(self, default, interface_type: str, data_type, help_text=""):
+        """
+        Set inteface type on configs descriptor
+        """
+        self.interface_type = interface_type
+        super().__init__(default, data_type, help_text)
+
+    def autodiscovery(self):
+        """
+        Save the given default value to the configuration object in database
+        """
+
+    def resolve(self, raw_value):
+        """
+        Get Configuration from cache or databse
+        """
+        Configuration = get_configuration_model()
+
+        try:
+            config_details = Configuration.get_configuration(
+                interface_type=self.interface_type
+            )
+            return config_details.get(self.name.lower(), self.default)
+        except Exception as e:
+            raise AppSettingException(str(e), self.app_settings_key)

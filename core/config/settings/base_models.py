@@ -17,6 +17,9 @@ TENANTS_BRANDING_MODEL = "tenants.TenantBranding"
 CONFIGURATION_APP = "core.apps.configurations"
 CONFIGURATIONS_CONFIGURATION_MODEL = "configurations.Configuration"
 CONFIGURATIONS_CONFIGURATION_SCHEMA_MODEL = "configurations.ConfigurationSchema"
+CONFIGURATIONS_TENANT_CONFIGURATION_MODEL = "configurations.TenantConfiguration"
+
+
 # ----------------------------
 #   Runtime App Classification
 # ----------------------------

@@ -16,3 +16,7 @@ def get_tenant_model():
         type["AbstractTenants"],
         django_apps.get_model(settings.TENANTS_TENANT_MODEL, require_ready=False),
     )
+
+
+def get_tenant_configuration():
+    """ """
