@@ -2,8 +2,8 @@ from rest_framework import viewsets
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 
+from core.apps.tenants.api.serializers import TenantBrandingSerializer
 from core.apps.tenants.models import TenantBranding
-from core.apps.tenants.serializers import TenantBrandingSerializer
 
 
 class TenantBrandingViewSet(viewsets.ReadOnlyModelViewSet):

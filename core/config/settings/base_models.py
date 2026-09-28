@@ -7,14 +7,16 @@
 
 
 # Django Tenants App
-APP_TENANTS = "core.apps.tenants"
-TENANTS_TENANT = "tenants.Tenants"
-TENANTS_DOMAIN = "tenants.Domain"
-TENANTS_CONTACT_INFO = "tenants.TenantContactInfo"
-TENANTS_CONFIGURATION = "tenants.TenantConfiguration"
-TENANTS_BRANDING = "tenants.TenantBranding"
+TENANTS_APP = "core.apps.tenants"
+TENANTS_TENANT_MODEL = "tenants.Tenants"
+TENANTS_DOMAIN_MODEL = "tenants.Domain"
+TENANTS_CONTACT_INFO_MODEL = "tenants.TenantContactInfo"
+TENANTS_BRANDING_MODEL = "tenants.TenantBranding"
 
-
+# Configuration App
+CONFIGURATION_APP = "core.apps.configurations"
+CONFIGURATIONS_CONFIGURATION_MODEL = "configurations.Configuration"
+CONFIGURATIONS_CONFIGURATION_SCHEMA_MODEL = "configurations.ConfigurationSchema"
 # ----------------------------
 #   Runtime App Classification
 # ----------------------------
@@ -27,9 +29,7 @@ SHARED_DJANGO_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 ]
-
 PUBLIC_ONLY_DJANGO_APPS = []
-
 TENANT_ONLY_DJANGO_APPS = []
 
 SHARED_EXTRA_DEPENDENCIES = [
@@ -47,7 +47,7 @@ PUBLIC_ONLY_EXTRA_DEPENDENCIES = [
 TENANT_ONLY_EXTRA_DEPENDENCIES = []
 
 PROJECT_APPS = [
-    APP_TENANTS,
+    TENANTS_APP,
     # APP_CRM,
     # "apps.tenants",
     # "apps.setup",
@@ -65,7 +65,7 @@ DJANGO_TENANT_PUBLIC_APPS = [
     *PUBLIC_ONLY_DJANGO_APPS,
     *SHARED_EXTRA_DEPENDENCIES,
     *PUBLIC_ONLY_EXTRA_DEPENDENCIES,
-    APP_TENANTS,
+    TENANTS_APP,
     # "apps.setup",
 ]
 
