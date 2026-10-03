@@ -125,3 +125,14 @@ All domain models must inherit from one of the core base models:
 - Use the standardized `queue_task()` wrapper (`core.utils.tasks`) instead of calling `.delay()` or `.apply_async()` directly.
 - Default to `on_commit=True` to ensure database transactions are committed before workers pick up tasks.
 - Pass unique `idempotency_key` arguments to prevent duplicate processing during retries or concurrent dispatches.
+
+## 5. Documentation Maintenance Standards
+
+Always keep app-level documentation (`Readme.md`) synchronized with code changes:
+
+- **New Features**: When implementing new models, settings, managers, or endpoints, update the corresponding app's `Readme.md`.
+- **Fixes & Refactors**: If fixing a bug or refactoring existing logic and the documentation is outdated, update it immediately.
+- **Documentation Rules**:
+  - **No Large Code Dumps**: Do not paste large class definitions or lengthy boilerplate into documentation.
+  - **Short, Crisp & Concise**: Highlight model relationships, architectural roles, manager helpers, and endpoints directly.
+  - **Minimal Snippets**: Include example or helper snippets only when necessary for non-obvious integration or usage patterns.

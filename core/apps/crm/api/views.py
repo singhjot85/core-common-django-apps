@@ -1,5 +1,6 @@
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.response import Response
 
 from core.apps.crm.api.serializers import (
@@ -7,6 +8,8 @@ from core.apps.crm.api.serializers import (
     CustomerEmailSerializer,
     CustomerIdentificationSerializer,
     CustomerPhoneSerializer,
+    CustomerPreferenceSerializer,
+    CustomerPreferenceTypeSerializer,
     CustomerSerializer,
 )
 from core.apps.crm.models import (
@@ -15,27 +18,49 @@ from core.apps.crm.models import (
     CustomerEmail,
     CustomerIdentification,
     CustomerPhone,
+    CustomerPreference,
+    CustomerPreferenceType,
 )
 
 
-class CustomerViewSet(viewsets.ModelViewSet):
+class BaseCustomerEntityViewSet(viewsets.ModelViewSet):
+    """
+    Base ViewSet for customer entity endpoints.
+    Disallows listing all records and deleting records via API.
+    """
+
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    http_method_names = ["get", "post", "put"]
+
+    def list(self, request, *args, **kwargs):
+        """Block list operation across customers."""
+        raise MethodNotAllowed(
+            method="GET", detail="List operation is not allowed on this endpoint."
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        """Block delete operation on customer records."""
+        raise MethodNotAllowed(
+            method="DELETE", detail="Delete operation is not allowed on this endpoint."
+        )
+
+
+class CustomerViewSet(BaseCustomerEntityViewSet):
     """
     ViewSet for managing Customer records.
     """
 
     queryset = Customer.available_objects.all()
     serializer_class = CustomerSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 
-class CustomerPhoneViewSet(viewsets.ModelViewSet):
+class CustomerPhoneViewSet(BaseCustomerEntityViewSet):
     """
     ViewSet for managing CustomerPhone records.
     """
 
     queryset = CustomerPhone.available_objects.all()
     serializer_class = CustomerPhoneSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     @action(detail=True, methods=["post"], url_path="set-primary")
     def set_primary(self, request, *args, **kwargs):
@@ -46,14 +71,13 @@ class CustomerPhoneViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CustomerEmailViewSet(viewsets.ModelViewSet):
+class CustomerEmailViewSet(BaseCustomerEntityViewSet):
     """
     ViewSet for managing CustomerEmail records.
     """
 
     queryset = CustomerEmail.available_objects.all()
     serializer_class = CustomerEmailSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     @action(detail=True, methods=["post"], url_path="set-primary")
     def set_primary(self, request, *args, **kwargs):
@@ -64,14 +88,13 @@ class CustomerEmailViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CustomerAddressViewSet(viewsets.ModelViewSet):
+class CustomerAddressViewSet(BaseCustomerEntityViewSet):
     """
     ViewSet for managing CustomerAddress records.
     """
 
     queryset = CustomerAddress.available_objects.all()
     serializer_class = CustomerAddressSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     @action(detail=True, methods=["post"], url_path="set-primary")
     def set_primary(self, request, *args, **kwargs):
@@ -82,11 +105,36 @@ class CustomerAddressViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CustomerIdentificationViewSet(viewsets.ModelViewSet):
+class CustomerIdentificationViewSet(BaseCustomerEntityViewSet):
     """
     ViewSet for managing CustomerIdentification records.
     """
 
     queryset = CustomerIdentification.available_objects.all()
     serializer_class = CustomerIdentificationSerializer
+
+
+class CustomerPreferenceTypeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing CustomerPreferenceType definitions.
+    """
+
+    queryset = CustomerPreferenceType.available_objects.all()
+    serializer_class = CustomerPreferenceTypeSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    http_method_names = ["get", "post", "put"]
+
+    def destroy(self, request, *args, **kwargs):
+        """Block delete operation on preference type definitions."""
+        raise MethodNotAllowed(
+            method="DELETE", detail="Delete operation is not allowed on this endpoint."
+        )
+
+
+class CustomerPreferenceViewSet(BaseCustomerEntityViewSet):
+    """
+    ViewSet for managing CustomerPreference entries.
+    """
+
+    queryset = CustomerPreference.available_objects.all()
+    serializer_class = CustomerPreferenceSerializer

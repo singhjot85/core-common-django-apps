@@ -3,6 +3,8 @@ from core.apps.crm.api.views import (
     CustomerEmailViewSet,
     CustomerIdentificationViewSet,
     CustomerPhoneViewSet,
+    CustomerPreferenceTypeViewSet,
+    CustomerPreferenceViewSet,
     CustomerViewSet,
 )
 from core.utils.routers import get_api_router_instance
@@ -19,6 +21,16 @@ crm_router.register(
     r"customer-identifications",
     CustomerIdentificationViewSet,
     basename="customer-identification",
+)
+crm_router.register(
+    r"customer-preference-types",
+    CustomerPreferenceTypeViewSet,
+    basename="customer-preference-type",
+)
+crm_router.register(
+    r"customer-preferences",
+    CustomerPreferenceViewSet,
+    basename="customer-preference",
 )
 
 urlpatterns = crm_router.urls

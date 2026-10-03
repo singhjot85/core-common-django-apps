@@ -26,6 +26,8 @@ CRM_CUSTOMER_PHONE_MODEL = "crm.CustomerPhone"
 CRM_CUSTOMER_EMAIL_MODEL = "crm.CustomerEmail"
 CRM_CUSTOMER_ADDRESS_MODEL = "crm.CustomerAddress"
 CRM_CUSTOMER_IDENTIFICATION_MODEL = "crm.CustomerIdentification"
+CRM_CUSTOMER_PREFERENCE_TYPE_MODEL = "crm.CustomerPreferenceType"
+CRM_CUSTOMER_PREFERENCE_MODEL = "crm.CustomerPreference"
 
 
 # ----------------------------

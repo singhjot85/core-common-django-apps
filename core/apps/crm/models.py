@@ -44,3 +44,21 @@ class CustomerIdentification(models_abstract.AbstractCustomerIdentification):
 
     class Meta(models_abstract.AbstractCustomerIdentification.Meta):
         swappable = "CRM_CUSTOMER_IDENTIFICATION_MODEL"
+
+
+class CustomerPreferenceType(models_abstract.AbstractCustomerPreferenceType):
+    """
+    Concrete CustomerPreferenceType model.
+    """
+
+    class Meta(models_abstract.AbstractCustomerPreferenceType.Meta):
+        swappable = "CRM_CUSTOMER_PREFERENCE_TYPE_MODEL"
+
+
+class CustomerPreference(models_abstract.AbstractCustomerPreference):
+    """
+    Concrete CustomerPreference model.
+    """
+
+    class Meta(models_abstract.AbstractCustomerPreference.Meta):
+        swappable = "CRM_CUSTOMER_PREFERENCE_MODEL"

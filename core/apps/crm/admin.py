@@ -6,6 +6,8 @@ from core.apps.crm.models import (
     CustomerEmail,
     CustomerIdentification,
     CustomerPhone,
+    CustomerPreference,
+    CustomerPreferenceType,
 )
 
 
@@ -64,6 +66,14 @@ class CustomerIdentificationInline(admin.TabularInline):
     )
 
 
+class CustomerPreferenceInline(admin.TabularInline):
+    """Inline admin for customer preferences."""
+
+    model = CustomerPreference
+    extra = 1
+    fields = ("preference_type", "value", "is_removed")
+
+
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
     """Admin configuration for Customer profiles."""
@@ -89,6 +99,7 @@ class CustomerAdmin(admin.ModelAdmin):
         CustomerEmailInline,
         CustomerAddressInline,
         CustomerIdentificationInline,
+        CustomerPreferenceInline,
     ]
 
 
@@ -180,4 +191,28 @@ class CustomerIdentificationAdmin(admin.ModelAdmin):
         "customer__first_name",
         "customer__last_name",
         "customer__business_name",
+    )
+
+
+@admin.register(CustomerPreferenceType)
+class CustomerPreferenceTypeAdmin(admin.ModelAdmin):
+    """Admin configuration for CustomerPreferenceType definitions."""
+
+    list_display = ("code", "label", "data_type", "default_value", "is_removed")
+    list_filter = ("data_type", "is_removed")
+    search_fields = ("code", "label")
+
+
+@admin.register(CustomerPreference)
+class CustomerPreferenceAdmin(admin.ModelAdmin):
+    """Admin configuration for CustomerPreference entries."""
+
+    list_display = ("customer", "preference_type", "value", "is_removed")
+    list_filter = ("preference_type", "is_removed")
+    search_fields = (
+        "customer__first_name",
+        "customer__last_name",
+        "customer__business_name",
+        "preference_type__code",
+        "preference_type__label",
     )

@@ -10,6 +10,8 @@ if typing.TYPE_CHECKING:
         AbstractCustomerEmail,
         AbstractCustomerIdentification,
         AbstractCustomerPhone,
+        AbstractCustomerPreference,
+        AbstractCustomerPreferenceType,
     )
 
 
@@ -61,5 +63,29 @@ def get_customer_identification_model():
         type["AbstractCustomerIdentification"],
         django_apps.get_model(
             settings.CRM_CUSTOMER_IDENTIFICATION_MODEL, require_ready=False
+        ),
+    )
+
+
+def get_customer_preference_type_model():
+    """
+    Get customer preference type model.
+    """
+    return typing.cast(
+        type["AbstractCustomerPreferenceType"],
+        django_apps.get_model(
+            settings.CRM_CUSTOMER_PREFERENCE_TYPE_MODEL, require_ready=False
+        ),
+    )
+
+
+def get_customer_preference_model():
+    """
+    Get customer preference model.
+    """
+    return typing.cast(
+        type["AbstractCustomerPreference"],
+        django_apps.get_model(
+            settings.CRM_CUSTOMER_PREFERENCE_MODEL, require_ready=False
         ),
     )

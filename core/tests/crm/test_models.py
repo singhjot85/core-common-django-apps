@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 
 from core.apps.crm import (
     get_customer_address_model,
@@ -7,11 +8,14 @@ from core.apps.crm import (
     get_customer_identification_model,
     get_customer_model,
     get_customer_phone_model,
+    get_customer_preference_model,
+    get_customer_preference_type_model,
 )
 from core.apps.crm.constants import (
     ContactTypeChoices,
     CustomerTypeChoices,
     IdentityTypeChoices,
+    PreferenceDataTypeChoices,
 )
 
 Customer = get_customer_model()
@@ -19,6 +23,8 @@ CustomerPhone = get_customer_phone_model()
 CustomerEmail = get_customer_email_model()
 CustomerAddress = get_customer_address_model()
 CustomerIdentification = get_customer_identification_model()
+CustomerPreferenceType = get_customer_preference_type_model()
+CustomerPreference = get_customer_preference_model()
 
 
 class TestCRMModelUnits:
@@ -72,6 +78,60 @@ class TestCRMModelUnits:
             address.full_address
             == "123 Tech Street, Suite 400, Near Central Park, Bengaluru, Karnataka, 560001, IN"
         )
+
+    def test_preference_type_boolean_validation(self):
+        """Test validation for boolean preference types."""
+        pref_type = CustomerPreferenceType(
+            code="newsletter",
+            label="Subscribe to Newsletter",
+            data_type=PreferenceDataTypeChoices.BOOLEAN,
+            default_value=True,
+        )
+        pref_type.clean()
+
+        invalid_pref_type = CustomerPreferenceType(
+            code="invalid_bool",
+            label="Invalid Bool",
+            data_type=PreferenceDataTypeChoices.BOOLEAN,
+            default_value="not-a-bool",
+        )
+        with pytest.raises(ValidationError):
+            invalid_pref_type.clean()
+
+    def test_preference_type_choices_validation(self):
+        """Test validation for single/multi-choice preference types."""
+        pref_type = CustomerPreferenceType(
+            code="theme",
+            label="UI Theme",
+            data_type=PreferenceDataTypeChoices.CHOICES,
+            values=["light", "dark", "system"],
+            default_value="dark",
+        )
+        pref_type.clean()
+
+        invalid_pref_type = CustomerPreferenceType(
+            code="invalid_theme",
+            label="Invalid Theme",
+            data_type=PreferenceDataTypeChoices.CHOICES,
+            values=["light", "dark"],
+            default_value="neon",
+        )
+        with pytest.raises(ValidationError):
+            invalid_pref_type.clean()
+
+    def test_customer_preference_clean_validation(self):
+        """Test clean validation on customer preference entries."""
+        pref_type_bool = CustomerPreferenceType(
+            code="promo_emails",
+            label="Promotional Emails",
+            data_type=PreferenceDataTypeChoices.BOOLEAN,
+        )
+        pref = CustomerPreference(preference_type=pref_type_bool, value="invalid")
+        with pytest.raises(ValidationError):
+            pref.clean()
+
+        pref.value = True
+        pref.clean()
 
 
 @pytest.mark.django_db
@@ -194,3 +254,20 @@ class TestCRMModelsDB:
 
         customer.refresh_from_db()
         assert customer.is_removed is True
+
+    def test_customer_preference_db(self):
+        """Test saving and retrieving CustomerPreference in database."""
+        customer = Customer.objects.create(first_name="Frank", last_name="Castle")
+        pref_type = CustomerPreferenceType.objects.create(
+            code="dark_mode",
+            label="Dark Mode",
+            data_type=PreferenceDataTypeChoices.BOOLEAN,
+            default_value=False,
+        )
+        pref = CustomerPreference.objects.create(
+            customer=customer,
+            preference_type=pref_type,
+            value=True,
+        )
+        assert pref.value is True
+        assert customer.preferences.filter(preference_type=pref_type).first() == pref

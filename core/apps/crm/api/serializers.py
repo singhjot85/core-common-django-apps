@@ -6,6 +6,8 @@ from core.apps.crm.models import (
     CustomerEmail,
     CustomerIdentification,
     CustomerPhone,
+    CustomerPreference,
+    CustomerPreferenceType,
 )
 
 
@@ -101,6 +103,60 @@ class CustomerIdentificationSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "identity_type_display", "created", "modified"]
 
 
+class CustomerPreferenceTypeSerializer(serializers.ModelSerializer):
+    """Serializer for customer preference types."""
+
+    data_type_display = serializers.CharField(
+        source="get_data_type_display", read_only=True
+    )
+
+    class Meta:
+        model = CustomerPreferenceType
+        fields = [
+            "id",
+            "code",
+            "label",
+            "data_type",
+            "data_type_display",
+            "default_value",
+            "values",
+            "created",
+            "modified",
+        ]
+        read_only_fields = ["id", "data_type_display", "created", "modified"]
+
+
+class CustomerPreferenceSerializer(serializers.ModelSerializer):
+    """Serializer for individual customer preference entries."""
+
+    preference_code = serializers.CharField(
+        source="preference_type.code", read_only=True
+    )
+    preference_label = serializers.CharField(
+        source="preference_type.label", read_only=True
+    )
+
+    class Meta:
+        model = CustomerPreference
+        fields = [
+            "id",
+            "customer",
+            "preference_type",
+            "preference_code",
+            "preference_label",
+            "value",
+            "created",
+            "modified",
+        ]
+        read_only_fields = [
+            "id",
+            "preference_code",
+            "preference_label",
+            "created",
+            "modified",
+        ]
+
+
 class CustomerSerializer(serializers.ModelSerializer):
     """Serializer for customer profiles with nested contacts and addresses."""
 
@@ -109,6 +165,7 @@ class CustomerSerializer(serializers.ModelSerializer):
     emails = CustomerEmailSerializer(many=True, read_only=True)
     addresses = CustomerAddressSerializer(many=True, read_only=True)
     identifications = CustomerIdentificationSerializer(many=True, read_only=True)
+    preferences = CustomerPreferenceSerializer(many=True, read_only=True)
 
     class Meta:
         model = Customer
@@ -129,6 +186,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             "emails",
             "addresses",
             "identifications",
+            "preferences",
             "created",
             "modified",
         ]
@@ -139,6 +197,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             "emails",
             "addresses",
             "identifications",
+            "preferences",
             "created",
             "modified",
         ]

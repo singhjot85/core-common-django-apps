@@ -52,3 +52,13 @@ class IdentityTypeChoices(models.TextChoices):
     GSTIN = "gstin", _("GSTIN")
     CIN = "cin", _("CIN")
     OTHER = "other", _("Other")
+
+
+class PreferenceDataTypeChoices(models.TextChoices):
+    """Data types supported for customer preference configuration."""
+
+    BOOLEAN = "bool", _("Boolean")
+    CHOICES = "choices", _("Single Choices")
+    MULTI_SELECT = "multi_select", _("Multi-Select")
+    TEXT = "text", _("Text")
+    NUMBER = "number", _("Number")
