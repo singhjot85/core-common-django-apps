@@ -6,11 +6,12 @@ DEBUGPY_YAML_PATH ?= $(dir $(DEV_YAML_PATH))compose.debugpy.yaml
 # Common Variables
 COMPOSE_YAML ?= $(DEV_YAML_PATH)
 DJANGO_SERVICE ?= django
+TEST_DIR ?= core/tests
 
-COMPOSE_COMMAND := docker compose --env-file .env -p $(PROJECT_NAME) -f $(or $(COMPOSE_YAML),$(DEV_YAML_PATH))
+COMPOSE_COMMAND := docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(or $(COMPOSE_YAML),$(DEV_YAML_PATH))
 TEMP_DJANGO_CONTAINER = docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) run --rm $(DJANGO_SERVICE)
 DJANGO_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(DJANGO_SERVICE)
-DEBUGPY_COMPOSE_CMD ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(DEV_YAML_PATH) -f $(DEBUGPY_YAML_PATH)
+DEBUGPY_COMPOSE_CMD ?= docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(DEV_YAML_PATH) -f $(DEBUGPY_YAML_PATH)
 
 
 # --------------------------
@@ -97,6 +98,22 @@ docker-django-makemigrations-empty:
 	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py makemigrations --empty ${APP_LABEL} --name ${EMN}
 mme: docker-django-makemigrations-empty
 
+
+# --------------------------
+# 	Pytest Targets
+# # --------------------------
+.PHONY: t, td, test
+
+docker-django-pytest:
+	@echo "⌛ Running tests...\n"
+	${DJANGO_CONTAINER_COMMAND} pytest ${TEST_DIR}
+t: docker-django-pytest
+test: docker-django-pytest
+
+docker-django-pytest-debug:
+	@echo "⌛ Running tests with debugger...\n"
+	${DEBUGPY_COMPOSE_CMD} pytest ${TEST_DIR}
+td: docker-django-pytest-debug
 
 # --------------------------
 # 	Shells

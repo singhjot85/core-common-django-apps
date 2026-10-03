@@ -51,14 +51,15 @@ DJANGO_SETTINGS_MODULE = "sample_project.config.settings.test"
 python_files = ["test_*.py", "*_tests.py"]
 python_classes = ["Test*", "*Tests"]
 python_functions = ["test_*"]
-testpaths = ["tests", "apps/core/tests"]
+testpaths = ["tests", "core/tests"]
 addopts = [
-    "-v",
+    "-vv",
     "--tb=short",
     "--strict-markers",
     "--reuse-db",
     "--import-mode=importlib",
     "-p no:warnings",
+    "--maxfail=5"
 ]
 markers = [
     "slow: marks tests that take longer to run",
