@@ -9,8 +9,8 @@
         "**/.pytest_cache": true
     },
     "python.languageServer": "Pylance",
-    "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python-envs.defaultPackageManager": "ms-python.python:pip",
+    "python-envs.defaultEnvManager": "ms-python.python:poetry",
+    "python-envs.defaultPackageManager": "ms-python.python:poetry",
     // Above two should handle, if need be set this also
     // "python.defaultInterpreterPath": "",
     "python.terminal.activateEnvironment": false, // true: makes the shell opening slow
