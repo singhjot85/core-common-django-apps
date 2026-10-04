@@ -82,10 +82,7 @@ PROJECT_APPS = [
     CONFIGURATION_APP,
     CRM_APP,
     INVOICES_APP,
-    # "apps.tenants",
     # "apps.setup",
-    # "apps.customer_management",
-    # "apps.payments_management",
     # "apps.notifications",
 ]
 
@@ -109,7 +106,6 @@ DJANGO_TENANT_PRIVATE_APPS = [
     *TENANT_ONLY_EXTRA_DEPENDENCIES,
     CRM_APP,
     INVOICES_APP,
-    # "apps.customer_management",
     # "apps.payments_management",
     # "apps.setup",
     # "apps.notifications",
