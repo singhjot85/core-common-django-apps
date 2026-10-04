@@ -17,6 +17,7 @@ from core.apps.invoices import (
     get_organization_financials_model,
     get_organization_phone_model,
 )
+from core.utils.admin import private_admin_site
 
 BillingOrganization = get_billing_organization_model()
 Invoice = get_invoice_model()
@@ -67,7 +68,7 @@ class OrganizationAssetsInline(admin.TabularInline):
     fields = ("name", "asset_type", "asset", "description", "is_removed")
 
 
-@admin.register(BillingOrganization)
+@admin.register(BillingOrganization, site=private_admin_site)
 class BillingOrganizationAdmin(admin.ModelAdmin):
     """Admin configuration for BillingOrganization."""
 
@@ -105,7 +106,7 @@ class InvoicePartyPhoneInline(admin.TabularInline):
     fields = ("phone", "phone_type", "is_removed")
 
 
-@admin.register(InvoiceParty)
+@admin.register(InvoiceParty, site=private_admin_site)
 class InvoicePartyAdmin(admin.ModelAdmin):
     """Admin configuration for InvoiceParty."""
 
@@ -123,7 +124,7 @@ class InvoicePartyAdmin(admin.ModelAdmin):
     inlines = [InvoicePartyEmailInline, InvoicePartyPhoneInline]
 
 
-@admin.register(InvoicePartyCategory)
+@admin.register(InvoicePartyCategory, site=private_admin_site)
 class InvoicePartyCategoryAdmin(admin.ModelAdmin):
     """Admin configuration for InvoicePartyCategory."""
 
@@ -132,7 +133,7 @@ class InvoicePartyCategoryAdmin(admin.ModelAdmin):
     list_filter = ("is_removed",)
 
 
-@admin.register(InvoiceItem)
+@admin.register(InvoiceItem, site=private_admin_site)
 class InvoiceItemAdmin(admin.ModelAdmin):
     """Admin configuration for InvoiceItem catalog."""
 
@@ -171,7 +172,7 @@ class InvoiceItemEntryInline(admin.StackedInline):
     )
 
 
-@admin.register(Invoice)
+@admin.register(Invoice, site=private_admin_site)
 class InvoiceAdmin(admin.ModelAdmin):
     """Admin configuration for Invoice."""
 
@@ -196,7 +197,7 @@ class InvoiceAdmin(admin.ModelAdmin):
     inlines = [InvoiceItemEntryInline]
 
 
-@admin.register(InvoiceAddress)
+@admin.register(InvoiceAddress, site=private_admin_site)
 class InvoiceAddressAdmin(admin.ModelAdmin):
     """Admin configuration for InvoiceAddress snapshots."""
 
@@ -212,7 +213,7 @@ class InvoiceAddressAdmin(admin.ModelAdmin):
     list_filter = ("country", "state", "is_removed")
 
 
-@admin.register(InvoiceTemplate)
+@admin.register(InvoiceTemplate, site=private_admin_site)
 class InvoiceTemplateAdmin(admin.ModelAdmin):
     """Admin configuration for InvoiceTemplate."""
 

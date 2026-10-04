@@ -25,18 +25,27 @@
                 <div class="text-muted" style="font-size: var(--font-size-xs);">ID: {{ customer.id }}</div>
               </td>
               <td>
-                <span class="badge badge-secondary">{{ customer.get_customer_type_display() if customer.get_customer_type_display is callable else customer.customer_type }}</span>
+                {% if customer.get_customer_type_display is defined and customer.get_customer_type_display is callable %}
+                  <span class="badge badge-secondary">{{ customer.get_customer_type_display() }}</span>
+                {% else %}
+                  <span class="badge badge-secondary">{{ customer.customer_type }}</span>
+                {% endif %}
               </td>
               <td>
-                {% set status_val = customer.status|string %}
-                {% if status_val == "ACTIVE" or status_val == "active" %}
-                  {{ badge(customer.get_status_display() if customer.get_status_display is callable else customer.status, variant="success") }}
-                {% elif status_val == "LEAD" or status_val == "lead" %}
-                  {{ badge(customer.get_status_display() if customer.get_status_display is callable else customer.status, variant="info") }}
-                {% elif status_val == "SUSPENDED" or status_val == "suspended" %}
-                  {{ badge(customer.get_status_display() if customer.get_status_display is callable else customer.status, variant="danger") }}
+                {% set status_val = (customer.status or "")|string %}
+                {% if customer.get_status_display is defined and customer.get_status_display is callable %}
+                  {% set status_text = customer.get_status_display() %}
                 {% else %}
-                  {{ badge(customer.get_status_display() if customer.get_status_display is callable else customer.status, variant="secondary") }}
+                  {% set status_text = customer.status %}
+                {% endif %}
+                {% if status_val|lower == "active" %}
+                  {{ badge(status_text, variant="success") }}
+                {% elif status_val|lower == "lead" %}
+                  {{ badge(status_text, variant="info") }}
+                {% elif status_val|lower == "suspended" or status_val|lower == "failed" %}
+                  {{ badge(status_text, variant="danger") }}
+                {% else %}
+                  {{ badge(status_text, variant="secondary") }}
                 {% endif %}
               </td>
               <td>
