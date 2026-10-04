@@ -21,7 +21,7 @@ class AbstractTenants(TenantMixin, BaseModel, StatusModel):
 
     auto_create_schema = False
 
-    status = TenantStatus.choices
+    STATUS = TenantStatus.choices
     label = models.CharField(max_length=255, null=True, blank=True)
     is_active = models.BooleanField(default=True, null=True, blank=True)
     public_id = models.CharField(max_length=124, null=True, blank=True)

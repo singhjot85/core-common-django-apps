@@ -33,6 +33,7 @@ ALLOWED_HOSTS = []
 
 TIME_ZONE = APPLICATION_TIMEZONE
 TEMPLATES_DIR = os.path.join(BASE_DIR, "django_templates", "templates")
+SECRET_KEY = os.getenv("DJANGO_SECRETE_KEY", "")
 
 STATIC_URL = "static/"
 ROOT_URLCONF = "config.urls"
@@ -111,6 +112,9 @@ CELERY_TASK_SOFT_TIME_LIMIT = TASK_SOFT_TIME_LIMIT
 # Writes extended results to backend (name, args, kwargs, worker, retries, queue, delivery_info).
 CELERY_RESULT_EXTENDED = True
 CELERY_DEFAULT_TASK_QUEUE = DEFAULT_TASK_QUEUE_NAME
+CELERY_TASK_MAX_RETRIES = TASK_MAX_RETRIES
+CELERY_TASK_DEFAULT_RETRY_DELAY = TASK_DEFAULT_RETRY_DELAY
+CELERY_TASK_AUTORETRY_FOR = TASK_AUTORETRY_FOR
 
 # Need to define this explicilty fo celery
 TENANT_DB_ALIAS = "default"
@@ -128,6 +132,7 @@ TEMPLATES = [
         "BACKEND": "core.utils.jinja2.Jinja2Backend",
         "DIRS": [
             os.path.join(BASE_DIR, "templates"),
+            # os.path.join(BASE_DIR.parent, "sample_project", "templates"),
         ],
         "APP_DIRS": True,
         "OPTIONS": {
