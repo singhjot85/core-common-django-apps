@@ -6,6 +6,7 @@ from django.db import models
 from django_tenants.models import DomainMixin, TenantMixin
 from model_utils.models import StatusModel
 
+from core.apps.tenants import get_tenant_model
 from core.apps.tenants.constants import TenantContactInfoChoices, TenantStatus
 from core.apps.tenants.tasks import provision_tenant_schema
 from core.utils.models import BaseModel
@@ -37,14 +38,15 @@ class AbstractTenants(TenantMixin, BaseModel, StatusModel):
         """
         Generate public id for current tenant.
         """
+        Tenant = get_tenant_model()
+
         if retry >= 5:
             raise Exception(f"Error Creating unique {self.__name__}")
 
         public_id = f"Tenant-{self.label}-{uuid.uuid4().hex}"
 
-        try:
-            self.objects.get(public_id)
-        except self.DoesNotExist:
+        tenants = Tenant.objects.filter(public_id=public_id)
+        if tenants.count() <= 0:
             self.public_id = public_id
             return self.public_id
 

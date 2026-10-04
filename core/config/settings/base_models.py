@@ -19,6 +19,16 @@ CONFIGURATIONS_CONFIGURATION_MODEL = "configurations.Configuration"
 CONFIGURATIONS_CONFIGURATION_SCHEMA_MODEL = "configurations.ConfigurationSchema"
 CONFIGURATIONS_TENANT_CONFIGURATION_MODEL = "configurations.TenantConfiguration"
 
+# CRM App
+CRM_APP = "core.apps.crm"
+CRM_CUSTOMER_MODEL = "crm.Customer"
+CRM_CUSTOMER_PHONE_MODEL = "crm.CustomerPhone"
+CRM_CUSTOMER_EMAIL_MODEL = "crm.CustomerEmail"
+CRM_CUSTOMER_ADDRESS_MODEL = "crm.CustomerAddress"
+CRM_CUSTOMER_IDENTIFICATION_MODEL = "crm.CustomerIdentification"
+CRM_CUSTOMER_PREFERENCE_TYPE_MODEL = "crm.CustomerPreferenceType"
+CRM_CUSTOMER_PREFERENCE_MODEL = "crm.CustomerPreference"
+
 
 # ----------------------------
 #   Runtime App Classification
@@ -51,7 +61,8 @@ TENANT_ONLY_EXTRA_DEPENDENCIES = []
 
 PROJECT_APPS = [
     TENANTS_APP,
-    # APP_CRM,
+    CONFIGURATION_APP,
+    CRM_APP,
     # "apps.tenants",
     # "apps.setup",
     # "apps.customer_management",
@@ -77,7 +88,7 @@ DJANGO_TENANT_PRIVATE_APPS = [
     *TENANT_ONLY_DJANGO_APPS,
     *SHARED_EXTRA_DEPENDENCIES,
     *TENANT_ONLY_EXTRA_DEPENDENCIES,
-    # APP_CRM,
+    CRM_APP,
     # "apps.customer_management",
     # "apps.payments_management",
     # "apps.setup",
