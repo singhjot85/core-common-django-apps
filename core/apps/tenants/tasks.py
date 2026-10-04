@@ -14,12 +14,16 @@ LOGGER = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def provision_tenant_schema(self, tenant_id):
+def provision_tenant_schema(self, tenant_id: str):
     """
     Provision a tenant schema for creation, the scehma is not created on main thread its offloaded to an task queue
     """
+    if not tenant_id:
+        LOGGER.error("Tenant id not provided.")
+        return
 
     TenantModel: type["Tenants"] = get_tenant_model()
+
     try:
         tenant = TenantModel.objects.get(id=tenant_id)
     except TenantModel.DoesNotExist:
