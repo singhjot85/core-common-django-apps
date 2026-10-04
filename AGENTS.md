@@ -115,10 +115,29 @@ All domain models must inherit from one of the core base models:
 
 ### 6. API & Routing Conventions
 
-- **ViewSets**: Use DRF `ViewSet` / `ReadOnlyModelViewSet` rather than function-based views.
-- **Thin Views, Rich Services**: Business logic belongs in service classes or managers, not inside view methods.
-- **Serializers**: Use `ReadOnlyModelSerializer` or `DynamicReadOnlyModelSerializer` to strictly control mutations.
-- **Router Construction**: Always register viewsets using `get_api_router_instance()` (`SimpleRouter` in production, `DefaultRouter` in development).
+When adding or extending REST API endpoints for an app, adhere to the standard multi-tenant DRF patterns across the repository:
+
+- **Directory Layout**:
+  - Keep endpoints modular under `<app>/api/`:
+    - `api/serializers.py`: Serializer declarations and field mappings.
+    - `api/views.py`: ViewSets and custom action handlers.
+    - `urls.py`: App router registration using `get_api_router_instance()`.
+- **Serializers (`api/serializers.py`)**:
+  - **Explicit Fields**: Always declare explicit `fields` lists. Avoid `fields = "__all__"` on mutable entities.
+  - **Read-Only Fields**: Explicitly declare `read_only_fields = ["id", "created", "modified", ...]`.
+  - **Choice Display**: Provide readable choice representations using `serializers.CharField(source="get_<field>_display", read_only=True)`.
+  - **Computed & Cached Properties**: Expose model properties (`full_name`, `full_address`, totals) as read-only serializer fields.
+  - **Nested Relationships**: Include nested child serializers with `read_only=True` for detail views.
+- **ViewSets (`api/views.py`)**:
+  - **Thin Views, Rich Services**: Business logic belongs in service classes or managers, not inside view methods.
+  - **HTTP Method Restrictions**: Restrict `http_method_names` according to business invariants (e.g., disallowing `DELETE` or blocking mutations on immutable records like `Invoice`).
+  - **Optimized Queries**: Always query `.available_objects` for soft-deletable models and apply `select_related()` / `prefetch_related()` to eliminate N+1 query bottlenecks.
+  - **Custom Actions**: Use `@action(detail=True, methods=["post"], url_path="...")` for state mutations (e.g., `set_primary`, `generate-next-number`).
+- **Router Construction (`urls.py`)**:
+  - Always register viewsets using `get_api_router_instance()` (`SimpleRouter` in production, `DefaultRouter` in development).
+  - Use kebab-case pluralized resource paths with explicit `basename` (e.g. `billing-organizations`, `invoice-parties`).
+- **View Testing (`core/tests/<app>/test_views.py`)**:
+  - Include unit tests verifying HTTP method restrictions, serializer serialization, and custom action endpoints.
 
 ### 7. Asynchronous Task Queuing
 
