@@ -1,0 +1,24 @@
+{# Buttons Macro Component #}
+
+{% macro button(label=None, variant="primary", size="md", type="button", href=None, icon=None, extra_classes="", disabled=False) %}
+  {% set base_class = "btn btn-" ~ variant ~ " btn-" ~ size ~ (" " ~ extra_classes if extra_classes else "") %}
+  {% if href %}
+    <a href="{{ href }}" class="{{ base_class }}" role="button" {% if disabled %}aria-disabled="true" tabindex="-1"{% endif %} {{ kwargs|xmlattr }}>
+      {% if icon %}<span class="btn-icon">{{ icon|safe }}</span>{% endif %}
+      {% if label %}{{ label }}{% endif %}
+      {% if caller %}{{ caller() }}{% endif %}
+    </a>
+  {% else %}
+    <button type="{{ type }}" class="{{ base_class }}" {% if disabled %}disabled{% endif %} {{ kwargs|xmlattr }}>
+      {% if icon %}<span class="btn-icon">{{ icon|safe }}</span>{% endif %}
+      {% if label %}{{ label }}{% endif %}
+      {% if caller %}{{ caller() }}{% endif %}
+    </button>
+  {% endif %}
+{% endmacro %}
+
+{% macro button_group(extra_classes="") %}
+  <div class="btn-group {{ extra_classes }}">
+    {{ caller() }}
+  </div>
+{% endmacro %}

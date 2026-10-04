@@ -1,0 +1,36 @@
+{# Table Macro Component #}
+
+{% macro table(headers=[], rows=[], striped=True, hover=True, extra_classes="") %}
+  <div class="table-container{% if extra_classes %} {{ extra_classes }}{% endif %}">
+    <table class="table{% if striped %} table-striped{% endif %}{% if hover %} table-hover{% endif %}" {{ kwargs|xmlattr }}>
+      {% if headers %}
+        <thead>
+          <tr>
+            {% for header in headers %}
+              <th>{{ header }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+      {% endif %}
+      <tbody>
+        {% if caller %}
+          {{ caller() }}
+        {% elif rows %}
+          {% for row in rows %}
+            <tr>
+              {% for cell in row %}
+                <td>{{ cell|safe }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="{{ headers|length if headers else 1 }}" class="text-center text-muted">
+              No records found.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Core Framework{% endblock %}</title>
+
+  <!-- Core Design Tokens & Styles -->
+  <link rel="stylesheet" href="{{ static('core/css/variables.css') }}">
+  <link rel="stylesheet" href="{{ static('core/css/base.css') }}">
+  <link rel="stylesheet" href="{{ static('core/css/components.css') }}">
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Sidebar -->
+    {% block sidebar %}
+      {% include "core/layout/sidebar.jinja" %}
+    {% endblock %}
+
+    <!-- Main Content Area -->
+    <div class="app-main">
+      <!-- Top Navbar -->
+      {% block header %}
+        {% include "core/layout/navbar.jinja" %}
+      {% endblock %}
+
+      <!-- Content Container -->
+      <main class="app-content">
+        <!-- Messages / Alerts -->
+        {% block messages %}
+          {% if messages %}
+            {% from "core/components/feedback/alerts.jinja" import message_list %}
+            {{ message_list(messages) }}
+          {% endif %}
+        {% endblock %}
+
+        <!-- Main View Content -->
+        {% block content %}{% endblock %}
+      </main>
+
+      <!-- Footer -->
+      {% block footer %}
+        {% include "core/layout/footer.jinja" %}
+      {% endblock %}
+    </div>
+  </div>
+
+  <!-- Hidden CSRF token for JavaScript Fetch -->
+  {{ csrf_input }}
+
+  <!-- Core JavaScript Framework -->
+  <script src="{{ static('core/js/core.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

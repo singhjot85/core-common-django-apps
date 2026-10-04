@@ -121,9 +121,20 @@ TENANT_DB_ALIAS = "default"
 # CELERY_BEAT_SCHEDULER = "config.beat.CustomDatabaseScheduler"
 
 # -----------------------------
-#   Django Templates
+#   Django & Jinja2 Templates
 # -----------------------------
 TEMPLATES = [
+    {
+        "BACKEND": "core.utils.jinja2.Jinja2Backend",
+        "DIRS": [
+            os.path.join(BASE_DIR, "templates"),
+            os.path.join(BASE_DIR.parent, "sample_project", "templates"),
+        ],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "environment": "core.utils.jinja2.environment.jinja2_environment",
+        },
+    },
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [TEMPLATES_DIR],
@@ -136,6 +147,10 @@ TEMPLATES = [
             ],
         },
     },
+]
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
 ]
 
 # -----------------------------
