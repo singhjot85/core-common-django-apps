@@ -3,6 +3,15 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.response import Response
 
+from core.apps.crm import (
+    get_customer_address_model,
+    get_customer_email_model,
+    get_customer_identification_model,
+    get_customer_model,
+    get_customer_phone_model,
+    get_customer_preference_model,
+    get_customer_preference_type_model,
+)
 from core.apps.crm.api.serializers import (
     CustomerAddressSerializer,
     CustomerEmailSerializer,
@@ -12,15 +21,14 @@ from core.apps.crm.api.serializers import (
     CustomerPreferenceTypeSerializer,
     CustomerSerializer,
 )
-from core.apps.crm.models import (
-    Customer,
-    CustomerAddress,
-    CustomerEmail,
-    CustomerIdentification,
-    CustomerPhone,
-    CustomerPreference,
-    CustomerPreferenceType,
-)
+
+Customer = get_customer_model()
+CustomerAddress = get_customer_address_model()
+CustomerEmail = get_customer_email_model()
+CustomerIdentification = get_customer_identification_model()
+CustomerPhone = get_customer_phone_model()
+CustomerPreference = get_customer_preference_model()
+CustomerPreferenceType = get_customer_preference_type_model()
 
 
 class BaseCustomerEntityViewSet(viewsets.ModelViewSet):

@@ -79,12 +79,23 @@ All non-trivial logic additions and refactors should be planned across four dist
 - **Single Concrete Table per Entity**: Multi-table inheritance (`class Child(ParentModel)`) creates unnecessary joins and migration complexity.
 - Use a single table with discriminator fields (`type`, `sub_type`, `status`) and abstract mixins for shared behavior.
 
-### 2. Cross-App Model Decoupling (Swappable Models)
+### 2. Model Decoupling & Swappability (Anti-Pattern: Direct Concrete Model Imports)
 
-- **Never** hard-import another app's concrete model directly across domain apps.
-- Use Django's swappable model pattern:
-  - Reference foreign keys using `settings.<APP>_<MODEL>_MODEL` (e.g., `settings.TENANTS_TENANT_MODEL`).
-  - Resolve model classes at runtime using `django.apps.apps.get_model()` or dedicated app model getter functions (e.g., `get_tenant_model()`).
+- **CRITICAL ANTI-PATTERN — Direct Concrete Model Imports**:
+  - **NEVER** import concrete models directly from `models.py` (e.g., `from core.apps.crm.models import Customer` or `from .models import Invoice`) in serializers, views, admin modules, tasks, managers, or across domain apps.
+  - **Why?** Direct imports bind logic to specific concrete implementations at module load time, bypassing Django's swappable model mechanism (`swappable = "APP_MODEL_KEY"`) and breaking custom model overrides provided by consuming projects.
+- **Correct Pattern — Dynamic Model Getters**:
+  - Every modular app must define and export model getter functions in its root `__init__.py` (e.g., `get_customer_model()`, `get_invoice_model()`) backed by `django.apps.apps.get_model(settings.<APP>_<MODEL>_MODEL, require_ready=False)`.
+  - Serializers, ViewSets, admin classes, and services must always resolve their models using these getter functions:
+
+    ```python
+    from core.apps.crm import get_customer_model
+
+    Customer = get_customer_model()
+    ```
+
+- **Foreign Key Declarations**:
+  - Always reference models via settings strings (e.g., `settings.CRM_CUSTOMER_MODEL`, `settings.INVOICES_BILLING_ORGANIZATION_MODEL`). Never pass concrete classes to `models.ForeignKey()`.
 
 ### 3. App Settings Framework (`core.utils.app_settings`)
 
@@ -123,12 +134,14 @@ When adding or extending REST API endpoints for an app, adhere to the standard m
     - `api/views.py`: ViewSets and custom action handlers.
     - `urls.py`: App router registration using `get_api_router_instance()`.
 - **Serializers (`api/serializers.py`)**:
+  - **Dynamic Model Resolution**: Always resolve models via `get_<model>_model()` rather than hard-importing from `models.py`.
   - **Explicit Fields**: Always declare explicit `fields` lists. Avoid `fields = "__all__"` on mutable entities.
   - **Read-Only Fields**: Explicitly declare `read_only_fields = ["id", "created", "modified", ...]`.
   - **Choice Display**: Provide readable choice representations using `serializers.CharField(source="get_<field>_display", read_only=True)`.
   - **Computed & Cached Properties**: Expose model properties (`full_name`, `full_address`, totals) as read-only serializer fields.
   - **Nested Relationships**: Include nested child serializers with `read_only=True` for detail views.
 - **ViewSets (`api/views.py`)**:
+  - **Dynamic Model Resolution**: Always resolve models via `get_<model>_model()` rather than hard-importing from `models.py`.
   - **Thin Views, Rich Services**: Business logic belongs in service classes or managers, not inside view methods.
   - **HTTP Method Restrictions**: Restrict `http_method_names` according to business invariants (e.g., disallowing `DELETE` or blocking mutations on immutable records like `Invoice`).
   - **Optimized Queries**: Always query `.available_objects` for soft-deletable models and apply `select_related()` / `prefetch_related()` to eliminate N+1 query bottlenecks.

@@ -3,6 +3,23 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.response import Response
 
+from core.apps.invoices import (
+    get_billing_organization_model,
+    get_invoice_address_model,
+    get_invoice_item_entry_model,
+    get_invoice_item_fee_model,
+    get_invoice_item_model,
+    get_invoice_model,
+    get_invoice_party_category_model,
+    get_invoice_party_email_model,
+    get_invoice_party_model,
+    get_invoice_party_phone_model,
+    get_invoice_template_model,
+    get_organization_assets_model,
+    get_organization_email_model,
+    get_organization_financials_model,
+    get_organization_phone_model,
+)
 from core.apps.invoices.api.serializers import (
     BillingOrganizationSerializer,
     InvoiceAddressSerializer,
@@ -20,23 +37,22 @@ from core.apps.invoices.api.serializers import (
     OrganizationFinancialsSerializer,
     OrganizationPhoneSerializer,
 )
-from core.apps.invoices.models import (
-    BillingOrganization,
-    Invoice,
-    InvoiceAddress,
-    InvoiceItem,
-    InvoiceItemEntry,
-    InvoiceItemFee,
-    InvoiceParty,
-    InvoicePartyCategory,
-    InvoicePartyEmail,
-    InvoicePartyPhone,
-    InvoiceTemplate,
-    OrganizationAssets,
-    OrganizationEmail,
-    OrganizationFinancials,
-    OrganizationPhone,
-)
+
+BillingOrganization = get_billing_organization_model()
+Invoice = get_invoice_model()
+InvoiceAddress = get_invoice_address_model()
+InvoiceItem = get_invoice_item_model()
+InvoiceItemEntry = get_invoice_item_entry_model()
+InvoiceItemFee = get_invoice_item_fee_model()
+InvoiceParty = get_invoice_party_model()
+InvoicePartyCategory = get_invoice_party_category_model()
+InvoicePartyEmail = get_invoice_party_email_model()
+InvoicePartyPhone = get_invoice_party_phone_model()
+InvoiceTemplate = get_invoice_template_model()
+OrganizationAssets = get_organization_assets_model()
+OrganizationEmail = get_organization_email_model()
+OrganizationFinancials = get_organization_financials_model()
+OrganizationPhone = get_organization_phone_model()
 
 
 class BaseInvoiceResourceViewSet(viewsets.ModelViewSet):
