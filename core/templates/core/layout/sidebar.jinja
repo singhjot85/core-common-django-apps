@@ -1,4 +1,5 @@
 {# Global Sidebar #}
+{% from "core/components/common/icons.jinja" import icon %}
 
 <aside class="app-sidebar">
   <div class="sidebar-header" style="padding: var(--spacing-lg); border-bottom: 1px solid var(--color-border);">
@@ -13,7 +14,20 @@
   <nav class="sidebar-nav" style="padding: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-xs);">
     {% block sidebar_nav %}
       <a href="/" class="btn btn-outline justify-start w-full" style="border: none;">
-        <span>🏠</span> <span>Home</span>
+        {{ icon("home", size=20) }}
+        <span>Home</span>
+      </a>
+      <a href="/crm/" class="btn btn-outline justify-start w-full" style="border: none;">
+        {{ icon("group", size=20) }}
+        <span>Customers</span>
+      </a>
+      <a href="/tenants/" class="btn btn-outline justify-start w-full" style="border: none;">
+        {{ icon("domain", size=20) }}
+        <span>Organizations</span>
+      </a>
+      <a href="/invoices/" class="btn btn-outline justify-start w-full" style="border: none;">
+        {{ icon("receipt_long", size=20) }}
+        <span>Invoices</span>
       </a>
     {% endblock %}
   </nav>

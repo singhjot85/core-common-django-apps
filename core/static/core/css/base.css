@@ -64,6 +64,25 @@ code, pre {
   font-size: var(--font-size-sm);
 }
 
+/* Material Symbols alignment */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  vertical-align: middle;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
 hr {
   border: 0;
   border-top: 1px solid var(--color-border);

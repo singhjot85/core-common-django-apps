@@ -52,6 +52,7 @@ core/
 │       │   └── footer.jinja       # Global page footer
 │       └── components/
 │           ├── common/
+│           │   ├── icons.jinja    # Google Material Symbols icon macro
 │           │   ├── buttons.jinja  # Button, button group, icon button macros
 │           │   ├── cards.jinja    # Container cards, stat/metric cards
 │           │   ├── tables.jinja   # Data table, row actions, pagination
@@ -60,6 +61,12 @@ core/
 │           └── feedback/
 │               ├── alerts.jinja   # Flash banners and dismissible messages
 │               └── modals.jinja   # Modal dialog macro with header, body, footer slots
+├── utils/
+│   └── jinja2/
+│       ├── backend.py             # Custom Jinja2Backend with app_dirname='templates'
+│       ├── environment.py         # Jinja2 environment factory
+│       ├── filters/               # Modular filters (dates.py, currency.py)
+│       └── globals/               # Modular globals (urls.py)
 └── apps/
     ├── crm/
     │   └── templates/
@@ -82,17 +89,24 @@ core/
 
 ## 2. Jinja2 Engine & Standard Helpers
 
-All application UI templates use **Jinja2** via the `django.template.backends.jinja2.Jinja2` backend.
+All application UI templates use **Jinja2** via `core.utils.jinja2.Jinja2Backend`.
 
-### Standard Environment Bindings
+### Modular Environment Architecture (`core/utils/jinja2/`)
+- `globals/urls.py`: `url("named_route", *args, **kwargs)` and `static("path/to/asset.css")`
+- `filters/dates.py`: `format_date(val, fmt)` and `format_datetime(val, fmt)`
+- `filters/currency.py`: `format_currency(val, symbol)`
+- `environment.py`: Factory aggregating `CORE_GLOBALS` and `CORE_FILTERS` into the Jinja2 `Environment`.
+
+### Standard Bindings in Templates
 Every Jinja2 template automatically has access to:
 - `url("named_route", *args, **kwargs)`: Reverse Django URL routing.
 - `static("path/to/asset.css")`: Static asset URL resolution.
-- `csrf_input()`: Standard HTML hidden CSRF token input tag.
+- `csrf_input`: Standard HTML hidden CSRF token input tag.
 - `csrf_token`: Raw CSRF token string (for JavaScript fetch headers).
 - `request`: Current HTTP request object (including `request.user` and `request.tenant`).
 - `messages`: Django messages framework iterator.
-- `format_date(val, fmt)` / `format_datetime(val)`: Standardized date formatting filters.
+- `format_date(val)` / `format_datetime(val)` / `format_currency(val)`: Usable both as filters (`{{ val|format_date }}`) and as functions (`{{ format_date(val) }}`).
+- `icon("icon_name", size=20)`: Google Material Symbols icon component.
 
 ---
 

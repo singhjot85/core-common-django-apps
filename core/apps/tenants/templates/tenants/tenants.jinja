@@ -1,6 +1,7 @@
 {% extends "core/base.jinja" %}
 
 {% from "core/components/common/cards.jinja" import stat_card %}
+{% from "core/components/common/icons.jinja" import icon %}
 {% from "core/components/common/forms.jinja" import input, checkbox %}
 {% from "core/components/feedback/modals.jinja" import modal %}
 {% from "tenants/components/tenant_table.jinja" import tenant_table %}
@@ -15,16 +16,17 @@
     </div>
     <div class="flex gap-sm">
       <button type="button" class="btn btn-primary" data-modal-target="create_tenant_modal">
-        + Add Organization
+        {{ icon("add", size=18) }}
+        <span>Add Organization</span>
       </button>
     </div>
   </div>
 
   <!-- Key Metrics -->
   <div class="grid grid-cols-3 gap-md mb-lg">
-    {{ stat_card("Total Tenants", total_tenants or (tenants|length if tenants else 0), "All registered schemas") }}
-    {{ stat_card("Active Tenants", active_tenants or 0, "Healthy and provisioned") }}
-    {{ stat_card("Total Domains", total_domains or 0, "Mapped custom domains") }}
+    {{ stat_card("Total Tenants", total_tenants or (tenants|length if tenants else 0), "All registered schemas", icon=icon("domain", size=24)) }}
+    {{ stat_card("Active Tenants", active_tenants or 0, "Healthy and provisioned", icon=icon("check_circle", size=24)) }}
+    {{ stat_card("Total Domains", total_domains or 0, "Mapped custom domains", icon=icon("language", size=24)) }}
   </div>
 
   <!-- Tenant Table -->
