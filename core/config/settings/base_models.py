@@ -29,6 +29,24 @@ CRM_CUSTOMER_IDENTIFICATION_MODEL = "crm.CustomerIdentification"
 CRM_CUSTOMER_PREFERENCE_TYPE_MODEL = "crm.CustomerPreferenceType"
 CRM_CUSTOMER_PREFERENCE_MODEL = "crm.CustomerPreference"
 
+# Invoice App
+INVOICES_APP = "core.apps.invoices"
+INVOICES_INVOICE_MODEL = "invoices.Invoice"
+INVOICES_INVOICE_ADDRESS_MODEL = "invoices.InvoiceAddress"
+INVOICES_INVOICE_TEMPLATE_MODEL = "invoices.InvoiceTemplate"
+INVOICES_BILLING_ORGANIZATION_MODEL = "invoices.BillingOrganization"
+INVOICES_ORGANIZATION_EMAIL_MODEL = "invoices.OrganizationEmail"
+INVOICES_ORGANIZATION_PHONE_MODEL = "invoices.OrganizationPhone"
+INVOICES_ORGANIZATION_FINANCIALS_MODEL = "invoices.OrganizationFinancials"
+INVOICES_ORGANIZATION_ASSETS_MODEL = "invoices.OrganizationAssets"
+INVOICES_INVOICE_PARTY_MODEL = "invoices.InvoiceParty"
+INVOICES_INVOICE_PARTY_CATEGORY_MODEL = "invoices.InvoicePartyCategory"
+INVOICES_INVOICE_PARTY_EMAIL_MODEL = "invoices.InvoicePartyEmail"
+INVOICES_INVOICE_PARTY_PHONE_MODEL = "invoices.InvoicePartyPhone"
+INVOICES_INVOICE_ITEM_MODEL = "invoices.InvoiceItem"
+INVOICES_INVOICE_ITEM_ENTRY_MODEL = "invoices.InvoiceItemEntry"
+INVOICES_INVOICE_ITEM_FEE_MODEL = "invoices.InvoiceItemFee"
+
 
 # ----------------------------
 #   Runtime App Classification
@@ -63,10 +81,8 @@ PROJECT_APPS = [
     TENANTS_APP,
     CONFIGURATION_APP,
     CRM_APP,
-    # "apps.tenants",
+    INVOICES_APP,
     # "apps.setup",
-    # "apps.customer_management",
-    # "apps.payments_management",
     # "apps.notifications",
 ]
 
@@ -89,7 +105,7 @@ DJANGO_TENANT_PRIVATE_APPS = [
     *SHARED_EXTRA_DEPENDENCIES,
     *TENANT_ONLY_EXTRA_DEPENDENCIES,
     CRM_APP,
-    # "apps.customer_management",
+    INVOICES_APP,
     # "apps.payments_management",
     # "apps.setup",
     # "apps.notifications",

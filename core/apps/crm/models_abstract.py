@@ -8,6 +8,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 
 from core.apps.crm.constants import (
+    AddressTypeChoices,
     ContactTypeChoices,
     CustomerStatusChoices,
     CustomerTypeChoices,
@@ -146,6 +147,12 @@ class AbstractCustomerAddress(BaseModel, AbstractAddress):
         settings.CRM_CUSTOMER_MODEL,
         on_delete=models.CASCADE,
         related_name="addresses",
+    )
+    address_type = models.CharField(
+        null=True,
+        blank=True,
+        choices=AddressTypeChoices.choices,
+        default=AddressTypeChoices.PERMANENT.value,
     )
     is_primary = models.BooleanField(default=False)
 

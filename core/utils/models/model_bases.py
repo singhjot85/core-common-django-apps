@@ -49,9 +49,6 @@ class AbstractAddress(models.Model):
         state (CharField): State, province, or region.
         postal_code (CharField): Postal / PIN / Zip code.
         country (CharField): Country name or ISO country code (default 'IN').
-        address_type (CharField): Choice for address category (e.g., billing, shipping, home, office).
-        latitude (DecimalField): Geographical latitude coordinate.
-        longitude (DecimalField): Geographical longitude coordinate.
     """
 
     address_line_1 = models.CharField(max_length=255, null=True, blank=True)
@@ -61,13 +58,6 @@ class AbstractAddress(models.Model):
     state = models.CharField(max_length=128, null=True, blank=True)
     postal_code = models.CharField(max_length=32, null=True, blank=True)
     country = models.CharField(max_length=64, default="IN", null=True, blank=True)
-    address_type = models.CharField(max_length=32, null=True, blank=True)
-    latitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
-    )
-    longitude = models.DecimalField(
-        max_digits=9, decimal_places=6, null=True, blank=True
-    )
 
     class Meta:
         abstract = True

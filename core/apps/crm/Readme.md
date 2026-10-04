@@ -9,7 +9,7 @@ The `crm` app handles customer onboarding, contact channels, KYC identification,
   - `CustomerPhone`: Phone numbers with primary designation and contact type classification.
   - `CustomerEmail`: Email addresses with primary designation and contact type classification.
 - **Addresses**:
-  - `CustomerAddress`: Physical/mailing addresses extending `AbstractAddress` (`address_line_1`, `city`, `state`, `postal_code`, `country`, `latitude`, `longitude`, `full_address` property).
+  - `CustomerAddress`: Physical/mailing addresses extending `AbstractAddress` (`address_line_1`, `city`, `state`, `postal_code`, `country`, `full_address` property).
 - **KYC & Identifications**:
   - `CustomerIdentification`: Identity records (Aadhaar, PAN, Driving License, Passport, Voter ID, GSTIN, CIN) linked to verification records via Generic Foreign Keys (`GenericForeignKey`).
 - **Customer Preferences**:
