@@ -1,9 +1,10 @@
 {# Global Navbar #}
+{% from "core/components/common/icons.jinja" import icon %}
 
 <header class="app-header">
   <div class="flex items-center gap-md">
-    <button class="btn btn-sm btn-outline mobile-menu-toggle" style="display: none;" onclick="document.querySelector('.app-sidebar').classList.toggle('open')">
-      ☰
+    <button type="button" class="btn btn-sm btn-outline mobile-menu-toggle" style="display: none;" onclick="document.querySelector('.app-sidebar').classList.toggle('open')" aria-label="Toggle navigation">
+      {{ icon("menu", size=20) }}
     </button>
     <div class="brand-title">
       <strong>{% block header_brand %}{{ PROJECT_LABEL or 'Core Application' }}{% endblock %}</strong>
@@ -13,7 +14,10 @@
   <div class="flex items-center gap-md">
     {% block header_user %}
       {% if request and request.user and request.user.is_authenticated %}
-        <span class="text-muted" style="font-size: var(--font-size-sm);">{{ request.user.get_username() if request.user.get_username is callable else request.user.username }}</span>
+        <div class="flex items-center gap-xs text-muted" style="font-size: var(--font-size-sm);">
+          {{ icon("account_circle", size=18) }}
+          <span>{{ request.user.get_username() if request.user.get_username is callable else request.user.username }}</span>
+        </div>
       {% endif %}
     {% endblock %}
     {% block header_actions %}{% endblock %}

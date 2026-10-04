@@ -6,12 +6,8 @@ from django.template import engines
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 
-from core.utils.jinja2.environment import (
-    format_currency,
-    format_date,
-    format_datetime,
-    jinja2_environment,
-)
+from core.utils.jinja2.environment import jinja2_environment
+from core.utils.jinja2.filters import format_currency, format_date, format_datetime
 
 
 class TestJinja2EnvironmentAndFilters:
@@ -89,6 +85,22 @@ class TestCoreComponentMacros:
         assert "Active" in rendered
         assert '<span class="badge badge-warning"' in rendered
         assert "Pending" in rendered
+
+    def test_icon_macro(self, jinja_engine, request_context):
+        template_str = """
+        {% from "core/components/common/icons.jinja" import icon %}
+        {{ icon("home", size=24) }}
+        {{ icon("check_circle", size=18, fill=True, extra_classes="text-success") }}
+        """
+        tmpl = jinja_engine.from_string(template_str)
+        rendered = tmpl.render(request_context)
+
+        assert 'class="material-symbols-outlined"' in rendered
+        assert "font-size: 24px" in rendered
+        assert "home" in rendered
+        assert "check_circle" in rendered
+        assert "text-success" in rendered
+        assert "'FILL' 1" in rendered
 
     def test_card_and_stat_card_macro(self, jinja_engine, request_context):
         template_str = """

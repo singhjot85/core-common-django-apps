@@ -128,7 +128,6 @@ TEMPLATES = [
         "BACKEND": "core.utils.jinja2.Jinja2Backend",
         "DIRS": [
             os.path.join(BASE_DIR, "templates"),
-            os.path.join(BASE_DIR.parent, "sample_project", "templates"),
         ],
         "APP_DIRS": True,
         "OPTIONS": {

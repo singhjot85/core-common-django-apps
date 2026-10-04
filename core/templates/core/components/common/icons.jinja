@@ -1,0 +1,5 @@
+{# Google Material Symbols Icon Component #}
+
+{% macro icon(name, size=20, fill=False, extra_classes="") %}
+  <span class="material-symbols-outlined{% if extra_classes %} {{ extra_classes }}{% endif %}" style="font-size: {{ size }}px;{% if fill %} font-variation-settings: 'FILL' 1;{% endif %}" aria-hidden="true" {{ kwargs|xmlattr }}>{{ name }}</span>
+{% endmacro %}
