@@ -1,0 +1,58 @@
+{% extends "core/base.jinja" %}
+
+{% from "core/components/common/cards.jinja" import stat_card %}
+{% from "core/components/common/buttons.jinja" import button %}
+{% from "core/components/common/forms.jinja" import input, select %}
+{% from "core/components/feedback/modals.jinja" import modal %}
+{% from "crm/components/customer_table.jinja" import customer_table %}
+
+{% block title %}CRM & Customers | Core Framework{% endblock %}
+
+{% block content %}
+  <div class="crm-page-header flex items-center justify-between mb-lg">
+    <div>
+      <h1>Customer Relationship Management</h1>
+      <p class="text-muted">Manage customer accounts, leads, and contact information.</p>
+    </div>
+    <div class="flex gap-sm">
+      <button type="button" class="btn btn-primary" data-modal-target="create_customer_modal">
+        + Add Customer
+      </button>
+    </div>
+  </div>
+
+  <!-- Key Metrics Row -->
+  <div class="grid grid-cols-4 gap-md mb-lg">
+    {{ stat_card("Total Customers", total_customers or (customers|length if customers else 0), "All registered records") }}
+    {{ stat_card("Active Customers", active_customers or 0, "In good standing") }}
+    {{ stat_card("New Leads", leads_count or 0, "Pending qualification") }}
+    {{ stat_card("Conversion Rate", conversion_rate or "0%", "Leads to active") }}
+  </div>
+
+  <!-- Customer Records Table -->
+  <div class="mb-lg">
+    <div class="flex items-center justify-between mb-sm">
+      <h2>Customers</h2>
+    </div>
+    {{ customer_table(customers=customers) }}
+  </div>
+
+  <!-- Create Customer Modal -->
+  {% set modal_footer %}
+    <button type="button" class="btn btn-outline" data-modal-close="create_customer_modal">Cancel</button>
+    <button type="submit" form="create_customer_form" class="btn btn-primary">Save Customer</button>
+  {% endset %}
+
+  {% call modal("create_customer_modal", title="Create New Customer", footer_content=modal_footer) %}
+    <form id="create_customer_form" method="POST" action="">
+      {{ csrf_input }}
+      {{ input("full_name", label="Full Name", placeholder="e.g. Acme Corp / John Doe", required=True) }}
+      <div class="grid grid-cols-2 gap-md">
+        {{ select("customer_type", options=[("INDIVIDUAL", "Individual"), ("ORGANIZATION", "Organization")], label="Type", selected="INDIVIDUAL") }}
+        {{ select("status", options=[("LEAD", "Lead"), ("ACTIVE", "Active"), ("SUSPENDED", "Suspended")], label="Status", selected="LEAD") }}
+      </div>
+      {{ input("phone", label="Primary Phone", placeholder="+1 (555) 000-0000", type="tel") }}
+      {{ input("email", label="Primary Email", placeholder="customer@example.com", type="email") }}
+    </form>
+  {% endcall %}
+{% endblock %}

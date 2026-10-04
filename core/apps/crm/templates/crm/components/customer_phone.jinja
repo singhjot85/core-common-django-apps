@@ -1,0 +1,26 @@
+{# Customer Phone Management Macro #}
+{% from "core/components/common/badges.jinja" import badge %}
+{% from "core/components/common/buttons.jinja" import button %}
+
+{% macro customer_phone_list(phones=[], extra_classes="") %}
+  <div class="customer-phone-list{% if extra_classes %} {{ extra_classes }}{% endif %}">
+    {% if phones %}
+      <div class="flex flex-col gap-xs">
+        {% for p in phones %}
+          <div class="flex items-center justify-between" style="padding: var(--spacing-sm); border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+            <div class="flex items-center gap-sm">
+              <span>📞</span>
+              <strong>{{ p.phone }}</strong>
+              {% if p.is_primary %}
+                {{ badge("Primary", variant="success") }}
+              {% endif %}
+            </div>
+            <span class="text-muted" style="font-size: var(--font-size-xs);">{{ p.get_phone_type_display() if p.get_phone_type_display is callable else (p.phone_type or 'General') }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-muted mb-0">No phone numbers on record.</p>
+    {% endif %}
+  </div>
+{% endmacro %}

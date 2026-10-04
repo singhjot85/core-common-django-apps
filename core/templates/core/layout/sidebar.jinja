@@ -1,0 +1,20 @@
+{# Global Sidebar #}
+
+<aside class="app-sidebar">
+  <div class="sidebar-header" style="padding: var(--spacing-lg); border-bottom: 1px solid var(--color-border);">
+    <h2 style="font-size: var(--font-size-lg);">
+      {% block sidebar_brand %}Core Dashboard{% endblock %}
+    </h2>
+    {% if request and request.tenant %}
+      <div class="badge badge-primary mt-sm">{{ request.tenant.name if request.tenant.name else request.tenant.schema_name }}</div>
+    {% endif %}
+  </div>
+
+  <nav class="sidebar-nav" style="padding: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-xs);">
+    {% block sidebar_nav %}
+      <a href="/" class="btn btn-outline justify-start w-full" style="border: none;">
+        <span>🏠</span> <span>Home</span>
+      </a>
+    {% endblock %}
+  </nav>
+</aside>

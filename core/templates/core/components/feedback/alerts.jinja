@@ -1,0 +1,27 @@
+{# Alerts & Flash Message Macros #}
+
+{% macro alert(message=None, variant="info", dismissible=True, extra_classes="") %}
+  <div class="alert alert-{{ variant }}{% if extra_classes %} {{ extra_classes }}{% endif %}" role="alert">
+    <div>
+      {% if message %}{{ message }}{% endif %}
+      {% if caller %}{{ caller() }}{% endif %}
+    </div>
+    {% if dismissible %}
+      <button type="button" class="btn btn-sm btn-outline" style="border:none; padding: 0 4px;" onclick="this.closest('.alert').remove()" aria-label="Close">
+        &times;
+      </button>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% macro message_list(messages) %}
+  {% if messages %}
+    <div class="messages-container mb-md">
+      {% for msg in messages %}
+        {% set tag = msg.tags if msg.tags else "info" %}
+        {% if tag == "error" %}{% set tag = "danger" %}{% endif %}
+        {{ alert(message=msg.message, variant=tag) }}
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endmacro %}

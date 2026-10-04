@@ -38,6 +38,7 @@ When exploring or modifying modules across this repository, follow this systemat
 5. **Inspect Concrete Models (`models.py`)**: Checks swappability settings (`swappable = "APP_MODEL_KEY"`).
 6. **Inspect Tasks & Asynchronous Workers (`tasks.py`)**: Checks background jobs, schema migration tasks, and Celery worker routines.
 7. **Inspect API Surface (`api/serializers.py`, `api/views.py`, `urls.py`)**: Identifies endpoints, serializers, viewsets, and permissions.
+8. **Inspect Templates & Frontend Layer (`core/templates/`, `<app>/templates/`)**: Review `core/templates/Readme.md` before making any template or frontend changes to understand component macro conventions, Jinja2 environment bindings, and CSS variable styling rules.
 
 ## 3. Four-Phase Development Lifecycle
 
@@ -227,6 +228,15 @@ All non-trivial logic additions and refactors should be planned across four dist
 - Pass unique `idempotency_key` arguments to prevent duplicate processing during worker retries or concurrent dispatches.
 
 ---
+
+### 8. Template-Driven Frontend Architecture (`core/templates/`)
+
+- **MANDATORY CONTEXT**: Always consult [`core/templates/Readme.md`](core/templates/Readme.md) before creating or modifying frontend templates, macros, or static assets.
+- **Engine & Extensions**: Use **Jinja2** (`.jinja` file extension) for all application and domain UI views. Keep Django default DTL only for Django Admin and DRF browsable API.
+- **Component Macro Design**: Implement UI elements as reusable Jinja2 `{% macro %}` components with explicit default arguments, `extra_classes`, and `caller()` slots.
+- **Namespacing**: Core layout/components reside in `core/templates/core/`. Domain app templates reside in `core/apps/<app>/templates/<app>/`. Never create un-namespaced root templates.
+- **Design Tokens (CSS Variables)**: Never hardcode colors, spacing, or typography. Reference tokens in `variables.css` (`var(--color-primary)`, `var(--spacing-md)`) to preserve multi-tenant white-labeling capability.
+- **Lightweight Interactivity**: Utilize vanilla JS / fetch wrappers calling existing DRF REST endpoints with CSRF tokens. Avoid heavy client-side build steps in core packages.
 
 ## 5. Documentation Maintenance Standards
 

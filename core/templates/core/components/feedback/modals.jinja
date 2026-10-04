@@ -1,0 +1,26 @@
+{# Modals Macro Component #}
+
+{% macro modal(id, title=None, footer_content=None, max_width="500px", extra_classes="") %}
+  <div class="modal-backdrop{% if extra_classes %} {{ extra_classes }}{% endif %}" id="{{ id }}" role="dialog" aria-modal="true" aria-labelledby="{{ id }}_title">
+    <div class="modal-dialog" style="max-width: {{ max_width }};">
+      {% if title %}
+        <div class="card-header">
+          <h3 id="{{ id }}_title">{{ title }}</h3>
+          <button type="button" class="btn btn-sm btn-outline" style="border:none;" data-modal-close="{{ id }}" aria-label="Close">
+            &times;
+          </button>
+        </div>
+      {% endif %}
+
+      <div class="card-body">
+        {% if caller %}{{ caller() }}{% endif %}
+      </div>
+
+      {% if footer_content %}
+        <div class="card-footer">
+          {{ footer_content|safe }}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endmacro %}
