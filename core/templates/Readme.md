@@ -158,7 +158,9 @@ Components must be declared as Jinja2 `{% macro %}` blocks with:
   - Spacing: `var(--spacing-xs)`, `var(--spacing-sm)`, `var(--spacing-md)`, `var(--spacing-lg)`, `var(--spacing-xl)`
   - Radii: `var(--radius-sm)`, `var(--radius-md)`, `var(--radius-lg)`
   - Typography: `var(--font-family-base)`, `var(--font-size-sm)`, `var(--font-size-base)`, `var(--font-size-lg)`
-- Dynamic tenant white-labeling can be achieved by overriding these root variables per tenant.
+- **Dark Theme & Multi-Tenant White-Labeling**:
+  - Dark theme tokens are declared under `[data-theme="dark"]` and `@media (prefers-color-scheme: dark)`.
+  - Dynamic tenant white-labeling can be achieved by overriding these root variables per tenant.
 
 ### Rule 5: Modularity & Customization in Consuming Projects
 Consuming projects (such as `sample_project` or customer microservices) can consume UI in two ways:
@@ -188,6 +190,10 @@ Consuming projects (such as `sample_project` or customer microservices) can cons
     - `Core.sidebar.toggle()`: Toggles desktop sidebar collapse (persisting preference to `localStorage`).
     - `Core.sidebar.collapse()` / `Core.sidebar.expand()`: Explicit desktop sidebar state setters.
     - `Core.sidebar.toggleMobile()` / `Core.sidebar.openMobile()` / `Core.sidebar.closeMobile()`: Controls mobile drawer visibility (`.open` class).
+  - **Theme Management**:
+    - `Core.theme.get()`: Returns active theme (`'dark'` or `'light'`).
+    - `Core.theme.set('dark' | 'light' | 'auto')`: Sets active theme and persists to `localStorage`.
+    - `Core.theme.toggle()`: Toggles between light and dark themes.
   - **Modal Management**:
     - `Core.modal.open(modalId)`: Opens modal and disables background body scrolling.
     - `Core.modal.close(modalId)`: Closes modal and restores scrolling.

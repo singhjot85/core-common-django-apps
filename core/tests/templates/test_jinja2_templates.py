@@ -292,3 +292,10 @@ class TestFullPageTemplateRendering:
         assert "Enterprise Overview" in rendered_content
         assert "Acme Innovations Ltd" in rendered_content
         assert "Enterprise Dashboard" in rendered_content
+
+    def test_base_template_theme_toggle_and_script(self, request_obj):
+        context = {"request": request_obj}
+        rendered = render_to_string("core/base.jinja", context, request=request_obj)
+        assert "data-theme-toggle" in rendered
+        assert "core_theme" in rendered
+        assert "dark_mode" in rendered
