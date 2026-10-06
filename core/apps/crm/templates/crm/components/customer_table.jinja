@@ -1,0 +1,74 @@
+{# Customer Table Macro #}
+{% from "core/components/common/badges.jinja" import badge %}
+{% from "core/components/common/buttons.jinja" import button %}
+{% macro customer_table(customers=[], detail_url_name=None, extra_classes="") %}
+    <div class="table-container{% if extra_classes %} {{ extra_classes }}{% endif %}">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name / Party</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Primary Phone</th>
+                    <th>Primary Email</th>
+                    <th>Created</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if customers %}
+                    {% for customer in customers %}
+                        <tr>
+                            <td>
+                                <div class="font-weight-medium">{{ customer.full_name or 'Unnamed Customer' }}</div>
+                                <div class="text-muted font-size-xs">ID: {{ customer.id }}</div>
+                            </td>
+                            <td>
+                                {% if customer.get_customer_type_display is defined and customer.get_customer_type_display is callable %}
+                                    <span class="badge badge-secondary">{{ customer.get_customer_type_display() }}</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">{{ customer.customer_type }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set status_val = (customer.status or "")|string %}
+                                {% if customer.get_status_display is defined and customer.get_status_display is callable %}
+                                    {% set status_text = customer.get_status_display() %}
+                                {% else %}
+                                    {% set status_text = customer.status %}
+                                {% endif %}
+                                {% if status_val|lower == "active" %}
+                                    {{ badge(status_text, variant="success") }}
+                                {% elif status_val|lower == "lead" %}
+                                    {{ badge(status_text, variant="info") }}
+                                {% elif status_val|lower == "suspended" or status_val|lower == "failed" %}
+                                    {{ badge(status_text, variant="danger") }}
+                                {% else %}
+                                    {{ badge(status_text, variant="secondary") }}
+                                {% endif %}
+                            </td>
+                            <td>{{ customer.primary_phone.phone if customer.primary_phone else '-' }}</td>
+                            <td>{{ customer.primary_email.email if customer.primary_email else '-' }}</td>
+                            <td>{{ format_date(customer.created) }}</td>
+                            <td class="text-right">
+                                {% if detail_url_name %}
+                                    {{ button(label="View", href=url(detail_url_name, customer.id) , size="sm", variant="outline") }}
+                                {% else %}
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline"
+                                            data-modal-target="customer_modal_{{ customer.id }}">View</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-xl">
+                            No customers found. Click <strong>Add Customer</strong> to create your first customer profile.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+{% endmacro %}

@@ -6,6 +6,8 @@ DEBUGPY_YAML_PATH ?= $(dir $(DEV_YAML_PATH))compose.debugpy.yaml
 # Common Variables
 COMPOSE_YAML ?= $(DEV_YAML_PATH)
 DJANGO_SERVICE ?= django
+CACHE_SERVICE ?= cache
+BROKER_SERVICE ?= broker
 TEST_DIR ?= core/tests
 
 COMPOSE_COMMAND := docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(or $(COMPOSE_YAML),$(DEV_YAML_PATH))
@@ -13,6 +15,14 @@ TEMP_DJANGO_CONTAINER = docker compose --env-file .env -p $(PROJECT_NAME) -f $(C
 DJANGO_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(DJANGO_SERVICE)
 DEBUGPY_COMPOSE_CMD ?= docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(DEV_YAML_PATH) -f $(DEBUGPY_YAML_PATH)
 
+CACHE_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(CACHE_SERVICE)
+BROKER_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(BROKER_SERVICE)
+
+# Import the envoiurnment variables
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
 
 # --------------------------
 # Development Targets
@@ -84,18 +94,18 @@ db-destroy: docker-destroy-database
 docker-django-makemigrations:
 	@echo "⌛ Making migrations in App: ➡️[${APP_LABEL}]...\n"
 	@echo "⚠️ If this was not intended use command with APP_LABEL= flag"
-	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py makemigrations ${APP_LABEL}
+	${TEMP_DJANGO_CONTAINER} python sample_project/manage.py makemigrations ${APP_LABEL}
 mm: docker-django-makemigrations
 
 docker-django-migrate:
 	@echo "⌛ Migrating Schema's now...\n"
-	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py migrate
+	${TEMP_DJANGO_CONTAINER} python sample_project/manage.py migrate
 m: docker-django-migrate
 
 docker-django-makemigrations-empty:
 	@echo "⌛ Making an empty migration in App: ➡️[${APP_LABEL}] with Name: ➡️[${EMN}]...\n"
 	@echo "⚠️ If this was not intended use command with 'APP_LABEL=' or 'emn=' flags"
-	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py makemigrations --empty ${APP_LABEL} --name ${EMN}
+	${TEMP_DJANGO_CONTAINER} python sample_project/manage.py makemigrations --empty ${APP_LABEL} --name ${EMN}
 mme: docker-django-makemigrations-empty
 
 
@@ -118,7 +128,7 @@ td: docker-django-pytest-debug
 # --------------------------
 # 	Shells
 # --------------------------
-.PHONY: bash, s, sp, ts, tsp, tsd
+.PHONY: bash, s, sp, ts, tsp, tsd, broker-cli, cache-cli
 
 docker-django-bash:
 	@echo "⌛ Starting bash in Django container...\n"
@@ -134,3 +144,13 @@ docker-django-shell-plus:
 	@echo "⌛ Launching Django shell-plus...\n"
 	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py shell_plus --ipython
 sp: docker-django-shell-plus
+
+docker-cache-cli:
+	@echo "⌛ Launching redis-cli for cache service ${CACHE_SERVICE}...\n"
+	${CACHE_CONTAINER_COMMAND} redis-cli -p ${CACHE_PORT}
+cache-cli: docker-cache-cli
+
+docker-broker-cli:
+	@echo "⌛ Launching redis-cli for cache service ${CACHE_SERVICE}...\n"
+	${BROKER_CONTAINER_COMMAND} redis-cli -p ${BROKER_PORT}
+broker-cli: docker-broker-cli

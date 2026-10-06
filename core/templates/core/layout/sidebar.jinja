@@ -1,0 +1,87 @@
+{# Global Sidebar Layout #}
+{% from "core/components/common/icons.jinja" import icon %}
+{% from "core/components/common/sidebar.jinja" import sidebar_link, sidebar_divider %}
+<aside class="app-sidebar" id="app_sidebar">
+    <!-- Sidebar Header -->
+    <div class="sidebar-header">
+        <a href="{{ home_url|default('/') }}" class="sidebar-brand" title="Home">
+            <div class="brand-icon-wrapper">{{ icon("rocket_launch", size=24, extra_classes="text-primary") }}</div>
+            <span class="sidebar-brand-text">
+                {% block sidebar_brand %}
+                    {{ PROJECT_LABEL or 'Core Dashboard' }}
+                {% endblock sidebar_brand %}
+            </span>
+        </a>
+        <button type="button"
+                class="btn btn-sm btn-outline sidebar-collapse-btn"
+                id="sidebar_collapse_toggle"
+                data-sidebar-toggle
+                aria-label="Toggle sidebar collapse"
+                title="Toggle Sidebar">
+            {{ icon("menu_open", size=18, extra_classes="collapse-icon-open") }}
+            {{ icon("chevron_right", size=18, extra_classes="collapse-icon-collapsed") }}
+        </button>
+    </div>
+    <!-- Fixed Top Actions (Search, Notifications) -->
+    <div class="sidebar-section sidebar-top-actions">
+        {{ sidebar_link("Search", href="#search", icon_name="search", extra_classes="action-search") }}
+        {{ sidebar_link("Notifications", href="#notifications", icon_name="notifications", badge_text=unread_notifications_count|default(None) , badge_variant="danger") }}
+    </div>
+    {{ sidebar_divider() }}
+    <!-- Dynamic / Main App Navigation Links -->
+    <nav class="sidebar-nav">
+        {% block sidebar_nav %}
+            {% if sidebar_links %}
+                {% for item in sidebar_links %}
+                    {{ sidebar_link(title=item.title|default(item.label) ,
+                    href=item.href|default(item.url|default('#')),
+                    icon_name=item.icon|default('circle'),
+                    is_active=item.is_active|default(false),
+                    badge_text=item.badge|default(None)
+                    ) }}
+                {% endfor %}
+            {% else %}
+                {# Fallback standard domain links #}
+                {{ sidebar_link("Home", href="/", icon_name="home", is_active=true) }}
+                {{ sidebar_link("Customers", href="/crm/", icon_name="groups") }}
+                {{ sidebar_link("Organizations", href="/tenants/", icon_name="domain") }}
+                {{ sidebar_link("Invoices", href="/invoices/", icon_name="receipt_long") }}
+            {% endif %}
+        {% endblock sidebar_nav %}
+    </nav>
+    <!-- Bottom Section: Fixed Settings, Support & User Profile -->
+    <div class="sidebar-footer">
+        {{ sidebar_divider() }}
+        <div class="sidebar-section sidebar-bottom-actions">
+            {{ sidebar_link("Settings", href="/settings/", icon_name="settings") }}
+            {{ sidebar_link("Help & Support", href="/support/", icon_name="help") }}
+        </div>
+        {{ sidebar_divider() }}
+        <!-- User Profile Footer -->
+        {% block sidebar_user %}
+            <div class="sidebar-user-card">
+                <div class="user-avatar-wrapper">{{ icon("account_circle", size=32) }}</div>
+                <div class="user-info">
+                    <div class="user-name">
+                        {% if request and request.user and request.user.is_authenticated %}
+                            {{ request.user.get_full_name() or request.user.username }}
+                        {% elif user_profile and user_profile.name %}
+                            {{ user_profile.name }}
+                        {% else %}
+                            Admin User
+                        {% endif %}
+                    </div>
+                    <div class="user-email text-muted">
+                        {% if request and request.user and request.user.is_authenticated %}
+                            {{ request.user.email or request.user.username ~ '@example.com' }}
+                        {% elif user_profile and user_profile.email %}
+                            {{ user_profile.email }}
+                        {% else %}
+                            admin@example.com
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endblock sidebar_user %}
+    </div>
+</aside>

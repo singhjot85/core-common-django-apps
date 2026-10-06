@@ -1,0 +1,32 @@
+{# Alerts & Flash Message Macros #}
+{% from "core/components/common/icons.jinja" import icon %}
+{% macro alert(message=None, variant="info", dismissible=True, extra_classes="") %}
+    <div class="alert alert-{{ variant }}{% if extra_classes %} {{ extra_classes }}{% endif %}"
+         role="alert">
+        <div>
+            {% if message %}{{ message }}{% endif %}
+            {% if caller %}{{ caller() }}{% endif %}
+        </div>
+        {% if dismissible %}
+            <button type="button"
+                    class="btn btn-sm btn-outline alert-dismiss-btn"
+                    data-alert-dismiss
+                    aria-label="Close">{{ icon("close", size=18) }}</button>
+        {% endif %}
+    </div>
+{% endmacro %}
+{% macro message_list(messages) %}
+    {% if messages %}
+        <div class="messages-container mb-md">
+            {% for msg in messages %}
+                {% if msg and msg.message %}
+                    {% set tag = msg.tag if msg.tag else "info" %}
+                    {% if tag == "error" %}
+                        {% set tag = "danger" %}
+                    {% endif %}
+                    {{ alert(message=msg.message, variant=tag) }}
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endmacro %}

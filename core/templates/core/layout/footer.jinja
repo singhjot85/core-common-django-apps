@@ -1,0 +1,12 @@
+{# Global Footer #}
+<footer class="app-footer">
+    <div>
+        {% block footer_left %}
+            © {{ current_year or 2026 }} Core Apps Framework. All rights reserved.
+        {% endblock footer_left %}
+    </div>
+    <div>
+        {% block footer_right %}
+        {% endblock footer_right %}
+    </div>
+</footer>

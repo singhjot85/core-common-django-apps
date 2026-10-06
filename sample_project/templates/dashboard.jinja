@@ -1,0 +1,42 @@
+{% extends "core/base.jinja" %}
+
+{% from "core/components/common/cards.jinja" import stat_card %}
+{% from "core/components/common/buttons.jinja" import button %}
+{% from "core/components/common/icons.jinja" import icon %}
+{% from "crm/components/customer_table.jinja" import customer_table %}
+{% from "tenants/components/tenant_card.jinja" import tenant_card %}
+{% block title %}
+    Enterprise Dashboard | Sample Project
+{% endblock title %}
+{#
+  Content should changed based on block sidebar link selected,
+  and the data should be feeded from here to entire content page.
+
+  Individual component can make their own api calls, also create a service.js
+  for api and data handling
+#}
+{% block content %}
+    <div class="mb-lg">
+        <h1>Enterprise Overview</h1>
+        <p class="text-muted">Unified host dashboard composing multi-tenant organization & CRM customer widgets.</p>
+    </div>
+    <div class="grid grid-cols-3 gap-md mb-lg">
+        {{ stat_card("Active Tenants", active_tenants or 1, icon=icon("domain", size=24) ) }}
+        {{ stat_card("Total Customers", total_customers or (customers|length if customers else 0) , icon=icon("groups", size=24)) }}
+        {{ stat_card("Pending Invoices", pending_invoices or 0, icon=icon("receipt_long", size=24) ) }}
+    </div>
+    {% if current_tenant %}
+        <div class="mb-lg">
+            <div class="mb-sm">
+                <h2>Active Organization</h2>
+            </div>
+            {{ tenant_card(current_tenant) }}
+        </div>
+    {% endif %}
+    <div class="mb-lg">
+        <div class="mb-sm">
+            <h2>Recent Customers</h2>
+        </div>
+        {{ customer_table(customers=customers) }}
+    </div>
+{% endblock content %}

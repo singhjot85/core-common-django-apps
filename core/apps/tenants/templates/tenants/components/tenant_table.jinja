@@ -1,0 +1,53 @@
+{# Tenant Table Macro #}
+{% from "core/components/common/badges.jinja" import badge %}
+{% from "core/components/common/buttons.jinja" import button %}
+{% macro tenant_table(tenants=[], extra_classes="") %}
+    <div class="table-container{% if extra_classes %} {{ extra_classes }}{% endif %}">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Organization / Label</th>
+                    <th>Schema Name</th>
+                    <th>Public ID</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th class="text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if tenants %}
+                    {% for t in tenants %}
+                        <tr>
+                            <td>
+                                <div class="font-weight-medium">{{ t.label or t.schema_name }}</div>
+                            </td>
+                            <td>
+                                <code>{{ t.schema_name }}</code>
+                            </td>
+                            <td>
+                                <code>{{ t.public_id or '-' }}</code>
+                            </td>
+                            <td>
+                                {% if t.is_active %}
+                                    {{ badge("Active", variant="success") }}
+                                {% else %}
+                                    {{ badge("Inactive", variant="secondary") }}
+                                {% endif %}
+                            </td>
+                            <td>{{ format_date(t.created) }}</td>
+                            <td class="text-right">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline"
+                                        data-modal-target="tenant_modal_{{ t.id }}">Details</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-xl">No organizations found.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+{% endmacro %}

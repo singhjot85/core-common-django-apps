@@ -9,6 +9,7 @@ from core.apps.crm import (
     get_customer_preference_model,
     get_customer_preference_type_model,
 )
+from core.utils.admin import private_admin_site
 
 Customer = get_customer_model()
 CustomerAddress = get_customer_address_model()
@@ -82,7 +83,7 @@ class CustomerPreferenceInline(admin.TabularInline):
     fields = ("preference_type", "value", "is_removed")
 
 
-@admin.register(Customer)
+@admin.register(Customer, site=private_admin_site)
 class CustomerAdmin(admin.ModelAdmin):
     """Admin configuration for Customer profiles."""
 
@@ -111,7 +112,7 @@ class CustomerAdmin(admin.ModelAdmin):
     ]
 
 
-@admin.register(CustomerPhone)
+@admin.register(CustomerPhone, site=private_admin_site)
 class CustomerPhoneAdmin(admin.ModelAdmin):
     """Admin configuration for CustomerPhone records."""
 
@@ -132,7 +133,7 @@ class CustomerPhoneAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(CustomerEmail)
+@admin.register(CustomerEmail, site=private_admin_site)
 class CustomerEmailAdmin(admin.ModelAdmin):
     """Admin configuration for CustomerEmail records."""
 
@@ -153,7 +154,7 @@ class CustomerEmailAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(CustomerAddress)
+@admin.register(CustomerAddress, site=private_admin_site)
 class CustomerAddressAdmin(admin.ModelAdmin):
     """Admin configuration for CustomerAddress records."""
 
@@ -182,7 +183,7 @@ class CustomerAddressAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(CustomerIdentification)
+@admin.register(CustomerIdentification, site=private_admin_site)
 class CustomerIdentificationAdmin(admin.ModelAdmin):
     """Admin configuration for CustomerIdentification records."""
 
@@ -202,7 +203,7 @@ class CustomerIdentificationAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(CustomerPreferenceType)
+@admin.register(CustomerPreferenceType, site=private_admin_site)
 class CustomerPreferenceTypeAdmin(admin.ModelAdmin):
     """Admin configuration for CustomerPreferenceType definitions."""
 
@@ -211,7 +212,7 @@ class CustomerPreferenceTypeAdmin(admin.ModelAdmin):
     search_fields = ("code", "label")
 
 
-@admin.register(CustomerPreference)
+@admin.register(CustomerPreference, site=private_admin_site)
 class CustomerPreferenceAdmin(admin.ModelAdmin):
     """Admin configuration for CustomerPreference entries."""
 

@@ -21,7 +21,7 @@ class AbstractTenants(TenantMixin, BaseModel, StatusModel):
 
     auto_create_schema = False
 
-    status = TenantStatus.choices
+    STATUS = TenantStatus.choices
     label = models.CharField(max_length=255, null=True, blank=True)
     is_active = models.BooleanField(default=True, null=True, blank=True)
     public_id = models.CharField(max_length=124, null=True, blank=True)
@@ -32,7 +32,7 @@ class AbstractTenants(TenantMixin, BaseModel, StatusModel):
         verbose_name_plural = "Tenants"
 
     def __str__(self):
-        return "%s - %s", self.label, self.public_id
+        return f"{self.label} - {self.public_id}"
 
     def generate_public_id(self, retry: int = 0):
         """
@@ -41,7 +41,7 @@ class AbstractTenants(TenantMixin, BaseModel, StatusModel):
         Tenant = get_tenant_model()
 
         if retry >= 5:
-            raise Exception(f"Error Creating unique {self.__name__}")
+            raise Exception(f"Error Creating unique {self.__class__.__name__}")
 
         public_id = f"Tenant-{self.label}-{uuid.uuid4().hex}"
 
@@ -51,25 +51,28 @@ class AbstractTenants(TenantMixin, BaseModel, StatusModel):
             return self.public_id
 
         retry += 1
-        self.generate_public_id(retry)
+        return self.generate_public_id(retry)
 
     def save(self, verbosity=1, *args, **kwargs):
         """
-        Schema migration is a slow process, and even slower when migrations grow in number
-        So using a seperate thread (async thread) to create schema's instead of blocking main thread.
+        Schema migration is a slow process, and even slower when migrations grow in number.
+        Use an async background task to create schemas instead of blocking the main thread.
         """
-        self.generate_public_id()
+        is_new = self._state.adding or self.pk is None
+        if not self.public_id:
+            self.generate_public_id()
 
         # Save the model instance first
         super().save(verbosity, *args, **kwargs)
 
-        # queue a task to create schema
-        queue_task(
-            provision_tenant_schema,
-            on_commit=True,
-            idempotency_key=str(self.pk),
-            task_kwargs={"tenant_id": str(self.pk)},
-        )
+        # Only queue schema provisioning on initial creation
+        if is_new and self.status != TenantStatus.READY:
+            queue_task(
+                provision_tenant_schema,
+                on_commit=True,
+                idempotency_key=str(self.pk),
+                task_kwargs={"tenant_id": str(self.pk)},
+            )
 
 
 class AbstractDomain(DomainMixin, BaseModel):

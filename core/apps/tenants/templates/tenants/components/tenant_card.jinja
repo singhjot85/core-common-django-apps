@@ -1,0 +1,28 @@
+{# Tenant Card Macro #}
+{% from "core/components/common/cards.jinja" import card %}
+{% from "core/components/common/badges.jinja" import badge %}
+{% macro tenant_card(tenant, extra_classes="") %}
+    {% set status_badge %}
+        {% if tenant.is_active %}
+            {{ badge("Active", variant="success") }}
+        {% else %}
+            {{ badge("Inactive", variant="secondary") }}
+        {% endif %}
+    {% endset %}
+    {% call card(title=tenant.label or tenant.schema_name or "Organization", subtitle="Schema: " ~ tenant.schema_name, header_actions=status_badge, extra_classes=extra_classes) %}
+        <div class="flex flex-col gap-sm">
+            <div class="flex justify-between">
+                <span class="text-muted">Public ID:</span>
+                <code>{{ tenant.public_id or '-' }}</code>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted">Status:</span>
+                <strong>{{ tenant.status }}</strong>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted">Created:</span>
+                <span>{{ format_date(tenant.created) }}</span>
+            </div>
+        </div>
+    {% endcall %}
+{% endmacro %}
