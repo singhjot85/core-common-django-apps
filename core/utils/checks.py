@@ -3,6 +3,7 @@ Runtime checks to validate and generate runtime settings
 """
 
 from django.conf import settings
+from django.db import connection
 from django.db import models
 
 
@@ -37,3 +38,9 @@ def is_model(kls):
         return True
 
     return False
+
+def is_public():
+    """
+    Check if current schema is public schema
+    """
+    return connection.schema_name == getattr(settings, 'PUBLIC_SCHEMA_NAME', 'public')

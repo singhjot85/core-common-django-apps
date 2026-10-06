@@ -182,7 +182,29 @@ Consuming projects (such as `sample_project` or customer microservices) can cons
    {% endblock %}
    ```
 
-### Rule 6: Client-Side Interactivity Standard
-- JavaScript in `core/static/core/js/core.js` provides lightweight primitives (CSRF extraction, modal openers/closers, toast notifications).
-- API operations should use standard `fetch()` calling existing DRF REST endpoints (`/api/...`), passing the CSRF token in the `X-CSRFToken` header.
-- Avoid introducing heavy npm build steps or rigid JS frameworks into core templates to preserve lightweight submoduling.
+### Rule 6: Client-Side Interactivity Standard (`core.js` API)
+- JavaScript in `core/static/core/js/core.js` provides centralized, lightweight vanilla JS primitives:
+  - **Sidebar Management**:
+    - `Core.sidebar.toggle()`: Toggles desktop sidebar collapse (persisting preference to `localStorage`).
+    - `Core.sidebar.collapse()` / `Core.sidebar.expand()`: Explicit desktop sidebar state setters.
+    - `Core.sidebar.toggleMobile()` / `Core.sidebar.openMobile()` / `Core.sidebar.closeMobile()`: Controls mobile drawer visibility (`.open` class).
+  - **Modal Management**:
+    - `Core.modal.open(modalId)`: Opens modal and disables background body scrolling.
+    - `Core.modal.close(modalId)`: Closes modal and restores scrolling.
+  - **Alert Management**:
+    - `Core.alert.dismiss(element)`: Removes parent alert banner.
+  - **REST API Client**:
+    - `Core.api.get(url)`, `Core.api.post(url, data)`, `Core.api.patch(url, data)`, `Core.api.delete(url)`: Standard fetch wrapper auto-injecting CSRF token headers and parsing JSON payloads.
+
+### Rule 7: Zero Inline JavaScript Anti-Pattern
+- **CRITICAL ANTI-PATTERN — Inline JavaScript & Ad-Hoc DOM Queries**:
+  - **NEVER** write inline JavaScript handlers (such as `onclick="..."`, `onchange="..."`) or raw DOM selectors (such as `document.querySelector('.app-sidebar').classList.toggle(...)`) directly inside Jinja2 templates or macro components.
+  - **Why?** Inline scripts violate Content Security Policy (CSP), bypass centralized event delegation, cause hard-to-debug state inconsistencies, and pollute template readability.
+- **Correct Pattern — Declarative Data Attributes & Central Event Delegation**:
+  - Always wire UI components to interactive behaviors using declarative `data-*` attributes:
+    - `data-sidebar-toggle`: Desktop sidebar collapse toggle.
+    - `data-sidebar-mobile-toggle`: Mobile navigation drawer toggle.
+    - `data-modal-target="modal-id"`: Triggers opening the target modal.
+    - `data-modal-close`: Triggers closing the target/parent modal.
+    - `data-alert-dismiss`: Dismisses and removes the parent alert banner.
+  - All event listeners are automatically attached on `DOMContentLoaded` by `core.js`.

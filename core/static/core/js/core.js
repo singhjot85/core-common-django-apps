@@ -19,6 +19,78 @@
     },
 
     /**
+     * Sidebar Collapse / Expand / Mobile Navigation Helper
+     */
+    sidebar: {
+      toggle: function () {
+        const shell = document.querySelector(".app-shell");
+        if (shell) {
+          const isCollapsed = shell.classList.toggle("sidebar-collapsed");
+          try {
+            localStorage.setItem("core_sidebar_collapsed", isCollapsed ? "true" : "false");
+          } catch (e) {}
+        }
+      },
+      collapse: function () {
+        const shell = document.querySelector(".app-shell");
+        if (shell) {
+          shell.classList.add("sidebar-collapsed");
+          try {
+            localStorage.setItem("core_sidebar_collapsed", "true");
+          } catch (e) {}
+        }
+      },
+      expand: function () {
+        const shell = document.querySelector(".app-shell");
+        if (shell) {
+          shell.classList.remove("sidebar-collapsed");
+          try {
+            localStorage.setItem("core_sidebar_collapsed", "false");
+          } catch (e) {}
+        }
+      },
+      toggleMobile: function () {
+        const sidebar = document.querySelector(".app-sidebar");
+        if (sidebar) {
+          sidebar.classList.toggle("open");
+        }
+      },
+      openMobile: function () {
+        const sidebar = document.querySelector(".app-sidebar");
+        if (sidebar) {
+          sidebar.classList.add("open");
+        }
+      },
+      closeMobile: function () {
+        const sidebar = document.querySelector(".app-sidebar");
+        if (sidebar) {
+          sidebar.classList.remove("open");
+        }
+      },
+      init: function () {
+        try {
+          const stored = localStorage.getItem("core_sidebar_collapsed");
+          if (stored === "true") {
+            const shell = document.querySelector(".app-shell");
+            if (shell) shell.classList.add("sidebar-collapsed");
+          }
+        } catch (e) {}
+      },
+    },
+
+    /**
+     * Alert Helper
+     */
+    alert: {
+      dismiss: function (element) {
+        const alertEl = element.closest(".alert");
+        if (alertEl) {
+          alertEl.remove();
+        }
+      },
+    },
+
+    /**
      * Modal Helper
      */
     modal: {
@@ -96,6 +168,33 @@
 
   // Initialize interactive event listeners
   document.addEventListener("DOMContentLoaded", function () {
+    // Restore sidebar state
+    Core.sidebar.init();
+
+    // Sidebar collapse toggle button (Desktop)
+    document.querySelectorAll("[data-sidebar-toggle], #sidebar_collapse_toggle").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        Core.sidebar.toggle();
+      });
+    });
+
+    // Mobile sidebar toggle button
+    document.querySelectorAll("[data-sidebar-mobile-toggle], .mobile-menu-toggle").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        Core.sidebar.toggleMobile();
+      });
+    });
+
+    // Alert dismiss buttons
+    document.querySelectorAll("[data-alert-dismiss]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        Core.alert.dismiss(btn);
+      });
+    });
+
     // Modal open buttons
     document.querySelectorAll("[data-modal-target]").forEach(function (btn) {
       btn.addEventListener("click", function (e) {

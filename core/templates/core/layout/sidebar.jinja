@@ -1,34 +1,91 @@
-{# Global Sidebar #}
+{# Global Sidebar Layout #}
 {% from "core/components/common/icons.jinja" import icon %}
+{% from "core/components/common/sidebar.jinja" import sidebar_link, sidebar_divider %}
 
-<aside class="app-sidebar">
-  <div class="sidebar-header" style="padding: var(--spacing-lg); border-bottom: 1px solid var(--color-border);">
-    <h2 style="font-size: var(--font-size-lg);">
-      {% block sidebar_brand %}Core Dashboard{% endblock %}
-    </h2>
-    {% if request and request.tenant %}
-      <div class="badge badge-primary mt-sm">{{ request.tenant.name if request.tenant.name else request.tenant.schema_name }}</div>
-    {% endif %}
+<aside class="app-sidebar" id="app_sidebar">
+  <!-- Sidebar Header -->
+  <div class="sidebar-header">
+    <a href="/" class="sidebar-brand" title="Home">
+      <div class="brand-icon-wrapper">
+        {{ icon("rocket_launch", size=24, extra_classes="text-primary") }}
+      </div>
+      <span class="sidebar-brand-text">{% block sidebar_brand %}{{ PROJECT_LABEL or 'Core Dashboard' }}{% endblock %}</span>
+    </a>
+    <button type="button" class="btn btn-sm btn-outline sidebar-collapse-btn" id="sidebar_collapse_toggle" data-sidebar-toggle aria-label="Toggle sidebar collapse" title="Toggle Sidebar">
+      {{ icon("menu_open", size=18, extra_classes="collapse-icon-open") }}
+      {{ icon("chevron_right", size=18, extra_classes="collapse-icon-collapsed") }}
+    </button>
   </div>
 
-  <nav class="sidebar-nav" style="padding: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-xs);">
+  <!-- Fixed Top Actions (Search, Notifications) -->
+  <div class="sidebar-section sidebar-top-actions">
+    {{ sidebar_link("Search", href="#search", icon_name="search", extra_classes="action-search") }}
+    {{ sidebar_link("Notifications", href="#notifications", icon_name="notifications", badge_text=unread_notifications_count|default(None), badge_variant="danger") }}
+  </div>
+
+  {{ sidebar_divider() }}
+
+  <!-- Dynamic / Main App Navigation Links -->
+  <nav class="sidebar-nav">
     {% block sidebar_nav %}
-      <a href="/" class="btn btn-outline justify-start w-full" style="border: none;">
-        {{ icon("home", size=20) }}
-        <span>Home</span>
-      </a>
-      <a href="/crm/" class="btn btn-outline justify-start w-full" style="border: none;">
-        {{ icon("group", size=20) }}
-        <span>Customers</span>
-      </a>
-      <a href="/tenants/" class="btn btn-outline justify-start w-full" style="border: none;">
-        {{ icon("domain", size=20) }}
-        <span>Organizations</span>
-      </a>
-      <a href="/invoices/" class="btn btn-outline justify-start w-full" style="border: none;">
-        {{ icon("receipt_long", size=20) }}
-        <span>Invoices</span>
-      </a>
+      {% if sidebar_links %}
+        {% for item in sidebar_links %}
+          {{ sidebar_link(
+              title=item.title|default(item.label),
+              href=item.href|default(item.url|default('#')),
+              icon_name=item.icon|default('circle'),
+              is_active=item.is_active|default(false),
+              badge_text=item.badge|default(None)
+          ) }}
+        {% endfor %}
+      {% else %}
+        {# Fallback standard domain links #}
+        {{ sidebar_link("Home", href="/", icon_name="home", is_active=true) }}
+        {{ sidebar_link("Customers", href="/crm/", icon_name="groups") }}
+        {{ sidebar_link("Organizations", href="/tenants/", icon_name="domain") }}
+        {{ sidebar_link("Invoices", href="/invoices/", icon_name="receipt_long") }}
+      {% endif %}
     {% endblock %}
   </nav>
+
+  <!-- Bottom Section: Fixed Settings, Support & User Profile -->
+  <div class="sidebar-footer">
+    {{ sidebar_divider() }}
+
+    <div class="sidebar-section sidebar-bottom-actions">
+      {{ sidebar_link("Settings", href="/settings/", icon_name="settings") }}
+      {{ sidebar_link("Help & Support", href="/support/", icon_name="help") }}
+    </div>
+
+    {{ sidebar_divider() }}
+
+    <!-- User Profile Footer -->
+    {% block sidebar_user %}
+      <div class="sidebar-user-card">
+        <div class="user-avatar-wrapper">
+          {{ icon("account_circle", size=32) }}
+        </div>
+        <div class="user-info">
+          <div class="user-name">
+            {% if request and request.user and request.user.is_authenticated %}
+              {{ request.user.get_full_name() or request.user.username }}
+            {% elif user_profile and user_profile.name %}
+              {{ user_profile.name }}
+            {% else %}
+              Admin User
+            {% endif %}
+          </div>
+          <div class="user-email text-muted">
+            {% if request and request.user and request.user.is_authenticated %}
+              {{ request.user.email or request.user.username ~ '@example.com' }}
+            {% elif user_profile and user_profile.email %}
+              {{ user_profile.email }}
+            {% else %}
+              admin@example.com
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endblock %}
+  </div>
 </aside>
