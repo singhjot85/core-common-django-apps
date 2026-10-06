@@ -35,7 +35,7 @@ TIME_ZONE = APPLICATION_TIMEZONE
 TEMPLATES_DIR = os.path.join(BASE_DIR, "django_templates", "templates")
 SECRET_KEY = os.getenv("DJANGO_SECRETE_KEY", "")
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 ROOT_URLCONF = "config.urls"
 PUBLIC_SCHEMA_URLCONF = "config.public_urls"
 

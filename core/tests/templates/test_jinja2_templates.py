@@ -172,6 +172,25 @@ class TestCoreComponentMacros:
         assert "Test Modal" in rendered
         assert "<p>Modal body</p>" in rendered
 
+    def test_sidebar_link_macro(self, jinja_engine, request_context):
+        template_str = """
+        {% from "core/components/common/sidebar.jinja" import sidebar_link, sidebar_divider %}
+        {{ sidebar_link("Customers", href="/crm/", icon_name="groups", is_active=True, badge_text="12") }}
+        {{ sidebar_divider() }}
+        {{ sidebar_link("Settings", href="/settings/", icon_name="settings") }}
+        """
+        tmpl = jinja_engine.from_string(template_str)
+        rendered = tmpl.render(request_context)
+
+        assert 'href="/crm/"' in rendered
+        assert 'class="sidebar-link active"' in rendered
+        assert "Customers" in rendered
+        assert "groups" in rendered
+        assert "12" in rendered
+        assert 'class="sidebar-divider"' in rendered
+        assert 'href="/settings/"' in rendered
+        assert "settings" in rendered
+
 
 class TestFullPageTemplateRendering:
     @pytest.fixture
@@ -254,3 +273,22 @@ class TestFullPageTemplateRendering:
         assert "Enterprise Overview" in rendered
         assert "Master Corp" in rendered
         assert "Pending Invoices" in rendered
+
+    def test_backend_served_ui_view_mock_data(self, request_obj):
+        from sample_project.apps.views import BackendServerdUIView
+
+        view = BackendServerdUIView()
+        view.request = request_obj
+        context = view.get_context_data()
+
+        assert "page_label" in context
+        assert "sidebar_links" in context
+        assert len(context["sidebar_links"]) == 4
+        assert "customers" in context
+        assert len(context["customers"]) > 0
+
+        rendered = view.render_to_response(context)
+        rendered_content = rendered.rendered_content
+        assert "Enterprise Overview" in rendered_content
+        assert "Acme Innovations Ltd" in rendered_content
+        assert "Enterprise Dashboard" in rendered_content

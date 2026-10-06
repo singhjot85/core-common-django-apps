@@ -1,9 +1,12 @@
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import path
 
 from core.utils.admin.sites import public_admin_site
-from sample_project.apps.views import CoreSampleTemplateView
+from sample_project.apps.views import BackendServerdUIView
 
 urlpatterns = [
     path("admin/", public_admin_site.urls),
-    path("", CoreSampleTemplateView.as_view(), name="dashboard"),
+    path("", BackendServerdUIView.as_view(), name="dashboard"),
 ]
+
+urlpatterns += staticfiles_urlpatterns()

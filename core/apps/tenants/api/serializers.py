@@ -6,7 +6,7 @@ class TenantContactInfoSerializer(ReadOnlyModelSerializer):
 
     class Meta:
         model = TenantContactInfo
-        fields = ["order", "contact_type", "tenant", "value"]
+        fields = ["order", "contact_type", "tenant", "contact_info"]
 
 
 class TenantSerializer(ReadOnlyModelSerializer):

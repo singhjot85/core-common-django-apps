@@ -94,18 +94,18 @@ db-destroy: docker-destroy-database
 docker-django-makemigrations:
 	@echo "⌛ Making migrations in App: ➡️[${APP_LABEL}]...\n"
 	@echo "⚠️ If this was not intended use command with APP_LABEL= flag"
-	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py makemigrations ${APP_LABEL}
+	${TEMP_DJANGO_CONTAINER} python sample_project/manage.py makemigrations ${APP_LABEL}
 mm: docker-django-makemigrations
 
 docker-django-migrate:
 	@echo "⌛ Migrating Schema's now...\n"
-	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py migrate
+	${TEMP_DJANGO_CONTAINER} python sample_project/manage.py migrate
 m: docker-django-migrate
 
 docker-django-makemigrations-empty:
 	@echo "⌛ Making an empty migration in App: ➡️[${APP_LABEL}] with Name: ➡️[${EMN}]...\n"
 	@echo "⚠️ If this was not intended use command with 'APP_LABEL=' or 'emn=' flags"
-	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py makemigrations --empty ${APP_LABEL} --name ${EMN}
+	${TEMP_DJANGO_CONTAINER} python sample_project/manage.py makemigrations --empty ${APP_LABEL} --name ${EMN}
 mme: docker-django-makemigrations-empty
 
 

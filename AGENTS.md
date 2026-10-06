@@ -166,7 +166,7 @@ When adding or extending REST API endpoints for an app, adhere to the standard m
 - **Component Macro Design**: Implement UI elements as reusable Jinja2 `{% macro %}` components with explicit default arguments, `extra_classes`, and `caller()` slots.
 - **Namespacing**: Core layout/components reside in `core/templates/core/`. Domain app templates reside in `core/apps/<app>/templates/<app>/`. Never create un-namespaced root templates.
 - **Design Tokens (CSS Variables)**: Never hardcode colors, spacing, or typography. Reference tokens in `variables.css` (`var(--color-primary)`, `var(--spacing-md)`) to preserve multi-tenant white-labeling capability.
-- **Lightweight Interactivity**: Utilize vanilla JS / fetch wrappers calling existing DRF REST endpoints with CSRF tokens. Avoid heavy client-side build steps in core packages.
+- **Lightweight Interactivity & Zero Inline JS**: Utilize centralized `Core` helpers in `core.js` and declarative data attributes (`data-sidebar-toggle`, `data-sidebar-mobile-toggle`, `data-modal-target`, `data-alert-dismiss`). **Never** write inline JavaScript (`onclick="..."`, ad-hoc DOM queries) inside Jinja2 templates or macro components.
 
 ## 5. Documentation Maintenance Standards
 

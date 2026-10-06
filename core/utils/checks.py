@@ -3,6 +3,8 @@ Runtime checks to validate and generate runtime settings
 """
 
 from django.conf import settings
+from django.db import connection
+from django_tenants.utils import get_public_schema_name
 
 
 def is_multi_tenant():
@@ -17,3 +19,10 @@ def is_production():
     Check if current env is production.
     """
     return not settings.DEBUG and settings.DJANGO_ENV == "production"
+
+
+def is_public():
+    """
+    Check if current schema is public schema
+    """
+    return connection.schema_name == get_public_schema_name()
