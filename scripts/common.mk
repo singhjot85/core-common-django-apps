@@ -6,6 +6,9 @@ DEBUGPY_YAML_PATH ?= $(dir $(DEV_YAML_PATH))compose.debugpy.yaml
 # Common Variables
 COMPOSE_YAML ?= $(DEV_YAML_PATH)
 DJANGO_SERVICE ?= django
+CACHE_SERVICE ?= cache
+BROKER_SERVICE ?= broker
+TEST_DIR ?= core/tests
 TEST_DIR ?= $(or $(DIR),core/tests)
 TEST_FILTER ?=
 CMD ?= 		# Generic Variable to be used as override for commands
@@ -16,6 +19,14 @@ TEMP_DJANGO_CONTAINER = docker compose --env-file ./.env -p $(PROJECT_NAME) -f $
 DJANGO_CONTAINER_COMMAND ?= docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(DJANGO_SERVICE)
 DEBUGPY_COMPOSE_CMD ?= docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(DEV_YAML_PATH) -f $(DEBUGPY_YAML_PATH)
 
+CACHE_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(CACHE_SERVICE)
+BROKER_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(BROKER_SERVICE)
+
+# Import the envoiurnment variables
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
 
 # --------------------------
 # Development Targets
@@ -131,7 +142,7 @@ td: docker-django-pytest-debug
 # --------------------------
 # 	Shells
 # --------------------------
-.PHONY: bash, s, sp, ts, tsp, tsd
+.PHONY: bash, s, sp, ts, tsp, tsd, broker-cli, cache-cli
 
 docker-django-bash:
 	@echo "⌛ Starting bash in Django container...\n"
@@ -147,6 +158,16 @@ docker-django-shell-plus:
 	@echo "⌛ Launching Django shell-plus...\n"
 	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py shell_plus --ipython
 sp: docker-django-shell-plus
+
+docker-cache-cli:
+	@echo "⌛ Launching redis-cli for cache service ${CACHE_SERVICE}...\n"
+	${CACHE_CONTAINER_COMMAND} redis-cli -p ${CACHE_PORT}
+cache-cli: docker-cache-cli
+
+docker-broker-cli:
+	@echo "⌛ Launching redis-cli for cache service ${CACHE_SERVICE}...\n"
+	${BROKER_CONTAINER_COMMAND} redis-cli -p ${BROKER_PORT}
+broker-cli: docker-broker-cli
 
 
 # --------------------------

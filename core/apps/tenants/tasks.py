@@ -30,6 +30,10 @@ def provision_tenant_schema(self, tenant_id: str):
         LOGGER.error(f"Tenant {tenant_id} not found.")
         return
 
+    if tenant.status == TenantStatus.READY:
+        LOGGER.info(f"Tenant {tenant.schema_name} is already provisioned and READY.")
+        return
+
     try:
         LOGGER.info(f"Starting schema creation for tenant: {tenant.schema_name}")
 
@@ -38,14 +42,12 @@ def provision_tenant_schema(self, tenant_id: str):
         tenant.create_schema(check_if_exists=True, sync_schema=True, verbosity=1)
 
         # 3. Mark tenant as READY
-        tenant.status = TenantStatus.READY
-        tenant.save(update_fields=["status"])
+        TenantModel.objects.filter(id=tenant.id).update(status=TenantStatus.READY)
         LOGGER.info(f"Tenant {tenant.schema_name} provisioned successfully.")
 
     except Exception as exc:
         LOGGER.exception(
             f"Failed to migrate schema for tenant {tenant.schema_name}: {exc}"
         )
-        tenant.status = TenantStatus.FAILED
-        tenant.save(update_fields=["status"])
+        TenantModel.objects.filter(id=tenant.id).update(status=TenantStatus.FAILED)
         raise exc
