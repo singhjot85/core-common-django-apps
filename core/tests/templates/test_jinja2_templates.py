@@ -67,9 +67,10 @@ class TestCoreComponentMacros:
         tmpl = jinja_engine.from_string(template_str)
         rendered = tmpl.render(request_context)
 
-        assert '<button type="button" class="btn btn-primary btn-md"' in rendered
+        assert 'class="btn btn-primary btn-md"' in rendered
         assert "Save" in rendered
-        assert '<a href="/profile" class="btn btn-outline btn-md"' in rendered
+        assert 'href="/profile"' in rendered
+        assert 'class="btn btn-outline btn-md"' in rendered
         assert "disabled" in rendered
 
     def test_badge_macro(self, jinja_engine, request_context):

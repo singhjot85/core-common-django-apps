@@ -61,9 +61,17 @@ repos:
   - repo: https://github.com/djlint/djLint
     rev: v1.36.4
     hooks:
+      - id: djlint-reformat-jinja
+        name: djLint Formatter (Jinja)
+        types_or: [html, jinja]
+        args: ["--profile=jinja"]
+      - id: djlint-jinja
+        name: djLint Linter (Jinja)
       - id: djlint-reformat-django
+        name: djLint Re-Formatter (Django)
         exclude: '^frontend/index\.html$'
       - id: djlint-django
+        name: djLint Linter (Django)
         exclude: '^frontend/index\.html$'
 
   # Check for any secrete leak(s) inside repo

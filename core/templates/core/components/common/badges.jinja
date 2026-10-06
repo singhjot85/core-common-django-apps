@@ -1,8 +1,8 @@
 {# Badges Macro Component #}
-
 {% macro badge(text=None, variant="primary", extra_classes="") %}
-  <span class="badge badge-{{ variant }}{% if extra_classes %} {{ extra_classes }}{% endif %}" {{ kwargs|xmlattr }}>
-    {% if text %}{{ text }}{% endif %}
-    {% if caller %}{{ caller() }}{% endif %}
-  </span>
+    <span class="badge badge-{{ variant }}{% if extra_classes %} {{ extra_classes }}{% endif %}"
+          {{ kwargs|xmlattr }}>
+        {% if text %}{{ text }}{% endif %}
+        {% if caller %}{{ caller() }}{% endif %}
+    </span>
 {% endmacro %}
