@@ -4,49 +4,60 @@
  */
 
 :root {
-  /* Brand / Primary Palette */
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-active: #1e40af;
-  --color-primary-subtle: #eff6ff;
+  /* ==========================================================================
+     Antigravity / Gemini Design Tokens & Palette
+     ========================================================================== */
+
+  /* Primary Accent (Gemini Electric Sky: #0284C7 light / #38BDF8 dark) */
+  --color-primary: #0284c7;
+  --color-primary-hover: #0369a1;
+  --color-primary-active: #075985;
+  --color-primary-subtle: rgba(2, 132, 199, 0.12);
   --color-primary-contrast: #ffffff;
 
-  /* Secondary / Neutral Palette */
+  /* Secondary Palette (Subtle Neutral Slate / Dark Gray - High Visibility) */
   --color-secondary: #475569;
   --color-secondary-hover: #334155;
   --color-secondary-active: #1e293b;
-  --color-secondary-subtle: #f1f5f9;
+  --color-secondary-subtle: rgba(71, 85, 105, 0.12);
   --color-secondary-contrast: #ffffff;
 
+  --color-accent: #0284c7;
+  --color-accent-hover: #0369a1;
+  --color-accent-subtle: rgba(2, 132, 199, 0.12);
+  --color-accent-contrast: #ffffff;
+
   /* Semantic Feedback Colors */
-  --color-success: #16a34a;
-  --color-success-subtle: #f0fdf4;
+  --color-success: #059669;
+  --color-success-hover: #047857;
+  --color-success-subtle: rgba(5, 150, 105, 0.12);
   --color-success-contrast: #ffffff;
 
   --color-warning: #d97706;
-  --color-warning-subtle: #fffbeb;
+  --color-warning-hover: #b45309;
+  --color-warning-subtle: rgba(217, 119, 6, 0.12);
   --color-warning-contrast: #ffffff;
 
-  --color-danger: #dc2626;
-  --color-danger-hover: #b91c1c;
-  --color-danger-subtle: #fef2f2;
+  --color-danger: #e11d48;
+  --color-danger-hover: #be123c;
+  --color-danger-subtle: rgba(225, 29, 72, 0.12);
   --color-danger-contrast: #ffffff;
 
   --color-info: #0284c7;
-  --color-info-subtle: #f0f9ff;
+  --color-info-subtle: rgba(2, 132, 199, 0.12);
   --color-info-contrast: #ffffff;
 
-  /* Surfaces & Backgrounds */
+  /* Surfaces & Backgrounds (Light Theme) */
   --color-bg: #f8fafc;
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #f1f5f9;
-  --color-surface-overlay: rgba(15, 23, 42, 0.6);
+  --color-surface-overlay: rgba(15, 23, 42, 0.65);
 
   /* Borders & Outlines */
   --color-border: #e2e8f0;
   --color-border-hover: #cbd5e1;
-  --color-border-focus: #2563eb;
+  --color-border-focus: #38bdf8;
   --color-divider: #f1f5f9;
 
   /* Text Colors */
@@ -108,4 +119,138 @@
   --sidebar-collapsed-width: 68px;
   --navbar-height: 64px;
   --container-max-width: 1280px;
+}
+
+/* ==========================================================================
+   Antigravity / Gemini Dark Theme Tokens
+   (Bright and sharp dark with subtle smoothness)
+   ========================================================================== */
+[data-theme="dark"] {
+  /* Midnight Obsidian Canvas: #0B0F17 */
+  --color-bg: #0b0f17;
+
+  /* Dark Slate-Indigo Surfaces */
+  --color-surface: #131926;
+  --color-surface-raised: #1b2234;
+  --color-surface-sunken: #080c14;
+  --color-surface-overlay: rgba(7, 10, 18, 0.85);
+
+  /* Crisp Frosted Hairline Borders */
+  --color-border: #232d42;
+  --color-border-hover: #3b4b6d;
+  --color-border-focus: #38bdf8;
+  --color-divider: #182030;
+
+  /* Sharp High-Contrast Typography */
+  --color-text: #f0f6fc;
+  --color-text-muted: #94a3b8;
+  --color-text-subtle: #64748b;
+  --color-text-inverse: #0b0f17;
+
+  /* Gemini Electric Sky (Sharp Main CTA / Active Link) */
+  --color-primary: #38bdf8;
+  --color-primary-hover: #7dd3fc;
+  --color-primary-active: #0ea5e9;
+  --color-primary-subtle: rgba(56, 189, 248, 0.15);
+  --color-primary-contrast: #0b0f17;
+
+  /* Secondary Palette (Subtle Luminous Slate Gray - High Visibility) */
+  --color-secondary: #94a3b8;
+  --color-secondary-hover: #cbd5e1;
+  --color-secondary-active: #e2e8f0;
+  --color-secondary-subtle: rgba(148, 163, 184, 0.16);
+  --color-secondary-contrast: #0b0f17;
+
+  --color-accent: #38bdf8;
+  --color-accent-hover: #7dd3fc;
+  --color-accent-subtle: rgba(56, 189, 248, 0.15);
+  --color-accent-contrast: #0b0f17;
+
+  /* Bright & Sharp Semantic Colors */
+  --color-success: #10b981;
+  --color-success-hover: #34d399;
+  --color-success-subtle: rgba(16, 185, 129, 0.15);
+  --color-success-contrast: #0b0f17;
+
+  --color-warning: #f59e0b;
+  --color-warning-hover: #fbbf24;
+  --color-warning-subtle: rgba(245, 158, 11, 0.15);
+  --color-warning-contrast: #0b0f17;
+
+  --color-danger: #f43f5e;
+  --color-danger-hover: #fb7185;
+  --color-danger-subtle: rgba(244, 63, 94, 0.15);
+  --color-danger-contrast: #ffffff;
+
+  --color-info: #38bdf8;
+  --color-info-subtle: rgba(56, 189, 248, 0.15);
+  --color-info-contrast: #0b0f17;
+
+  /* Smooth Glowing Ambient Elevations */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --shadow-md: 0 4px 16px -2px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-lg: 0 10px 30px -4px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-xl: 0 20px 40px -6px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #0b0f17;
+
+    --color-surface: #131926;
+    --color-surface-raised: #1b2234;
+    --color-surface-sunken: #080c14;
+    --color-surface-overlay: rgba(7, 10, 18, 0.85);
+
+    --color-border: #232d42;
+    --color-border-hover: #3b4b6d;
+    --color-border-focus: #38bdf8;
+    --color-divider: #182030;
+
+    --color-text: #f0f6fc;
+    --color-text-muted: #94a3b8;
+    --color-text-subtle: #64748b;
+    --color-text-inverse: #0b0f17;
+
+    --color-primary: #38bdf8;
+    --color-primary-hover: #7dd3fc;
+    --color-primary-active: #0ea5e9;
+    --color-primary-subtle: rgba(56, 189, 248, 0.15);
+    --color-primary-contrast: #0b0f17;
+
+    --color-secondary: #94a3b8;
+    --color-secondary-hover: #cbd5e1;
+    --color-secondary-active: #e2e8f0;
+    --color-secondary-subtle: rgba(148, 163, 184, 0.16);
+    --color-secondary-contrast: #0b0f17;
+
+    --color-accent: #38bdf8;
+    --color-accent-hover: #7dd3fc;
+    --color-accent-subtle: rgba(56, 189, 248, 0.15);
+    --color-accent-contrast: #0b0f17;
+
+    --color-success: #10b981;
+    --color-success-hover: #34d399;
+    --color-success-subtle: rgba(16, 185, 129, 0.15);
+    --color-success-contrast: #0b0f17;
+
+    --color-warning: #f59e0b;
+    --color-warning-hover: #fbbf24;
+    --color-warning-subtle: rgba(245, 158, 11, 0.15);
+    --color-warning-contrast: #0b0f17;
+
+    --color-danger: #f43f5e;
+    --color-danger-hover: #fb7185;
+    --color-danger-subtle: rgba(244, 63, 94, 0.15);
+    --color-danger-contrast: #ffffff;
+
+    --color-info: #38bdf8;
+    --color-info-subtle: rgba(56, 189, 248, 0.15);
+    --color-info-contrast: #0b0f17;
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.03);
+    --shadow-md: 0 4px 16px -2px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    --shadow-lg: 0 10px 30px -4px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.07);
+    --shadow-xl: 0 20px 40px -6px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.09);
+  }
 }
