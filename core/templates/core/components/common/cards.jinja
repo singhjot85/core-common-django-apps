@@ -1,42 +1,30 @@
 {# Cards Macro Component #}
-
 {% macro card(title=None, subtitle=None, header_actions=None, footer_content=None, extra_classes="") %}
-  <div class="card{% if extra_classes %} {{ extra_classes }}{% endif %}" {{ kwargs|xmlattr }}>
-    {% if title or header_actions %}
-      <div class="card-header">
-        <div>
-          {% if title %}<h3 class="card-title">{{ title }}</h3>{% endif %}
-          {% if subtitle %}<p class="text-muted mb-0">{{ subtitle }}</p>{% endif %}
-        </div>
-        {% if header_actions %}
-          <div class="card-actions">
-            {{ header_actions|safe }}
-          </div>
+    <div class="card{% if extra_classes %} {{ extra_classes }}{% endif %}"
+         {{ kwargs|xmlattr }}>
+        {% if title or header_actions %}
+            <div class="card-header">
+                <div>
+                    {% if title %}<h3 class="card-title">{{ title }}</h3>{% endif %}
+                    {% if subtitle %}<p class="text-muted mb-0">{{ subtitle }}</p>{% endif %}
+                </div>
+                {% if header_actions %}<div class="card-actions">{{ header_actions|safe }}</div>{% endif %}
+            </div>
         {% endif %}
-      </div>
-    {% endif %}
-
-    <div class="card-body">
-      {% if caller %}{{ caller() }}{% endif %}
+        <div class="card-body">
+            {% if caller %}{{ caller() }}{% endif %}
+        </div>
+        {% if footer_content %}<div class="card-footer">{{ footer_content|safe }}</div>{% endif %}
     </div>
-
-    {% if footer_content %}
-      <div class="card-footer">
-        {{ footer_content|safe }}
-      </div>
-    {% endif %}
-  </div>
 {% endmacro %}
-
 {% macro stat_card(label, value, subtext=None, icon=None, extra_classes="") %}
-  <div class="stat-card{% if extra_classes %} {{ extra_classes }}{% endif %}" {{ kwargs|xmlattr }}>
-    <div class="flex items-center justify-between">
-      <span class="stat-card-label">{{ label }}</span>
-      {% if icon %}<span class="stat-card-icon">{{ icon|safe }}</span>{% endif %}
+    <div class="stat-card{% if extra_classes %} {{ extra_classes }}{% endif %}"
+         {{ kwargs|xmlattr }}>
+        <div class="flex items-center justify-between">
+            <span class="stat-card-label">{{ label }}</span>
+            {% if icon %}<span class="stat-card-icon">{{ icon|safe }}</span>{% endif %}
+        </div>
+        <div class="stat-card-value">{{ value }}</div>
+        {% if subtext %}<div class="stat-card-subtext">{{ subtext }}</div>{% endif %}
     </div>
-    <div class="stat-card-value">{{ value }}</div>
-    {% if subtext %}
-      <div class="stat-card-subtext">{{ subtext }}</div>
-    {% endif %}
-  </div>
 {% endmacro %}

@@ -5,51 +5,51 @@
 {% from "core/components/common/forms.jinja" import input, checkbox %}
 {% from "core/components/feedback/modals.jinja" import modal %}
 {% from "tenants/components/tenant_table.jinja" import tenant_table %}
-
-{% block title %}Organizations & Tenants | Core Framework{% endblock %}
-
+{% block title %}
+    Organizations & Tenants | Core Framework
+{% endblock title %}
 {% block content %}
-  <div class="tenants-page-header flex items-center justify-between mb-lg">
-    <div>
-      <h1>Organizations & Tenants</h1>
-      <p class="text-muted">Manage multi-tenant isolation, schemas, and workspace domains.</p>
+    <div class="tenants-page-header flex items-center justify-between mb-lg">
+        <div>
+            <h1>Organizations & Tenants</h1>
+            <p class="text-muted">Manage multi-tenant isolation, schemas, and workspace domains.</p>
+        </div>
+        <div class="flex gap-sm">
+            <button type="button"
+                    class="btn btn-primary"
+                    data-modal-target="create_tenant_modal">
+                {{ icon("add", size=18) }}
+                <span>Add Organization</span>
+            </button>
+        </div>
     </div>
-    <div class="flex gap-sm">
-      <button type="button" class="btn btn-primary" data-modal-target="create_tenant_modal">
-        {{ icon("add", size=18) }}
-        <span>Add Organization</span>
-      </button>
+    <!-- Key Metrics -->
+    <div class="grid grid-cols-3 gap-md mb-lg">
+        {{ stat_card("Total Tenants", total_tenants or (tenants|length if tenants else 0) , "All registered schemas", icon=icon("domain", size=24)) }}
+        {{ stat_card("Active Tenants", active_tenants or 0, "Healthy and provisioned", icon=icon("check_circle", size=24) ) }}
+        {{ stat_card("Total Domains", total_domains or 0, "Mapped custom domains", icon=icon("language", size=24) ) }}
     </div>
-  </div>
-
-  <!-- Key Metrics -->
-  <div class="grid grid-cols-3 gap-md mb-lg">
-    {{ stat_card("Total Tenants", total_tenants or (tenants|length if tenants else 0), "All registered schemas", icon=icon("domain", size=24)) }}
-    {{ stat_card("Active Tenants", active_tenants or 0, "Healthy and provisioned", icon=icon("check_circle", size=24)) }}
-    {{ stat_card("Total Domains", total_domains or 0, "Mapped custom domains", icon=icon("language", size=24)) }}
-  </div>
-
-  <!-- Tenant Table -->
-  <div class="mb-lg">
-    <div class="flex items-center justify-between mb-sm">
-      <h2>Tenant Schemas</h2>
+    <!-- Tenant Table -->
+    <div class="mb-lg">
+        <div class="flex items-center justify-between mb-sm">
+            <h2>Tenant Schemas</h2>
+        </div>
+        {{ tenant_table(tenants=tenants) }}
     </div>
-    {{ tenant_table(tenants=tenants) }}
-  </div>
-
-  <!-- Create Tenant Modal -->
-  {% set modal_footer %}
-    <button type="button" class="btn btn-outline" data-modal-close="create_tenant_modal">Cancel</button>
-    <button type="submit" form="create_tenant_form" class="btn btn-primary">Provision Tenant</button>
-  {% endset %}
-
-  {% call modal("create_tenant_modal", title="Provision New Organization", footer_content=modal_footer) %}
-    <form id="create_tenant_form" method="POST" action="">
-      {{ csrf_input }}
-      {{ input("label", label="Organization Name", placeholder="Acme Global Inc.", required=True) }}
-      {{ input("schema_name", label="Database Schema Identifier", placeholder="acme_prod", hint="Must be lowercase letters, numbers, or underscores.", required=True) }}
-      {{ input("domain_name", label="Primary Domain", placeholder="acme.example.com", required=True) }}
-      {{ checkbox("is_active", label="Mark Tenant as Active immediately", checked=True) }}
-    </form>
-  {% endcall %}
-{% endblock %}
+    <!-- Create Tenant Modal -->
+    {% set modal_footer %}
+        <button type="button"
+                class="btn btn-outline"
+                data-modal-close="create_tenant_modal">Cancel</button>
+        <button type="submit" form="create_tenant_form" class="btn btn-primary">Provision Tenant</button>
+    {% endset %}
+    {% call modal("create_tenant_modal", title="Provision New Organization", footer_content=modal_footer) %}
+        <form id="create_tenant_form" method="post" action="">
+            {{ csrf_input }}
+            {{ input("label", label="Organization Name", placeholder="Acme Global Inc.", required=True) }}
+            {{ input("schema_name", label="Database Schema Identifier", placeholder="acme_prod", hint="Must be lowercase letters, numbers, or underscores.", required=True) }}
+            {{ input("domain_name", label="Primary Domain", placeholder="acme.example.com", required=True) }}
+            {{ checkbox("is_active", label="Mark Tenant as Active immediately", checked=True) }}
+        </form>
+    {% endcall %}
+{% endblock content %}

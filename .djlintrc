@@ -1,0 +1,9 @@
+{
+    "profile": "jinja",
+    "indent": 4,
+    "max_line_length": 120,
+    "ignore": "H021,T028,J018",
+    "blank_line_after_tag": "load,extends,include",
+    "format_css": true,
+    "format_js": true
+}
