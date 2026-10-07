@@ -2,16 +2,17 @@
 {% from "core/components/common/icons.jinja" import icon %}
 <header class="app-header">
     <div class="flex items-center gap-md">
-        <button type="button"
-                class="btn btn-sm btn-outline mobile-menu-toggle"
-                data-sidebar-mobile-toggle
-                aria-label="Toggle mobile navigation">{{ icon("menu", size=20) }}</button>
+        {#
+            TODO: figure out a better way to implement, mobile view
+            <button type="button" class="btn btn-sm btn-outline mobile-menu-toggle" data-sidebar-mobile-toggle aria-label="Toggle mobile navigation">{{ icon("menu", size=20) }}
+            </button>
+        #}
         <div class="brand-title">
-            <strong>
-                {% block page_label %}
-                    {{ page_label or PROJECT_LABEL or 'Core Application' }}
-                {% endblock page_label %}
-            </strong>
+            {% block page_label %}
+                <strong>{{ page_label or PROJECT_LABEL or "Tenant View" }}</strong>
+                {# AGENT: Add a vertical saparator bar/dot/somesort of seperator here #}
+                <span class="text-muted font-size-xs">{{ page_label_secondary or "tenant-ref-id" }}</span>
+            {% endblock page_label %}
         </div>
     </div>
     <div class="flex items-center gap-md">
@@ -30,7 +31,8 @@
             {% if request and request.user and request.user.is_authenticated %}
                 <div class="flex items-center gap-xs text-muted font-size-sm">
                     {{ icon("account_circle", size=18) }}
-                    <span>{{ request.user.get_username() if request.user.get_username is callable else request.user.username }}</span>
+                    <span>{{ request.user.get_username() if request.user.get_username is callable else request.user.username
+                    }}</span>
                 </div>
             {% endif %}
         {% endblock header_user %}
