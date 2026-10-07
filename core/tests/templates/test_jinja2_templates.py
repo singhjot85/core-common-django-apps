@@ -121,6 +121,32 @@ class TestCoreComponentMacros:
         assert "Card Subtitle" in rendered
         assert "<p>Card body content</p>" in rendered
 
+    def test_gauge_and_service_card_and_banner_macros(
+        self, jinja_engine, request_context
+    ):
+        template_str = """
+        {% from "core/components/common/cards.jinja" import gauge_card, service_card, status_banner, telemetry_strip %}
+        {{ gauge_card("Host CPU", "24%", status="Optimal", percent=24, details_left="8 vCPUs", details_right="Load Avg: 0.42") }}
+        {{ service_card("Redis Cache", status="Connected", metrics=[{"label": "Hit Rate", "value": "98.4%"}], action_label="Flush Cache") }}
+        {% call status_banner(title="All Systems Operational", badge_text="100% SLA") %}
+            <button type="button">Sync</button>
+        {% endcall %}
+        {{ telemetry_strip(title="Search Path: acme", subtitle="Isolation Hash: 0x123", status_badge="READY") }}
+        """
+        tmpl = jinja_engine.from_string(template_str)
+        rendered = tmpl.render(request_context)
+
+        assert "Host CPU" in rendered
+        assert "24%" in rendered
+        assert "8 vCPUs" in rendered
+        assert "Redis Cache" in rendered
+        assert "Hit Rate" in rendered
+        assert "98.4%" in rendered
+        assert "All Systems Operational" in rendered
+        assert "100% SLA" in rendered
+        assert "Search Path: acme" in rendered
+        assert "READY" in rendered
+
     def test_table_macro(self, jinja_engine, request_context):
         template_str = """
         {% from "core/components/common/tables.jinja" import table %}
@@ -287,12 +313,23 @@ class TestFullPageTemplateRendering:
         assert len(context["sidebar_links"]) == 4
         assert "customers" in context
         assert len(context["customers"]) > 0
+        assert "system_gauges" in context
+        assert "operational_services" in context
+        assert "worker_nodes" in context
 
-        rendered = view.render_to_response(context)
-        rendered_content = rendered.rendered_content
-        assert "Enterprise Overview" in rendered_content
-        assert "Acme Innovations Ltd" in rendered_content
-        assert "Enterprise Dashboard" in rendered_content
+        # Public Dashboard rendering
+        rendered_public = view.render_to_response(context).rendered_content
+        assert "All Systems Operational" in rendered_public
+        assert "System Resource Utilization" in rendered_public
+        assert "Public Platform Worker Pool" in rendered_public
+
+        # Tenant Dashboard rendering
+        rendered_tenant = render_to_string(
+            "dashboard.jinja", context, request=request_obj
+        )
+        assert "Enterprise Overview" in rendered_tenant
+        assert "Acme Innovations Ltd" in rendered_tenant
+        assert "Recent Customers" in rendered_tenant
 
     def test_base_template_theme_toggle_and_script(self, request_obj):
         context = {"request": request_obj}
