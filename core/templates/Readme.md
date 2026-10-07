@@ -54,7 +54,7 @@ core/
 │           ├── common/
 │           │   ├── icons.jinja    # Google Material Symbols icon macro
 │           │   ├── buttons.jinja  # Button, button group, icon button macros
-│           │   ├── cards.jinja    # Container cards, stat/metric cards
+│           │   ├── cards.jinja    # Container cards, stat/metric cards, gauge & service cards, banners, telemetry strips
 │           │   ├── tables.jinja   # Data table, row actions, pagination
 │           │   ├── badges.jinja   # Status pill, tag badges
 │           │   └── forms.jinja    # Input, select, textarea, checkbox, form group

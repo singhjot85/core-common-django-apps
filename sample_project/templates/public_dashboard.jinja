@@ -1,30 +1,101 @@
 {% extends "core/base.jinja" %}
 
-{% from "core/components/common/cards.jinja" import stat_card %}
+{% from "core/components/common/cards.jinja" import stat_card, card, gauge_card, service_card, status_banner, telemetry_strip %}
 {% from "core/components/common/buttons.jinja" import button %}
 {% from "core/components/common/icons.jinja" import icon %}
-{% from "crm/components/customer_table.jinja" import customer_table %}
-{% from "tenants/components/tenant_card.jinja" import tenant_card %}
-{% if organization %}
-    {% set page_label = (organization.name or page_label) %}
-    {% set page_label_secondary = (page_label_secondary or organization.public_id) %}
-{% endif %}
+{% from "core/components/common/badges.jinja" import badge %}
+{% from "core/components/common/tables.jinja" import table %}
 {% block title %}
-    {{ page_title or organization_name or "Title" }}
+    {{ page_label or 'Tenant Console - Public Context' }} | Sample Project
 {% endblock title %}
 {% block content %}
+    <!-- Platform Status Banner -->
     <div class="mb-lg">
-        <h1>{{ page_title or "Overview" }}</h1>
+        {% call status_banner(
+            title="All Systems Operational",
+            description="Django Core multi-tenant router operating normally across 24 isolated shard schemas.",
+            badge_text="100% SLA",
+            badge_variant="success"
+            ) %}
+            {{ button(label="Sync Schemas", icon=icon("refresh", size=18) , variant="outline", size="sm") }}
+            {{ button(label="Console CLI", icon=icon("terminal", size=18) , variant="primary", size="sm") }}
+        {% endcall %}
     </div>
-    <div class="grid grid-cols-3 gap-md mb-lg">
-        {{ stat_card("Active Tenants", active_tenants or 1, icon=icon("domain", size=24) ) }}
-        {{ stat_card("Total Customers", total_customers or (customers|length if customers else 0) , icon=icon("groups", size=24)) }}
-        {{ stat_card("Pending Invoices", pending_invoices or 0, icon=icon("receipt_long", size=24) ) }}
-    </div>
+    <!-- System Resource Utilization Gauges (3-Column Grid) -->
     <div class="mb-lg">
         <div class="mb-sm">
-            <h2>Recent Customers</h2>
+            <h2>System Resource Utilization</h2>
         </div>
-        {{ customer_table(customers=customers) }}
+        <div class="grid grid-cols-3 gap-md">
+            {% for gauge in system_gauges %}
+                {{ gauge_card(label=gauge.label,
+                                value=gauge.value,
+                                status=gauge.status,
+                                percent=gauge.percent,
+                                details_left=gauge.details_left,
+                                details_right=gauge.details_right,
+                                icon=icon(gauge.icon, size=20) ,
+                progress_variant=gauge.progress_variant
+                ) }}
+            {% endfor %}
+        </div>
+    </div>
+    <!-- Operational Service Cards (Redis, Celery, DB Pool) -->
+    <div class="mb-lg">
+        <div class="mb-sm">
+            <h2>Core Infrastructure Services</h2>
+        </div>
+        <div class="grid grid-cols-3 gap-md">
+            {% for service in operational_services %}
+                {{ service_card(title=service.title,
+                                status=service.status,
+                                status_variant=service.status_variant,
+                                metrics=service.metrics,
+                                action_label=service.action_label,
+                                icon=icon(service.icon, size=20) )
+                }}
+            {% endfor %}
+        </div>
+    </div>
+    <!-- Real-Time Celery Worker Nodes Table -->
+    <div class="mb-lg">
+        <div class="flex items-center justify-between gap-sm mb-sm flex-wrap">
+            <div>
+                <h2>Public Platform Worker Pool</h2>
+                <p class="text-muted mb-0 font-size-xs">14 Celery execution instances serving background multi-tenant tasks</p>
+            </div>
+            <div class="flex items-center gap-sm">
+                {{ button(label="Worker Monitor", icon=icon("tune", size=18) , variant="outline", size="sm") }}
+            </div>
+        </div>
+        {% call table(headers=["NODE IDENTIFIER", "QUEUES BOUND", "CONCURRENCY", "PROCESSED", "STATUS", "ACTIONS"], striped=True, hover=True) %}
+            {% for worker in worker_nodes %}
+                <tr>
+                    <td>
+                        <div class="font-weight-semibold">{{ worker.node }}</div>
+                        <div class="text-muted font-size-xs font-family-mono">{{ worker.details }}</div>
+                    </td>
+                    <td>
+                        <span class="badge badge-info">{{ worker.queues }}</span>
+                    </td>
+                    <td class="font-family-mono font-size-sm">{{ worker.concurrency }}</td>
+                    <td class="font-family-mono font-size-sm">{{ worker.processed }}</td>
+                    <td>
+                        <span class="badge badge-{{ worker.status_variant }} flex items-center gap-xs">
+                            <span class="status-indicator-dot status-indicator-dot-sm"></span>
+                            {{ worker.status }}
+                        </span>
+                    </td>
+                    <td class="text-right">{{ button(label="Ping", variant="outline", size="sm") }}</td>
+                </tr>
+            {% endfor %}
+        {% endcall %}
+    </div>
+    <!-- Public Context Telemetry Strip -->
+    <div class="mb-lg">
+        {{ telemetry_strip(title="Django Tenant Architecture v4.2.1 LTS",
+                subtitle="Public Root Context • All Systems Synchronized",
+                status_badge="SCHEMA: PUBLIC",
+                sync_status="SYNC OK") }}
     </div>
 {% endblock content %}
