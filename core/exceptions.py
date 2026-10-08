@@ -1,7 +1,5 @@
 from django.db import models
 
-from .content_masking import ContentMaskingUtils
-
 
 class InvalidTypeError(TypeError):
     """
@@ -41,6 +39,7 @@ class ObjectNotFound(Exception):
         return self.model.__name__
 
     def _build_message(self):
+        from .utils.error_handling.content_masking import ContentMaskingUtils
 
         model_name = self._get_model_name()
 
@@ -65,7 +64,13 @@ class CycleError(ValueError):
 class SeederException(Exception):
     """General Exception raised when from seeder."""
 
-    pass
+    def __init__(self, seeder_name=None, message=None, *args):
+        if seeder_name:
+            seeder_name = args[0]
+            message = f"[{seeder_name}] Exception in seeding: {message}"
+            super().__init__(message, *args)
+        else:
+            super().__init__(*args)
 
 
 class ObjectCreatorException(Exception):

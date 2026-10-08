@@ -60,7 +60,7 @@ class BaseDescriptor:
         """
         Validate if setting is formed correctly
         """
-        from core.utils.error_handling.exceptions import InvalidTypeError
+        from core.exceptions import InvalidTypeError
 
         if value is None:
             value = self.default
@@ -188,7 +188,7 @@ class SettingsMeta(type):
             }
         }
         """
-        from core.utils.error_handling.exceptions import InvalidTypeError
+        from core.exceptions import InvalidTypeError
 
         # Create the class
         cls: type[BaseSettings] = super().__new__(mcs, name, bases, attrs)
