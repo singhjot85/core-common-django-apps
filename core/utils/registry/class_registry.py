@@ -1,4 +1,5 @@
 import typing
+from functools import cached_property
 
 from core.exceptions import RegistryException
 from core.utils.registry.base import BaseRegistry
@@ -55,6 +56,11 @@ class ClassRegistry(BaseRegistry):
             return self._registry
 
         return None
+
+    @cached_property
+    def values(self):
+        """Get list of values inside the registry"""
+        return self._registry.values()
 
     def get(self, key: str) -> typing.Any:
         """
