@@ -1,5 +1,5 @@
 [project]
-name = "core-apps-django"
+name = "core-common-django-apps"
 version = "0.1.0"
 description = "Core django apps"
 requires-python = ">=3.12,<4"
