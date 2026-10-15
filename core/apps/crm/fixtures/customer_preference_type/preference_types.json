@@ -1,0 +1,23 @@
+[
+    {
+        "code": "newsletter",
+        "label": "Newsletter Subscription",
+        "data_type": "bool",
+        "default_value": false,
+        "values": []
+    },
+    {
+        "code": "dark_mode",
+        "label": "Dark Mode",
+        "data_type": "bool",
+        "default_value": false,
+        "values": []
+    },
+    {
+        "code": "language",
+        "label": "Preferred Language",
+        "data_type": "choices",
+        "default_value": "en",
+        "values": ["en", "hi", "es", "fr"]
+    }
+]

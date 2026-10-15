@@ -1,0 +1,46 @@
+[
+    {
+        "tenant_schema": "public",
+        "linked_customer": "Alice Public",
+        "address_line_1": "101 Main Street",
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "postal_code": "560001",
+        "country": "IN",
+        "address_type": "permanent",
+        "is_primary": true
+    },
+    {
+        "tenant_schema": "public",
+        "linked_customer": "Bob Public",
+        "address_line_1": "202 Park Avenue",
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "postal_code": "400001",
+        "country": "IN",
+        "address_type": "permanent",
+        "is_primary": true
+    },
+    {
+        "tenant_schema": "private",
+        "linked_customer": "Charlie Private",
+        "address_line_1": "303 Tech Park",
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "postal_code": "500001",
+        "country": "IN",
+        "address_type": "permanent",
+        "is_primary": true
+    },
+    {
+        "tenant_schema": "private",
+        "linked_customer": "Diana Private",
+        "address_line_1": "404 Silicon Valley",
+        "city": "Chennai",
+        "state": "Tamil Nadu",
+        "postal_code": "600001",
+        "country": "IN",
+        "address_type": "permanent",
+        "is_primary": true
+    }
+]

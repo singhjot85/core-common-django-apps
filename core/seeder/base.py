@@ -1,0 +1,300 @@
+from __future__ import annotations
+
+from django.db import DEFAULT_DB_ALIAS, models, transaction
+
+from core.exceptions import InvalidTypeError, SeederException
+from core.seeder.registry import fixture_registry, seeder_registry
+from core.utils.strings import camel_to_snake_case
+
+empty = object()
+
+
+class BaseMeta:
+    """
+    Base Meta Class for clear attributes and validations
+
+    Example:
+    >>> class SomeSeeder(BaseSeeder):
+    ...
+    ...     class Meta(BaseMeta):
+    ...         model = SomeModel
+    ...         depends_on = [User, Tenant]
+    ...         is_fixture = True
+    ...         relation_map = {
+    ...             "crated_by": UserSeeder,
+    ...             "current_tenant": TenantSeeder
+    ...         }
+    """
+
+    model: models.Model
+    fields: list
+    depends_on: list
+    is_fixture: bool
+    relation_map: dict[str, BaseSeeder]
+
+    def __init_subclass__(cls, **kwargs):
+        """
+        Validate any attribute here.
+        """
+        super().__init_subclass__(**kwargs)
+
+        seeder_name = cls.__qualname__.split(".")[0]
+
+        cls._validate_model(seeder_name)
+        cls._validate_fields(seeder_name)
+        cls._validate_depends_on(seeder_name)
+        cls._validate_relation_map()
+
+    @classmethod
+    def _validate_depends_on(cls, seeder_name):
+        """
+        Validate depends_on
+        """
+        depends_on = cls.depends_on
+        if not depends_on:
+            return
+
+        if not isinstance(depends_on, (list, tuple)):
+            raise InvalidTypeError(type=type(depends_on), expected=list)
+
+        for val in depends_on:
+            if not isinstance(val, models.Model):
+                SeederException(seeder_name, f"Invalid depends_on value: {val}")
+
+    @classmethod
+    def _validate_model(cls, seeder_name):
+        """
+        Validate model
+        """
+        if not cls.model:
+            raise SeederException(seeder_name, "Model not defined")
+
+        if not isinstance(models.Model):
+            raise TypeError(type(cls.model), models.Model)
+
+    @classmethod
+    def _validate_fields(cls, seeder_name):
+        """
+        Validate Fields
+        """
+        if not cls.fields:
+            raise SeederException(seeder_name, "Fields not defined for seeder")
+
+        if not isinstance(cls.fields, (list, tuple)):
+            raise InvalidTypeError(type(cls.fields), tuple)
+
+    @classmethod
+    def _validate_relation_map(cls):
+        """
+        Validate relation_map
+        """
+        if not cls.relation_map:
+            return
+
+        if not isinstance(cls.relation_map, dict):
+            raise InvalidTypeError(type(cls.relation_map), dict)
+
+        for val in cls.relation_map.keys():
+            if not isinstance(val, BaseSeeder):
+                raise InvalidTypeError(type(val), BaseSeeder)
+
+
+class BaseSeeder:
+    """
+    Base seeder class to be inherited by each seeder functionality
+    """
+
+    # Can be overriden on base classes
+    REGISTRY_KEY: str
+
+    # Only for type convention, do not override
+    _model: models.Model
+    _fields: list[str]
+    _relation_map: dict[str, type[BaseSeeder]]
+    _nonconcrete_relations: list[dict]
+
+    def __init_subclass__(cls, **kwargs):
+        """
+        Build out the seeder registry for each subclass using BaseSeeder
+        """
+        super().__init_subclass__(**kwargs)
+
+        try:
+            registry_key = getattr(cls, "REGISTRY_KEY", False) or camel_to_snake_case(
+                cls.__name__
+            )
+            # Register all seeders to a global registry
+            seeder_registry.register(cls, key=registry_key)
+
+            # Register fixture seeders to a seperate registry
+            if (meta := getattr(cls, "Meta", None)) and meta.is_fixture:
+                fixture_registry.register(cls, key=registry_key)
+
+        except Exception as e:
+            raise SeederException(cls.__name__, str(e)) from e
+
+    def __init__(self, find_seeder: bool = False):
+        """
+        Initialize variable's for given seeder instance.
+
+        Args:
+            find_seeder (bool): find seeder from global registry if not given.
+        """
+        self._meta: BaseMeta = getattr(self, "Meta", None)
+        if not self._meta:
+            raise SeederException(self.__class__.__name__, "Meta not defined")
+
+        self._model = getattr(self._meta, "model", None)
+        self._fields = getattr(self._meta, "fields", None)
+        self._relation_map = getattr(self._meta, "related_seeders", {})
+        self.pick_from_global_registry = find_seeder
+
+    @property
+    def seedable_fields(self):
+        """
+        Get the srializable fields, on this seeder
+        """
+        if hasattr(self, "_fields") and self._fields is not None:
+            return self._fields
+
+        return []
+
+    @classmethod
+    def is_inital_seeder(cls) -> bool:
+        """
+        Is Initial Seeder for a seeder chain.
+        """
+        meta = getattr(cls, "Meta", None)
+        if meta and getattr(meta, "initial", False):
+            return True
+
+        return False
+
+    @classmethod
+    def get_dependencies(cls) -> list:
+        """
+        Get all the dependencies for given seeder.
+        """
+        meta = getattr(cls, "Meta", None)
+        if meta and (depends_on := getattr(meta, "depends_on", False)):
+            return depends_on
+
+        return []
+
+    @classmethod
+    def get_seeder_from_registry(cls, model_name: str) -> type[BaseSeeder]:
+        """
+        Get seeder for given model_name from the registry
+        """
+        return seeder_registry.get(model_name)
+
+    def validate(self, data: dict):
+        """
+        Pre Seeding Validation hook, this executes before any object intitation takes place.
+        """
+        if not isinstance(data, dict):
+            raise InvalidTypeError(type=type(data), expected=dict)
+
+    def to_internal_value(self, field_name: str, field_val, model_instance):
+        """
+        Convert the json field to python internal value
+        """
+        if field_name not in self.seedable_fields:
+            return empty
+
+        field: models.Field = self._model._meta.get_field(field_name)
+
+        if field.concrete and not field.is_relation:
+            return field.clean(field_val, model_instance)
+
+        related_instance = self.seed_related_instance(field, field_val)
+        if field.many_to_many and not field.auto_created:
+            self._nonconcrete_relations.append(
+                {"accessor_name": field.name, "instance": related_instance}
+            )
+        elif (
+            field.one_to_many
+            or (
+                field.one_to_one and field.auto_created
+            )  # I think this needs to be handeled differently
+            or (field.many_to_many and field.auto_created)
+        ):
+            self._nonconcrete_relations.append(
+                {
+                    "accessor_name": field.get_accessor_name(),
+                    "instance": related_instance,
+                }
+            )
+        else:
+            return model_instance
+
+        return None
+
+    def get_related_model_name(self, field: models.ForeignObjectRel):
+        """
+        Get model name for given related field.
+        """
+        return field.model
+
+    def seed_related_instance(self, field: models.Field, data) -> models.Model:
+        """
+        Seed a related instance and get its instance
+        """
+        if not field.is_relation:
+            return None
+
+        field_name = field.name
+        if field_name in self._relation_map:
+            CustomSeeder = self._relation_map[field_name]
+            return CustomSeeder().seed(data)
+
+        if self.pick_from_global_registry:
+            model_name = self.get_related_model_name(field)
+            RegisteredSeeder = self.get_seeder_from_registry(model_name)
+            if RegisteredSeeder:
+                return RegisteredSeeder.seed(data)
+
+        return None
+
+    def set_field_value(self, field_name, field_value, model_instance):
+        """
+        Set field attribute to the model instance.
+        """
+        method_name = f"set_field_{field_name}"
+        if hasattr(self, method_name) and callable(getattr(self, method_name)):
+            return getattr(self, method_name)(model_instance, field_value)
+
+        return setattr(model_instance, field_name, field_value)
+
+    def seed(self, data: dict) -> models.Model:
+        """
+        Seed the data
+        """
+        instance = None
+        try:
+            validated_data: dict = self.validate(data)
+
+            with transaction.atomic(using=DEFAULT_DB_ALIAS):
+                instance = self._model()
+                for field, val in validated_data.items():
+                    field_value = self.to_internal_value(field, val, instance)
+                    if not field_value:
+                        continue
+
+                    self.set_field_value(field, val, instance)
+
+                # Set all the fields that are not directly on model
+                for nonconcrete_map in self._nonconcrete_relations:
+                    accessor_name = nonconcrete_map["accessor_name"]
+                    obj = nonconcrete_map["instance"]
+                    Manager = getattr(instance, accessor_name)
+                    Manager.add(obj)
+
+                # Make sure everythin persist in db
+                instance.save()
+        except Exception as e:
+            raise SeederException(
+                seeder_name=self.__class__.__name__, message=str(e)
+            ) from e
+
+        return instance

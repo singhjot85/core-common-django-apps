@@ -1,0 +1,13 @@
+[
+    {
+        "interface_type": "site",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "site_name": {"type": "string"},
+                "maintenance_mode": {"type": "boolean"}
+            },
+            "required": ["site_name"]
+        }
+    }
+]

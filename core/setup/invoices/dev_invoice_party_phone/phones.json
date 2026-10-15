@@ -1,0 +1,26 @@
+[
+    {
+        "tenant_schema": "public",
+        "linked_party": "Alice Public",
+        "phone": "+911234567890",
+        "phone_type": "primary"
+    },
+    {
+        "tenant_schema": "public",
+        "linked_party": "Bob Public",
+        "phone": "+911234567891",
+        "phone_type": "primary"
+    },
+    {
+        "tenant_schema": "private",
+        "linked_party": "Charlie Private",
+        "phone": "+911234567892",
+        "phone_type": "primary"
+    },
+    {
+        "tenant_schema": "private",
+        "linked_party": "Diana Private",
+        "phone": "+911234567893",
+        "phone_type": "primary"
+    }
+]

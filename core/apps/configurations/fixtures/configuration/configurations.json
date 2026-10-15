@@ -1,0 +1,10 @@
+[
+    {
+        "name": "Default Site Configuration",
+        "interface_type": "site",
+        "details": {
+            "site_name": "My SaaS Platform",
+            "maintenance_mode": false
+        }
+    }
+]
