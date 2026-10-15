@@ -67,3 +67,6 @@ markers = [
     "unit: marks tests for isolated functions",
     "celery: marks tests that involve celery tasks",
 ]
+
+[tool.poetry]
+name = "core-common-django-apps"
