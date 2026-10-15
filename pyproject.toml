@@ -70,7 +70,3 @@ markers = [
 
 [tool.poetry]
 name = "core-common-django-apps"
-packages = [
-    { include = "core-apps-django" },
-    { include = "core-common-django-apps" }
-]
