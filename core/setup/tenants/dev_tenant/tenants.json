@@ -1,0 +1,12 @@
+[
+    {
+        "schema_name": "public",
+        "label": "Public Tenant",
+        "is_active": true
+    },
+    {
+        "schema_name": "private",
+        "label": "Private Tenant",
+        "is_active": true
+    }
+]

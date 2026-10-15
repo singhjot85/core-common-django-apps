@@ -1,0 +1,30 @@
+[
+    {
+        "tenant_schema": "public",
+        "linked_customer": "Alice Public",
+        "email": "alice@public.localhost",
+        "email_type": "primary",
+        "is_primary": true
+    },
+    {
+        "tenant_schema": "public",
+        "linked_customer": "Bob Public",
+        "email": "bob@public.localhost",
+        "email_type": "primary",
+        "is_primary": true
+    },
+    {
+        "tenant_schema": "private",
+        "linked_customer": "Charlie Private",
+        "email": "charlie@private.localhost",
+        "email_type": "primary",
+        "is_primary": true
+    },
+    {
+        "tenant_schema": "private",
+        "linked_customer": "Diana Private",
+        "email": "diana@private.localhost",
+        "email_type": "primary",
+        "is_primary": true
+    }
+]

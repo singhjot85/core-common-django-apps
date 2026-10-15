@@ -1,0 +1,26 @@
+[
+    {
+        "tenant_schema": "public",
+        "linked_party": "Alice Public",
+        "email": "alice@public.localhost",
+        "email_type": "primary"
+    },
+    {
+        "tenant_schema": "public",
+        "linked_party": "Bob Public",
+        "email": "bob@public.localhost",
+        "email_type": "primary"
+    },
+    {
+        "tenant_schema": "private",
+        "linked_party": "Charlie Private",
+        "email": "charlie@private.localhost",
+        "email_type": "primary"
+    },
+    {
+        "tenant_schema": "private",
+        "linked_party": "Diana Private",
+        "email": "diana@private.localhost",
+        "email_type": "primary"
+    }
+]
