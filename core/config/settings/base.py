@@ -59,7 +59,7 @@ TENANT_APPS = DJANGO_TENANT_PRIVATE_APPS
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
 DATABASES = {
-    "default": {
+    DEAFULT_DATABASE: {
         "ENGINE": "django_tenants.postgresql_backend",
         "NAME": DATABASE_NAME,
         "USER": DATABASE_USER,
@@ -81,7 +81,7 @@ CACHE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_TIMEOUT", 60 * 20)  # 20 mins
 CACHE_LARGE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_LARGE_TIMEOUT", 60 * 60)  # 1 hour
 
 CACHES = {
-    "default": {
+    DEFAULT_CACHE_DATABASE: {
         "BACKEND": CACHE_BACKEND,
         "LOCATION": CACHE_URL,
         "OPTIONS": RESOLVED_CACHE_OPTIONS,
@@ -113,7 +113,7 @@ CELERY_RESULT_EXTENDED = True
 CELERY_DEFAULT_TASK_QUEUE = DEFAULT_TASK_QUEUE_NAME
 
 # Need to define this explicilty fo celery
-TENANT_DB_ALIAS = "default"
+TENANT_DB_ALIAS = DEAFULT_DATABASE
 
 # CELERY_TASK_ROUTES = {
 #     "task_name": {"queue": "queue_name"}

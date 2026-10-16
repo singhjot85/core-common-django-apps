@@ -7,6 +7,9 @@ DEBUGPY_YAML_PATH ?= $(dir $(DEV_YAML_PATH))compose.debugpy.yaml
 COMPOSE_YAML ?= $(DEV_YAML_PATH)
 DJANGO_SERVICE ?= django
 TEST_DIR ?= core/tests
+TEST_FILTER ?=
+CMD ?= 		# Generic Variable to be used as override for commands
+POETRY_COMMAND ?= install --no-root
 
 COMPOSE_COMMAND := docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(or $(COMPOSE_YAML),$(DEV_YAML_PATH))
 TEMP_DJANGO_CONTAINER = docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) run --rm $(DJANGO_SERVICE)
@@ -84,18 +87,18 @@ db-destroy: docker-destroy-database
 docker-django-makemigrations:
 	@echo "⌛ Making migrations in App: ➡️[${APP_LABEL}]...\n"
 	@echo "⚠️ If this was not intended use command with APP_LABEL= flag"
-	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py makemigrations ${APP_LABEL}
+	${TEMP_DJANGO_CONTAINER} python sample_project/manage.py makemigrations ${APP_LABEL}
 mm: docker-django-makemigrations
 
 docker-django-migrate:
 	@echo "⌛ Migrating Schema's now...\n"
-	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py migrate
+	${TEMP_DJANGO_CONTAINER} python sample_project/manage.py migrate
 m: docker-django-migrate
 
 docker-django-makemigrations-empty:
 	@echo "⌛ Making an empty migration in App: ➡️[${APP_LABEL}] with Name: ➡️[${EMN}]...\n"
 	@echo "⚠️ If this was not intended use command with 'APP_LABEL=' or 'emn=' flags"
-	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py makemigrations --empty ${APP_LABEL} --name ${EMN}
+	${TEMP_DJANGO_CONTAINER} python sample_project/manage.py makemigrations --empty ${APP_LABEL} --name ${EMN}
 mme: docker-django-makemigrations-empty
 
 
@@ -109,6 +112,11 @@ docker-django-pytest:
 	${DJANGO_CONTAINER_COMMAND} pytest ${TEST_DIR}
 t: docker-django-pytest
 test: docker-django-pytest
+
+docker-django-pytest-filter:
+	@echo "⌛ Running tests...\n"
+	${DJANGO_CONTAINER_COMMAND} pytest -k ${TEST_FILTER}
+t: docker-django-pytest
 
 docker-django-pytest-debug:
 	@echo "⌛ Running tests with debugger...\n"
@@ -134,3 +142,14 @@ docker-django-shell-plus:
 	@echo "⌛ Launching Django shell-plus...\n"
 	${DJANGO_CONTAINER_COMMAND} python sample_project/manage.py shell_plus --ipython
 sp: docker-django-shell-plus
+
+
+# --------------------------
+# 	Common Dev targets
+# --------------------------
+.PHONY: poetry
+
+docker-poetry:
+	@echo "⌛ Executing poetry command $(if $(CMD),$(CMD),$(POETRY_COMMAND))..."
+	${TEMP_DJANGO_CONTAINER} poetry $(if $(CMD),$(CMD),$(POETRY_COMMAND))
+poetry: docker-poetry
