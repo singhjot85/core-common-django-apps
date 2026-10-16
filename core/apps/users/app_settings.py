@@ -30,7 +30,7 @@ class UsersSettings(BaseSettings):
 
     # Services & Strategies
     SMS_BACKEND = Settings(
-        default="core.apps.users.services.otp.ConsoleSMSBackend",
+        default="core.utils.backends.sms.console.ConsoleSMSBackend",
         data_type=SettingsType.IMPORT.value,
         help_text="SMS delivery adapter backend for OTP dispatch.",
     )

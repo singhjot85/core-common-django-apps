@@ -1,6 +1,6 @@
 from core.apps.users import app_settings
 from core.apps.users.api.serializers import SignupSerializer, UserDetailsSerializer
-from core.apps.users.services.otp import ConsoleSMSBackend
+from core.utils.backends.sms import ConsoleSMSBackend
 from core.utils.generators.username import generate_unique_username
 from core.utils.models import BaseUserModel
 

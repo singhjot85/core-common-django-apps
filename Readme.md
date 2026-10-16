@@ -109,6 +109,7 @@ This repository follows a strict modular design pattern to ensure swappability, 
   - **Type Annotations**: Annotate parameters with quoted type names backed by `if typing.TYPE_CHECKING:` imports.
   - **Explicit Serializer Fields**: Always declare explicit `fields` and `read_only_fields` lists. Never use `fields = "__all__"` on mutable entities.
   - **Asynchronous View Invariants**: Return `202 Accepted` immediately for asynchronous dispatches (such as OTP dispatch) without leaking user existence.
+  - **No Synchronous External Calls or Network I/O in Request Thread**: Never execute network calls, third-party APIs (such as SMS or email delivery), heavy computations, or schema migrations in the main HTTP request thread. All external delivery calls must be delegated to background worker tasks (`queue_task()`). If queuing a background task encounters an error, log the failure; never fall back to executing blocking external calls synchronously in the request-response thread.
 
 ### 4. URLs & Routers (`urls.py`)
 

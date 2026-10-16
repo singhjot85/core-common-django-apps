@@ -16,9 +16,9 @@ from core.apps.users.api.serializers import (
     OTPSendSerializer,
     OTPVerifySerializer,
 )
-from core.apps.users.constants import OTPChannelChoices
-from core.apps.users.services.otp import OTPService
-from core.apps.users.services.social import GoogleAuthService
+from core.apps.users.constants import OTPChannelChoices, SocialProviderChoices
+from core.apps.users.services.otp import OTPServiceFactory
+from core.apps.users.services.social import SocialAuthServiceFactory
 from core.utils.tasks import queue_task
 
 if typing.TYPE_CHECKING:
@@ -126,11 +126,6 @@ class OTPSendView(APIView):
             )
         except Exception as e:
             LOGGER.error(f"Failed to queue OTP task for {identifier}: {e}")
-            # Fallback to direct service call if Celery/Broker is not active (e.g. unit tests)
-            if channel == OTPChannelChoices.PHONE:
-                OTPService.send_phone_otp(phone_number=identifier, purpose=purpose)
-            elif channel == OTPChannelChoices.EMAIL:
-                OTPService.send_email_otp(email=identifier, purpose=purpose)
 
         return Response(
             {"detail": _("If the account exists, an OTP has been dispatched.")},
@@ -156,7 +151,7 @@ class OTPVerifyView(APIView):
         code = serializer.validated_data["code"]
         channel = serializer.validated_data["channel"]
 
-        is_valid, msg = OTPService.verify_otp(identifier=identifier, code=code)
+        is_valid, msg = OTPServiceFactory.verify_otp(identifier=identifier, code=code)
         if not is_valid:
             raise ValidationError({"code": msg})
 
@@ -229,7 +224,9 @@ class GoogleLoginView(APIView):
         serializer.is_valid(raise_exception=True)
 
         id_token_str = serializer.validated_data["id_token"]
-        user, created = GoogleAuthService.authenticate_or_register(id_token_str)
+        user, created = SocialAuthServiceFactory.authenticate_or_register(
+            provider=SocialProviderChoices.GOOGLE, token_str=id_token_str
+        )
 
         tokens = get_jwt_tokens_for_user(user)
         user_serializer_class = app_settings.USER_DETAILS_SERIALIZER

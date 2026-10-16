@@ -60,7 +60,7 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 - **`BASE_USER_MODEL`** (`SettingsType.DEFFERED_IMPORT`): Dotted path to the abstract base model class that `AbstractUser` inherits from (default: `"core.utils.models.BaseUserModel"`).
 - **`SIGNUP_SERIALIZER`** (`SettingsType.IMPORT`): Serializer used for new user registration (default: `"core.apps.users.api.serializers.SignupSerializer"`).
 - **`USER_DETAILS_SERIALIZER`** (`SettingsType.IMPORT`): Serializer used for user profile retrieval and updates (default: `"core.apps.users.api.serializers.UserDetailsSerializer"`).
-- **`SMS_BACKEND`** (`SettingsType.IMPORT`): Adapter class responsible for SMS dispatch (default: `"core.apps.users.services.otp.ConsoleSMSBackend"`).
+- **`SMS_BACKEND`** (`SettingsType.IMPORT`): Adapter class responsible for SMS dispatch (default: `"core.utils.backends.sms.console.ConsoleSMSBackend"`).
 - **`USERNAME_GENERATOR`** (`SettingsType.IMPORT`): Strategy callable for generating unique usernames when omitted during signup (default: `"core.utils.generators.username.generate_unique_username"` backed by `core.utils.generators.UsernameGenerator`).
 
 ### Constance Runtime Flags
@@ -75,7 +75,24 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 
 ---
 
-## 4. Authentication Architecture & Modalities
+## 4. Service Architecture & Template Patterns
+
+- **OTP Services (`services/otp/`)**:
+  - `BaseOTPService`: Abstract template method base class standardizing user existence checks, cryptographic code generation, HMAC-SHA256 hashing, TTL caching, lockout protection, and delivery audit logging to `OTPLog`.
+  - `PhoneOTPService`: SMS delivery hook delegating to configured `SMS_BACKEND`.
+  - `EmailOTPService`: Email delivery hook invoking Django `send_mail`.
+  - `OTPServiceFactory`: Channel registry (`phone`, `email`) and dynamic strategy dispatcher.
+- **Social Services (`services/social/`)**:
+  - `BaseSocialAuthService`: Abstract template method base class orchestrating IDP token verification, claims normalization, `SocialAccount` association, and auto-provisioning with unusable passwords.
+  - `GoogleAuthService`: Google OAuth2 / OIDC token verification via standard library `http.client`.
+  - `SocialAuthServiceFactory`: Provider registry (`google`) and strategy dispatcher.
+- **SMS Backends (`core/utils/backends/sms/`)**:
+  - `BaseSMSBackend`: Cross-app abstract base class declaring `@abc.abstractmethod def send_sms(to, message)`.
+  - `ConsoleSMSBackend`: Development backend logging SMS payloads to standard logging output.
+
+---
+
+## 5. Authentication Architecture & Modalities
 
 ### 1. Flexible Signup
 - **Captured Information**: `first_name`, `last_name`, optional `email`, and optional `phone_number`.
@@ -101,10 +118,11 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 - Calling `/api/users/auth/otp/send/` validates identifier syntax (returns `400 Bad Request` only on malformed phone/email syntax).
 - For all valid formats, the endpoint immediately returns **`202 Accepted`** with no user existence disclosure, protecting against account enumeration and timing attacks.
 - The actual user existence lookup, OTP code generation, Redis TTL caching, and SMS/Email dispatch are processed in a Celery background task via `core.utils.tasks.queue_task`.
+- Under no circumstance should external delivery calls (SMS/Email) execute directly on the main HTTP request thread; if queuing fails, the error is logged without executing blocking external calls synchronously.
 
 ---
 
-## 5. API Surface & Endpoints
+## 6. API Surface & Endpoints
 
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |

@@ -181,6 +181,7 @@ All non-trivial logic additions and refactors should be planned across four dist
   - Restrict `http_method_names` according to domain requirements.
   - Always query `.available_objects` for soft-deletable models and apply `select_related()` / `prefetch_related()` to prevent N+1 query bottlenecks.
   - For asynchronous state changes (such as OTP dispatch), return `status.HTTP_202_ACCEPTED` immediately to avoid leaking entity existence or blocking request worker threads.
+  - **No Synchronous External Calls or Network I/O**: Views must never execute external service calls or network I/O (e.g., SMS/Email delivery) directly on the HTTP request thread. All external dispatches must be queued asynchronously via `queue_task()`. Errors during queuing must only be logged; never fall back to executing blocking external calls synchronously in the request-response cycle.
 
 ---
 

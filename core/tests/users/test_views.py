@@ -73,7 +73,27 @@ class TestUsersViews:
         # Ensure task was queued
         assert mock_queue_task.called
 
-    @patch("core.apps.users.api.views.OTPService.verify_otp")
+    @patch("core.apps.users.api.views.OTPServiceFactory.send_otp")
+    @patch("core.apps.users.api.views.queue_task")
+    def test_otp_send_view_queue_failure_does_not_execute_sync_fallback(
+        self, mock_queue_task, mock_send_otp
+    ):
+        mock_queue_task.side_effect = Exception("Broker unavailable")
+        view = OTPSendView.as_view()
+        request = self.factory.post(
+            "/api/users/auth/otp/send/",
+            {
+                "identifier": "+1234567890",
+                "channel": OTPChannelChoices.PHONE,
+                "purpose": OTPPurposeChoices.LOGIN,
+            },
+            format="json",
+        )
+        response = view(request)
+        assert response.status_code == status.HTTP_202_ACCEPTED
+        mock_send_otp.assert_not_called()
+
+    @patch("core.apps.users.api.views.OTPServiceFactory.verify_otp")
     def test_otp_verify_view_invalid_otp_returns_400(self, mock_verify):
         mock_verify.return_value = (False, "Invalid OTP code.")
 
@@ -91,7 +111,9 @@ class TestUsersViews:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     @patch("core.apps.users.api.views.get_jwt_tokens_for_user")
-    @patch("core.apps.users.api.views.GoogleAuthService.authenticate_or_register")
+    @patch(
+        "core.apps.users.api.views.SocialAuthServiceFactory.authenticate_or_register"
+    )
     def test_google_login_view_success(self, mock_auth_or_reg, mock_jwt):
         mock_user = User(
             id="123e4567-e89b-12d3-a456-426614174000",
