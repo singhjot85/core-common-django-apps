@@ -3,6 +3,12 @@ import os
 from django.core.exceptions import ImproperlyConfigured
 
 # -----------------------------
+#   Application-wide db configuration
+# -----------------------------
+DEAFULT_DATABASE = "default"
+DEFAULT_CACHE_DATABASE = "deafault"
+
+# -----------------------------
 #   POSTGRESQL Database Settings
 # -----------------------------
 DATABASE_NAME = os.getenv("POSTGRES_DB")

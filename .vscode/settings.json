@@ -20,6 +20,6 @@
     // These are set in pyproject.toml, but still keeping them here if that breaks somehow
     "python.analysis.typeCheckingMode": "off",
     "python.analysis.extraPaths": [
-        "backend",
+        "core",
     ]
 }
