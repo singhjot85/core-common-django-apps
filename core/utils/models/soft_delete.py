@@ -1,6 +1,7 @@
 import logging
 import typing
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.db import models
@@ -8,7 +9,6 @@ from django.http import HttpRequest
 from model_utils.models import SoftDeletableModel
 from rest_framework.request import Request
 
-User = get_user_model()
 LOGGER = logging.getLogger(__name__)
 
 
@@ -23,7 +23,7 @@ class DeletionTrackingModel(SoftDeletableModel):
 
     deleted_by_fName = "deleted_by"
     removed_by = models.ForeignKey(
-        to=User,
+        to=settings.AUTH_USER_MODEL,
         on_delete=models.RESTRICT,
         null=True,
         blank=True,
@@ -36,7 +36,10 @@ class DeletionTrackingModel(SoftDeletableModel):
 
     def is_valid_user(self, user: typing.Any) -> bool:
         """Check if this user is valid and not anonymous"""
-        return isinstance(user, User) and not isinstance(user, AnonymousUser)
+        if not user or isinstance(user, AnonymousUser):
+            return False
+        User = get_user_model()
+        return isinstance(user, User)
 
     def _get_user_from_request(self, *args, **kwargs):
         """Fetch user from request"""

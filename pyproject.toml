@@ -22,6 +22,8 @@ dependencies = [
     "django-constance (>= 4.3.5,<5.0.0)",
     "django-redis (>= 7.0.0,<8.0.0)",
     "debugpy (>= 1.8.21,<2.0.0)",
+    "djangorestframework-simplejwt (>=5.5.1,<6.0.0)",
+    "google-auth (>=2.62.0,<3.0.0)",
 ]
 
 

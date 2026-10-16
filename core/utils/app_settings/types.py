@@ -77,7 +77,7 @@ class Constance(BaseDescriptor):
 
         if fieldset_val is None:
             fieldsets[fieldset_key] = {
-                "fields": tuple(self.constance_key),
+                "fields": (self.constance_key,),
                 "collapse": False,
             }
 
@@ -85,15 +85,17 @@ class Constance(BaseDescriptor):
             isinstance(fieldset_val, (list, tuple))
             and self.constance_key not in fieldset_val
         ):
-            fieldset_val = list(fieldset_val).append(self.constance_key)
-            fieldsets[fieldset_key] = tuple(fieldset_val)
+            new_val = list(fieldset_val)
+            new_val.append(self.constance_key)
+            fieldsets[fieldset_key] = tuple(new_val)
 
         elif isinstance(fieldset_val, dict) and "fields" in fieldset_val:
             fields = fieldset_val["fields"]
             fieldset_val["collapse"] = True
             if isinstance(fields, (list, tuple)) and self.constance_key not in fields:
-                fields = list(fields).append(self.constance_key)
-                fieldset_val["fields"] = tuple(fields)
+                fields_list = list(fields)
+                fields_list.append(self.constance_key)
+                fieldset_val["fields"] = tuple(fields_list)
 
         setattr(settings, "CONSTANCE_CONFIG_FIELDSETS", fieldsets)
 
@@ -173,10 +175,12 @@ class Settings(BaseDescriptor):
         """
         Validate and check if import is valid.
         """
-        super().validate(value)
-
         if value is None:
             value = self.default
+
+        # If value is already resolved into a class/callable/model, it is valid
+        if not isinstance(value, str):
+            return
 
         if self.data_type == SettingsType.MODEL_IMPORT.value:
             try:

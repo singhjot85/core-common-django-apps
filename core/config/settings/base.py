@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from .base_models import *
@@ -18,6 +19,9 @@ APP_DIR = os.path.join(BASE_DIR, APP_NAME)  # Path to /backend/apps
 
 SENSITIVE_PHRASES = os.getenv("SENSITIVE_PHRASES", [])
 APPLICATION_TIMEZONE = os.getenv("TIME_ZONE", "UTC")
+SECRET_KEY = os.getenv(
+    "SECRET_KEY", "django-insecure-core-common-apps-secret-key-default"
+)
 
 
 # -----------------------------
@@ -173,9 +177,21 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # -----------------------------
-#   dj-rest-auth
+#   dj-rest-auth & SimpleJWT
 # -----------------------------
-REST_AUTH = {"USER_DETAILS_SERIALIZER": "core.apps.tenants.serializers.UserSerializer"}
+REST_AUTH = {
+    "USE_JWT": True,
+    "TOKEN_MODEL": None,
+    "USER_DETAILS_SERIALIZER": "core.apps.users.api.serializers.UserDetailsSerializer",
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
 
 
 # ------------------
@@ -183,7 +199,7 @@ REST_AUTH = {"USER_DETAILS_SERIALIZER": "core.apps.tenants.serializers.UserSeria
 # ------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [

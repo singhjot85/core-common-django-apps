@@ -60,6 +60,7 @@ CACHES = {
         "LOCATION": "test-cache",
     }
 }
+CONSTANCE_BACKEND = "constance.backends.memory.MemoryBackend"
 
 # -----------------------------------------
 # PERFORMANCE OPTIMIZATIONS
