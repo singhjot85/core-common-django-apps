@@ -32,14 +32,11 @@ class BaseMeta:
     is_fixture: bool
     relation_map: dict[str, BaseSeeder]
 
-    def __init_subclass__(cls, **kwargs):
+    @classmethod
+    def validate_meta(cls, seeder_name):
         """
         Validate any attribute here.
         """
-        super().__init_subclass__(**kwargs)
-
-        seeder_name = cls.__qualname__.split(".")[0]
-
         cls._validate_model(seeder_name)
         cls._validate_fields(seeder_name)
         cls._validate_depends_on(seeder_name)
@@ -69,7 +66,7 @@ class BaseMeta:
         if not cls.model:
             raise SeederException(seeder_name, "Model not defined")
 
-        if not isinstance(models.Model):
+        if not isinstance(cls.model, models.Model):
             raise TypeError(type(cls.model), models.Model)
 
     @classmethod
@@ -94,7 +91,7 @@ class BaseMeta:
         if not isinstance(cls.relation_map, dict):
             raise InvalidTypeError(type(cls.relation_map), dict)
 
-        for val in cls.relation_map.keys():
+        for val in cls.relation_map.values():
             if not isinstance(val, BaseSeeder):
                 raise InvalidTypeError(type(val), BaseSeeder)
 
@@ -143,6 +140,8 @@ class BaseSeeder:
         self._meta: BaseMeta = getattr(self, "Meta", None)
         if not self._meta:
             raise SeederException(self.__class__.__name__, "Meta not defined")
+
+        self._meta.validate_meta(self.__class__.__name__)
 
         self._model = getattr(self._meta, "model", None)
         self._fields = getattr(self._meta, "fields", None)
