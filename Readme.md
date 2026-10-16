@@ -73,3 +73,54 @@ This also gives us future scope of easily splitting backend from frontend.
 make build 		# Builds the entire project image(S)
 make run 		# Run (Build Conatiners) from built image(s) attached
 ```
+
+---
+
+## Core Architecture Guidelines & App Design Standards
+
+This repository follows a strict modular design pattern to ensure swappability, multi-tenant isolation, and clean separation of concerns across consuming projects.
+
+### 1. Models (`models_abstract.py` & `models.py`)
+
+- **Architecture in 1–2 Lines**: Abstract models (`models_abstract.py`) define all fields, managers, clean methods, and business logic. Concrete models (`models.py`) subclass abstract models, add no new fields, and declare swappability (`swappable = "APP_MODEL_KEY"`).
+- **How to Work with Models**:
+  - **Never Import Concrete Models Directly**: Do not do `from core.apps.<app>.models import <Model>`. Direct imports bypass Django's swappable model mechanism and break custom overrides provided by consuming projects.
+  - **Dynamic Model Getters**: Always export and use getter functions in the app's root `__init__.py` (e.g. `get_user_model()`, `get_customer_model()`) backed by `django.apps.apps.get_model(settings.<APP>_<MODEL>_MODEL, require_ready=False)`.
+  - **Resolve at Module Level**: Assign `Model = get_<model>_model()` once at module top level in serializers, views, and services. Avoid calling `get_<model>_model()` repeatedly inside method loops.
+  - **Static Type Safety**: Use `if typing.TYPE_CHECKING:` to import abstract classes (e.g. `from .models_abstract import AbstractUser`) for type annotations without runtime circular dependencies.
+  - **Foreign Keys**: Always reference models via settings strings (e.g., `to=settings.AUTH_USER_MODEL`), never concrete classes.
+  - **Single Concrete Table per Entity**: Multi-Table Inheritance (MTI) is strictly prohibited. Use discriminator fields and abstract mixins instead.
+
+### 2. App Settings (`app_settings.py` & `__init__.py`)
+
+- **Architecture in 1–2 Lines**: App settings declare descriptor-based static defaults (`Settings`), live admin flags (`Constance`), and versioned JSON (`Configuration`) on an app-specific `BaseSettings` class, instantiated as a shared singleton in the app's root `__init__.py`.
+- **How to Work with App Settings**:
+  - **Never Instantiate inside `app_settings.py`**: Define only `class <App>Settings(BaseSettings):` in `app_settings.py`. Instantiate `app_settings = <App>Settings()` inside `core/apps/<app>/__init__.py`.
+  - **Descriptor Lifecycle Awareness**: In Python (PEP 487), descriptor `__init__` runs during class body execution, before `__set_name__` is called. Descriptors initialize `name` and `app_settings_key` safely and never assume `app_settings_key` is present during early `validate()` calls.
+  - **Deferred Imports**: Descriptors handling deferred model imports (`SettingsType.DEFFERED_IMPORT`) safely tolerate `AppRegistryNotReady` during Django's app population phase.
+  - **Zero Heavy Dependencies**: Default adapter backends and descriptors prefer Python's standard library (e.g., `http.client`) over heavy optional packages.
+
+### 3. Views & Serializers (`api/views.py`, `api/serializers.py`)
+
+- **Architecture in 1–2 Lines**: Views act as lightweight HTTP request orchestrators delegating business logic to managers and services; serializers validate request schemas and format output data using dynamically resolved models.
+- **How to Work with Views & Serializers**:
+  - **No Lazy Inline Imports**: Keep imports clean at module level. Avoid inline `from ... import ...` inside method bodies.
+  - **Module-Level Model Resolution**: Resolve models once at the top of serializers and views using `get_<model>_model()`.
+  - **Type Annotations**: Annotate parameters with quoted type names backed by `if typing.TYPE_CHECKING:` imports.
+  - **Explicit Serializer Fields**: Always declare explicit `fields` and `read_only_fields` lists. Never use `fields = "__all__"` on mutable entities.
+  - **Asynchronous View Invariants**: Return `202 Accepted` immediately for asynchronous dispatches (such as OTP dispatch) without leaking user existence.
+
+### 4. URLs & Routers (`urls.py`)
+
+- **Architecture in 1–2 Lines**: Modular app routing registers ViewSets on environment-aware DRF routers configured via `get_api_router_instance()`.
+- **How to Work with URLs**:
+  - Always register endpoints using `get_api_router_instance()` (`SimpleRouter` in production, `DefaultRouter` in development).
+  - Use kebab-case plural resource paths with explicit `basename` definitions (e.g., `router.register("users", UserViewSet, basename="users")`).
+
+### 5. Pre-Commit Quality & Hook Verification
+
+- Always run pre-commit hooks post-changes and ensure all checks pass cleanly before committing:
+  ```bash
+  poetry run pre-commit run --all-files
+  ```
+- Ensures consistent Black formatting, isort import ordering, and flake8 compliance across the codebase.

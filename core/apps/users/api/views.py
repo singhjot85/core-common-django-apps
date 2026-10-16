@@ -1,4 +1,5 @@
 import logging
+import typing
 
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
@@ -20,11 +21,14 @@ from core.apps.users.services.otp import OTPService
 from core.apps.users.services.social import GoogleAuthService
 from core.utils.tasks import queue_task
 
+if typing.TYPE_CHECKING:
+    from core.apps.users.models_abstract import AbstractUser
+
 LOGGER = logging.getLogger(__name__)
 User = get_user_model()
 
 
-def get_jwt_tokens_for_user(user) -> dict:
+def get_jwt_tokens_for_user(user: "AbstractUser") -> dict:
     """Helper to generate SimpleJWT access and refresh tokens for a user."""
     refresh = RefreshToken.for_user(user)
     return {
@@ -156,7 +160,6 @@ class OTPVerifyView(APIView):
         if not is_valid:
             raise ValidationError({"code": msg})
 
-        User = get_user_model()
         user = None
 
         if channel == OTPChannelChoices.PHONE:

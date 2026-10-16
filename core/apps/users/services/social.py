@@ -4,8 +4,19 @@ import typing
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from google.auth.transport._http_client import Request as GoogleAuthRequest
+from google.oauth2 import id_token as google_id_token
+
+from core.apps.users import get_social_account_model, get_user_model
+from core.apps.users.constants import SocialProviderChoices
+
+if typing.TYPE_CHECKING:
+    from core.apps.users.models_abstract import AbstractUser
 
 LOGGER = logging.getLogger(__name__)
+
+User = get_user_model()
+SocialAccount = get_social_account_model()
 
 
 class GoogleAuthService:
@@ -17,35 +28,28 @@ class GoogleAuthService:
         Verify Google ID token and extract claims.
         """
         try:
-            from google.auth.transport import requests
-            from google.oauth2 import id_token
-
             client_id = getattr(settings, "GOOGLE_AUTH_CLIENT_ID", None)
-            request = requests.Request()
-            payload = id_token.verify_oauth2_token(id_token_str, request, client_id)
+            request = GoogleAuthRequest()
+            payload = google_id_token.verify_oauth2_token(
+                id_token_str, request, client_id
+            )
             return payload
         except Exception as e:
             LOGGER.error(f"Google ID token verification failed: {e}")
             raise ValidationError(_("Invalid Google authentication token.")) from e
 
     @classmethod
-    def authenticate_or_register(cls, id_token_str: str) -> tuple[typing.Any, bool]:
+    def authenticate_or_register(cls, id_token_str: str) -> tuple["AbstractUser", bool]:
         """
         Authenticate an existing user or register a new user from Google credentials.
         Returns (user, created).
         """
-        from core.apps.users import get_social_account_model, get_user_model
-        from core.apps.users.constants import SocialProviderChoices
-
         payload = cls.verify_token(id_token_str)
         google_sub = payload.get("sub")
         email = payload.get("email")
 
         if not google_sub or not email:
             raise ValidationError(_("Incomplete profile data received from Google."))
-
-        User = get_user_model()
-        SocialAccount = get_social_account_model()
 
         # 1. Check if social account already linked
         social_account = (

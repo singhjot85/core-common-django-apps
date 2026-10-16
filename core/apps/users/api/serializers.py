@@ -9,6 +9,9 @@ from rest_framework import serializers
 from core.apps.users import get_user_model
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
 
+if typing.TYPE_CHECKING:
+    from core.apps.users.models_abstract import AbstractUser
+
 User = get_user_model()
 
 
@@ -77,7 +80,6 @@ class SignupSerializer(serializers.Serializer):
 
     def validate_username(self, value: str) -> str:
         if value and value.strip():
-            User = get_user_model()
             if User.objects.filter(username__iexact=value.strip()).exists():
                 raise serializers.ValidationError(
                     _("A user with this username already exists.")
@@ -87,7 +89,6 @@ class SignupSerializer(serializers.Serializer):
 
     def validate_email(self, value: typing.Optional[str]) -> typing.Optional[str]:
         if value and value.strip():
-            User = get_user_model()
             clean_email = value.strip().lower()
             if User.objects.filter(email__iexact=clean_email).exists():
                 raise serializers.ValidationError(
@@ -100,7 +101,6 @@ class SignupSerializer(serializers.Serializer):
         self, value: typing.Optional[str]
     ) -> typing.Optional[str]:
         if value and value.strip():
-            User = get_user_model()
             clean_phone = value.strip()
             digits = re.sub(r"\D", "", clean_phone)
             if len(digits) < 7:
@@ -125,8 +125,7 @@ class SignupSerializer(serializers.Serializer):
             )
         return attrs
 
-    def create(self, validated_data: dict) -> typing.Any:
-        User = get_user_model()
+    def create(self, validated_data: dict) -> "AbstractUser":
         return User.objects.create_user(**validated_data)
 
 
@@ -144,8 +143,6 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs: dict) -> dict:
         username = attrs.get("username", "").strip()
         password = attrs.get("password", "")
-
-        User = get_user_model()
 
         # Check if login identifier is email or phone number
         user = None
@@ -172,7 +169,7 @@ class LoginSerializer(serializers.Serializer):
             if target_user and not target_user.has_usable_password():
                 raise serializers.ValidationError(
                     _(
-                        "This account does not have a password configured. Please log in using OTP or Google."
+                        "This account does not have a password configured. Please log in with a different method."
                     )
                 )
             raise serializers.ValidationError(

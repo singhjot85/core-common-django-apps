@@ -58,10 +58,10 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 ### Declared Descriptors
 
 - **`BASE_USER_MODEL`** (`SettingsType.DEFFERED_IMPORT`): Dotted path to the abstract base model class that `AbstractUser` inherits from (default: `"core.utils.models.BaseUserModel"`).
-- **`SIGNUP_SERIALIZER`** (`SettingsType.DEFFERED_IMPORT`): Serializer used for new user registration (default: `"core.apps.users.api.serializers.SignupSerializer"`).
-- **`USER_DETAILS_SERIALIZER`** (`SettingsType.DEFFERED_IMPORT`): Serializer used for user profile retrieval and updates (default: `"core.apps.users.api.serializers.UserDetailsSerializer"`).
-- **`SMS_BACKEND`** (`SettingsType.DEFFERED_IMPORT`): Adapter class responsible for SMS dispatch (default: `"core.apps.users.services.otp.ConsoleSMSBackend"`).
-- **`USERNAME_GENERATOR`** (`SettingsType.DEFFERED_IMPORT`): Strategy function for generating unique usernames when omitted during signup.
+- **`SIGNUP_SERIALIZER`** (`SettingsType.IMPORT`): Serializer used for new user registration (default: `"core.apps.users.api.serializers.SignupSerializer"`).
+- **`USER_DETAILS_SERIALIZER`** (`SettingsType.IMPORT`): Serializer used for user profile retrieval and updates (default: `"core.apps.users.api.serializers.UserDetailsSerializer"`).
+- **`SMS_BACKEND`** (`SettingsType.IMPORT`): Adapter class responsible for SMS dispatch (default: `"core.apps.users.services.otp.ConsoleSMSBackend"`).
+- **`USERNAME_GENERATOR`** (`SettingsType.IMPORT`): Strategy callable for generating unique usernames when omitted during signup (default: `"core.utils.generators.username.generate_unique_username"` backed by `core.utils.generators.UsernameGenerator`).
 
 ### Constance Runtime Flags
 

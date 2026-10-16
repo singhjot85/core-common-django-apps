@@ -1,3 +1,5 @@
+import typing
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser as DjangoAbstractUser
 from django.db import models
@@ -13,8 +15,11 @@ from core.apps.users.constants import (
 from core.apps.users.managers import UserManager
 from core.utils.models import BaseLogModel, BaseModel
 
+if typing.TYPE_CHECKING:
+    from core.utils.models import BaseUserModel as AbstractUserModel
+
 # Dynamically resolve BaseUserModel from app_settings
-BaseUserModel = app_settings.BASE_USER_MODEL
+BaseUserModel: type["AbstractUserModel"] = app_settings.BASE_USER_MODEL
 
 
 class AbstractUser(DjangoAbstractUser, BaseUserModel):

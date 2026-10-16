@@ -35,7 +35,7 @@ class UsersSettings(BaseSettings):
         help_text="SMS delivery adapter backend for OTP dispatch.",
     )
     USERNAME_GENERATOR = Settings(
-        default="core.apps.users.services.username.generate_unique_username",
+        default="core.utils.generators.username.generate_unique_username",
         data_type=SettingsType.IMPORT.value,
         help_text="Callable to generate unique usernames when omitted during signup.",
     )

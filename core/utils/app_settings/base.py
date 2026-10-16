@@ -50,6 +50,8 @@ class BaseDescriptor:
                 TODO: later will be used in django-admin
             data_type(type): Default class/protocol to type cast the setting
         """
+        self.name: typing.Optional[str] = None
+        self.app_settings_key: typing.Optional[str] = None
         self.default = default
         self.data_type = data_type
         self.help_text = help_text

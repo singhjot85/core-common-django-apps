@@ -13,6 +13,7 @@ The repository is designed as a reusable, production-ready Django core framework
 │   ├── utils/                   # Reusable cross-app framework utilities
 │   │   ├── app_settings/        # Descriptor-based settings & configuration engine
 │   │   ├── error_handling/      # Sensitive data masking & domain exceptions
+│   │   ├── generators/          # Algorithmic strategy generators (username, tokens)
 │   │   ├── models/              # Abstract base models, soft-delete, versioning mixins
 │   │   ├── serializers/         # Base read-only and permission-based DRF serializers
 │   │   ├── checks.py            # Runtime environment & multi-tenant checks
@@ -66,97 +67,160 @@ All non-trivial logic additions and refactors should be planned across four dist
 - Apply DRY and Object-Oriented Principles (encapsulate specialized field setters, e.g. passwords, files).
 - Keep functions pure where practical, separating validation logic from mutation logic.
 
-### Phase 4: Testing Phase
+### Phase 4: Testing & Quality Phase
 
 - Write unit tests for individual functions and service methods.
 - Mock external APIs, I/O boundaries, and Celery tasks.
 - Validate multi-tenant schema isolation where applicable.
+- **Pre-Commit Hooks Verification**:
+  - Always run `poetry run pre-commit run --all-files` post changes.
+  - Ensure all hooks (Black formatting, isort import sorting, flake8 linting, whitespace, YAML check) pass successfully with zero errors before considering any task complete.
 
 ## 4. Key Design Norms & Architectural Rules
 
-### 1. No Multi-Table Inheritance (MTI)
+### 1. Models (`models_abstract.py` & `models.py`)
 
-- **Single Concrete Table per Entity**: Multi-table inheritance (`class Child(ParentModel)`) creates unnecessary joins and migration complexity.
-- Use a single table with discriminator fields (`type`, `sub_type`, `status`) and abstract mixins for shared behavior.
+> **Architecture in 1–2 Lines**:
+> Abstract models (`models_abstract.py`) define all fields, managers, clean methods, and business logic. Concrete models (`models.py`) subclass abstract models, add no new fields, and declare swappability (`swappable = "APP_MODEL_KEY"`).
 
-### 2. Model Decoupling & Swappability (Anti-Pattern: Direct Concrete Model Imports)
+#### How to Work with Models
 
-- **CRITICAL ANTI-PATTERN — Direct Concrete Model Imports**:
-  - **NEVER** import concrete models directly from `models.py` (e.g., `from core.apps.crm.models import Customer` or `from .models import Invoice`) in serializers, views, admin modules, tasks, managers, or across domain apps.
+- **NEVER Import Concrete Models Directly**:
+  - **Forbidden**: `from core.apps.users.models import User` or `from .models import Invoice`.
   - **Why?** Direct imports bind logic to specific concrete implementations at module load time, bypassing Django's swappable model mechanism (`swappable = "APP_MODEL_KEY"`) and breaking custom model overrides provided by consuming projects.
-- **Correct Pattern — Dynamic Model Getters**:
-  - Every modular app must define and export model getter functions in its root `__init__.py` (e.g., `get_customer_model()`, `get_invoice_model()`) backed by `django.apps.apps.get_model(settings.<APP>_<MODEL>_MODEL, require_ready=False)`.
-  - Serializers, ViewSets, admin classes, and services must always resolve their models using these getter functions:
-
+- **Dynamic Model Getters**:
+  - Every modular app must define and export model getter functions in its root `__init__.py` (e.g., `get_user_model()`, `get_customer_model()`, `get_invoice_model()`) backed by `django.apps.apps.get_model(settings.<APP>_<MODEL>_MODEL, require_ready=False)`.
+  - Serializers, ViewSets, admin classes, tasks, managers, and services must always resolve their models using these getter functions:
     ```python
-    from core.apps.crm import get_customer_model
+    from core.apps.users import get_user_model
 
-    Customer = get_customer_model()
+    User = get_user_model()
     ```
+  - **Resolve at Module Level**: Assign `User = get_user_model()` once at module level in serializers, views, and services. Avoid calling `get_user_model()` repeatedly inside method bodies or loops.
+- **Static Typing with `typing.TYPE_CHECKING`**:
+  - Always use `if typing.TYPE_CHECKING:` to import abstract classes (e.g. `from core.apps.users.models_abstract import AbstractUser`) for type annotations. This guarantees full IDE auto-complete and static analysis without triggering premature runtime imports or circular dependencies:
+    ```python
+    import typing
 
+    if typing.TYPE_CHECKING:
+        from core.apps.users.models_abstract import AbstractUser
+
+    def process_user(user: "AbstractUser") -> None: ...
+    ```
 - **Foreign Key Declarations**:
-  - Always reference models via settings strings (e.g., `settings.CRM_CUSTOMER_MODEL`, `settings.INVOICES_BILLING_ORGANIZATION_MODEL`). Never pass concrete classes to `models.ForeignKey()`.
+  - Always reference foreign models via settings strings (e.g., `to=settings.AUTH_USER_MODEL`, `to=settings.CRM_CUSTOMER_MODEL`). Never pass concrete classes directly to `models.ForeignKey()`.
+- **No Multi-Table Inheritance (MTI)**:
+  - Multi-table inheritance (`class Child(ParentModel)`) creates unnecessary joins and migration complexity.
+  - Use a single concrete table per entity with discriminator fields (`type`, `sub_type`, `status`) and abstract mixins for shared behavior.
+- **Base Model Hierarchy (`core.utils.models`)**:
+  - Standard entities inherit from `BaseModel` (UUID PK, timestamps, soft delete: `is_removed`, `removed_by`).
+  - Configuration/schema entities inherit from `BaseVersioningModel` (semantic versions `version_major/minor/patch`, `bump_version()`).
+  - Event/audit records inherit from `BaseLogModel` (UUID PK, timestamps, choice-based `status`, `status_changed`).
+  - `.delete()` soft-deletes rows by default (`is_removed=True`). Hard deletion requires explicit `soft=False`.
 
-### 3. App Settings Framework (`core.utils.app_settings`)
+---
 
-- Every app needing configurable defaults or runtime parameters declares a `BaseSettings` subclass.
-- **Descriptors Available**:
-  - `Settings`: Static code configurations and lazy dotted imports (`SettingsType.MODEL_IMPORT`, `SettingsType.DEFFERED_IMPORT`).
-  - `Constance`: Live admin-editable flags backed by `django-constance` with automatic schema/fieldset registration.
-  - `Configuration`: Database-stored versioned JSON settings resolved per `interface_type` and cached per schema.
-- **Project Overrides**: Settings can be overridden in `django.conf.settings` via dictionaries (`settings.<APP>_SETTINGS`).
+### 2. App Settings (`app_settings.py` & `__init__.py`)
 
-### 4. Base Model Hierarchy (`core.utils.models`)
+> **Architecture in 1–2 Lines**:
+> App settings define declarative descriptors (`Settings`, `Constance`, `Configuration`) on an app-specific `BaseSettings` class, instantiated as a shared singleton in the app's root `__init__.py`.
 
-All domain models must inherit from one of the core base models:
+#### Rules & Descriptor Lifecycle Constraints
 
-| Base Class            | Purpose                        | Key Attributes / Behavior                                                                      |
-| :-------------------- | :----------------------------- | :--------------------------------------------------------------------------------------------- |
-| `BaseModel`           | Standard domain entities       | UUID PK (`id`), `created`, `modified`, soft delete (`is_removed`, `removed_by`)                |
-| `BaseVersioningModel` | Version-tracked configurations | Semantic version integers (`version_major/minor/patch`), formatted `version`, `bump_version()` |
-| `BaseLogModel`        | Audit logs & event histories   | UUID PK, timestamps, choice-based `status`, `status_changed`                                   |
+- **Class Definition vs. Initialization**:
+  - **NEVER** instantiate the settings class inside `app_settings.py`. Only define the class `class <App>Settings(BaseSettings):` inside `app_settings.py`.
+  - Instantiate the shared singleton inside the app root `__init__.py`:
+    ```python
+    # core/apps/<app>/__init__.py
+    from core.apps.<app>.app_settings import <App>Settings
 
-- **Soft Deletion**: `.delete()` soft-deletes rows by default (`is_removed=True`), recording the user via `removed_by`. Hard deletion requires explicit `soft=False`.
-- **Safe Model Lookups**: Use query helpers (`safe_get_object_or_raise`, `filter_objects_or_raise`) rather than raw `Model.objects.get()` when handling potentially ambiguous datasets.
+    app_settings: <App>Settings = <App>Settings()
+    ```
+  - This ensures a single shared instance with unambiguous import paths: `from core.apps.<app> import app_settings`.
+- **Descriptor Lifecycle & Python Protocol (PEP 487)**:
+  - In Python, descriptor `__init__` runs **during** the class body execution, whereas `__set_name__(owner, name)` is called by the metaclass **only after** the entire class body has finished executing.
+  - Descriptors must initialize default attributes (`self.name = None`, `self.app_settings_key = None`) in `__init__`, and must **never** assume `self.app_settings_key` exists when handling exceptions in early `self.validate(self.default)` calls. Use `getattr(self, "app_settings_key", None)` safely.
+- **Deferred Model Imports During App Population**:
+  - When Django boots, `apps.populate()` imports installed apps before `apps.ready = True`.
+  - Descriptors using `SettingsType.DEFFERED_IMPORT` must handle `AppRegistryNotReady` gracefully so eager validation does not crash startup when importing models or model mixins.
+- **Supported Descriptor Types**:
+  - `Settings`: Static code configurations, lazy dotted imports (`SettingsType.IMPORT`, `SettingsType.DEFFERED_IMPORT`), model strings (`SettingsType.MODEL_IMPORT`), and Python primitive types (`int`, `str`, `bool`).
+  - `Constance`: Live admin-editable flags backed by `django-constance` with automatic fieldset registration.
+  - `Configuration`: Database-stored versioned JSON settings resolved per `interface_type` and cached per schema context.
+- **Zero Heavy Network Dependencies**:
+  - Adapter backends and descriptors must avoid requiring optional heavy external packages (e.g., prefer Python's standard library `http.client` / `_http_client` over external `requests` for token verification).
 
-### 5. Error Handling & Data Sanitization
+---
 
-- Never expose raw database errors or unsanitized lookup queries in logs or API payloads.
-- Use `ContentMaskingUtils.filter_sensitive_content()` to sanitize passwords, tokens, API keys, emails, and phone numbers before logging or returning error messages.
+### 3. Views & API (`api/views.py`, `api/serializers.py`)
 
-### 6. API & Routing Conventions
+> **Architecture in 1–2 Lines**:
+> Views act as thin HTTP dispatchers delegating business logic to managers and services; serializers validate request schemas and format output data using dynamically resolved models.
 
-When adding or extending REST API endpoints for an app, adhere to the standard multi-tenant DRF patterns across the repository:
+#### Rules & Patterns
 
-- **Directory Layout**:
-  - Keep endpoints modular under `<app>/api/`:
-    - `api/serializers.py`: Serializer declarations and field mappings.
-    - `api/views.py`: ViewSets and custom action handlers.
-    - `urls.py`: App router registration using `get_api_router_instance()`.
-- **Serializers (`api/serializers.py`)**:
-  - **Dynamic Model Resolution**: Always resolve models via `get_<model>_model()` rather than hard-importing from `models.py`.
-  - **Explicit Fields**: Always declare explicit `fields` lists. Avoid `fields = "__all__"` on mutable entities.
-  - **Read-Only Fields**: Explicitly declare `read_only_fields = ["id", "created", "modified", ...]`.
-  - **Choice Display**: Provide readable choice representations using `serializers.CharField(source="get_<field>_display", read_only=True)`.
-  - **Computed & Cached Properties**: Expose model properties (`full_name`, `full_address`, totals) as read-only serializer fields.
-  - **Nested Relationships**: Include nested child serializers with `read_only=True` for detail views.
-- **ViewSets (`api/views.py`)**:
-  - **Dynamic Model Resolution**: Always resolve models via `get_<model>_model()` rather than hard-importing from `models.py`.
-  - **Thin Views, Rich Services**: Business logic belongs in service classes or managers, not inside view methods.
-  - **HTTP Method Restrictions**: Restrict `http_method_names` according to business invariants (e.g., disallowing `DELETE` or blocking mutations on immutable records like `Invoice`).
-  - **Optimized Queries**: Always query `.available_objects` for soft-deletable models and apply `select_related()` / `prefetch_related()` to eliminate N+1 query bottlenecks.
-  - **Custom Actions**: Use `@action(detail=True, methods=["post"], url_path="...")` for state mutations (e.g., `set_primary`, `generate-next-number`).
-- **Router Construction (`urls.py`)**:
-  - Always register viewsets using `get_api_router_instance()` (`SimpleRouter` in production, `DefaultRouter` in development).
-  - Use kebab-case pluralized resource paths with explicit `basename` (e.g. `billing-organizations`, `invoice-parties`).
-- **View Testing (`core/tests/<app>/test_views.py`)**:
-  - Include unit tests verifying HTTP method restrictions, serializer serialization, and custom action endpoints.
+- **No Inline / Lazy Imports in Services & Views**:
+  - Keep imports clean at module level. Avoid inline `from core.apps... import ...` inside view methods or service functions unless breaking an unavoidable circular dependency.
+- **Module-Level Model Resolution**:
+  - Call model getters once at the module top level:
+    ```python
+    User = get_user_model()
+    ```
+  - Do not repeatedly call `User = get_user_model()` inside `validate_*()`, `save()`, or view action methods.
+- **Type Annotations via `typing.TYPE_CHECKING`**:
+  - Annotate user and model parameters using quoted type annotations backed by `if typing.TYPE_CHECKING:` imports:
+    ```python
+    def get_jwt_tokens_for_user(user: "AbstractUser") -> dict: ...
+    ```
+- **Serializer Invariants**:
+  - Always declare explicit `fields` lists. Never use `fields = "__all__"` on mutable entities.
+  - Explicitly declare `read_only_fields = ["id", "created", "modified", ...]`.
+  - Format choice representations using `serializers.CharField(source="get_<field>_display", read_only=True)`.
+  - Expose model properties (`full_name`, totals) as read-only serializer fields.
+- **View Invariants**:
+  - Restrict `http_method_names` according to domain requirements.
+  - Always query `.available_objects` for soft-deletable models and apply `select_related()` / `prefetch_related()` to prevent N+1 query bottlenecks.
+  - For asynchronous state changes (such as OTP dispatch), return `status.HTTP_202_ACCEPTED` immediately to avoid leaking entity existence or blocking request worker threads.
 
-### 7. Asynchronous Task Queuing
+---
 
-- Use the standardized `queue_task()` wrapper (`core.utils.tasks`) instead of calling `.delay()` or `.apply_async()` directly.
-- Default to `on_commit=True` to ensure database transactions are committed before workers pick up tasks.
-- Pass unique `idempotency_key` arguments to prevent duplicate processing during retries or concurrent dispatches.
+### 4. URLs & Routers (`urls.py`)
+
+> **Architecture in 1–2 Lines**:
+> Modular app routing registers ViewSets on environment-aware DRF routers configured via `get_api_router_instance()`.
+
+#### Rules & Patterns
+
+- Register routers using `get_api_router_instance()` (`SimpleRouter` in production, `DefaultRouter` in development for browsable documentation).
+- Use kebab-case pluralized resource paths with an explicit `basename` (e.g. `router.register("users", UserViewSet, basename="users")`).
+
+---
+
+### 5. Utils & Algorithmic Generators (`core/utils/generators/`)
+
+> **Architecture in 1–2 Lines**:
+> Cross-cutting generation strategies (usernames, tokens, codes) are encapsulated in dedicated generator classes with comprehensive docstrings under `core/utils/generators/`.
+
+#### Rules & Patterns
+
+- Encapsulate generation state, fallback ladders, and normalization inside dedicated classes (e.g., `UsernameGenerator`).
+- Provide an explicit `.generate(user_model=..., max_attempts=...)` instance method alongside a functional convenience helper (e.g., `generate_unique_username(...)`).
+- Maintain comprehensive docstrings explaining argument priority, normalization rules, and collision escalation strategies.
+
+---
+
+### 6. Asynchronous Task Queuing (`core/utils/tasks.py`)
+
+> **Architecture in 1–2 Lines**:
+> Background jobs and external I/O dispatch via Celery workers wrapped by the standardized `queue_task()` utility.
+
+#### Rules & Patterns
+
+- Always use `queue_task()` instead of calling `.delay()` or `.apply_async()` directly.
+- Default to `on_commit=True` so worker tasks execute only after database transactions commit.
+- Pass unique `idempotency_key` arguments to prevent duplicate processing during worker retries or concurrent dispatches.
+
+---
 
 ## 5. Documentation Maintenance Standards
 

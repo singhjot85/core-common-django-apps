@@ -3,6 +3,8 @@ import typing
 from django.contrib.auth.models import UserManager as DjangoUserManager
 from django.utils.translation import gettext_lazy as _
 
+from core.apps.users import app_settings
+
 if typing.TYPE_CHECKING:
     from core.apps.users.models_abstract import AbstractUser
 
@@ -34,8 +36,6 @@ class UserManager(DjangoUserManager):
         """
         Create and return a regular User.
         """
-        from core.apps.users import app_settings
-
         first_name = extra_fields.get("first_name", "")
         last_name = extra_fields.get("last_name", "")
 

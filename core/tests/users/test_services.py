@@ -1,45 +1,57 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
 from django.core.cache import cache
 
 from core.apps.users.services.otp import ConsoleSMSBackend, OTPService
-from core.apps.users.services.username import generate_unique_username
+from core.utils.generators.username import UsernameGenerator, generate_unique_username
 
 
 class TestUsernameGeneratorService:
-    """Tests for username auto-generation strategy."""
+    """Tests for UsernameGenerator class and auto-generation strategy."""
 
-    @patch("core.apps.users.get_user_model")
-    def test_generate_from_first_and_last_name(self, mock_get_user_model):
-        mock_user = mock_get_user_model.return_value
+    def test_generator_class_instantiation(self):
+        generator = UsernameGenerator(
+            first_name="John",
+            last_name="Smith",
+            email="john@example.com",
+            phone_number="+1555123456",
+        )
+        assert generator.first_name == "John"
+        assert generator.last_name == "Smith"
+        assert generator.build_base_slug() == "john_smith"
+
+    def test_generate_from_first_and_last_name(self):
+        mock_user = MagicMock()
         mock_user.objects.filter.return_value.exists.return_value = False
 
-        username = generate_unique_username(first_name="Jane", last_name="Doe")
+        username = generate_unique_username(
+            first_name="Jane", last_name="Doe", user_model=mock_user
+        )
         assert username.startswith("jane_doe_")
         assert len(username) > len("jane_doe_")
 
-    @patch("core.apps.users.get_user_model")
-    def test_generate_from_email(self, mock_get_user_model):
-        mock_user = mock_get_user_model.return_value
+    def test_generate_from_email(self):
+        mock_user = MagicMock()
         mock_user.objects.filter.return_value.exists.return_value = False
 
-        username = generate_unique_username(email="my.cool.email@example.com")
+        generator = UsernameGenerator(email="my.cool.email@example.com")
+        username = generator.generate(user_model=mock_user)
         assert username.startswith("my_cool_email_")
 
-    @patch("core.apps.users.get_user_model")
-    def test_generate_from_phone(self, mock_get_user_model):
-        mock_user = mock_get_user_model.return_value
+    def test_generate_from_phone(self):
+        mock_user = MagicMock()
         mock_user.objects.filter.return_value.exists.return_value = False
 
-        username = generate_unique_username(phone_number="+1 (555) 123-4567")
+        username = generate_unique_username(
+            phone_number="+1 (555) 123-4567", user_model=mock_user
+        )
         assert username.startswith("user_")
 
-    @patch("core.apps.users.get_user_model")
-    def test_generate_fallback(self, mock_get_user_model):
-        mock_user = mock_get_user_model.return_value
+    def test_generate_fallback(self):
+        mock_user = MagicMock()
         mock_user.objects.filter.return_value.exists.return_value = False
 
-        username = generate_unique_username()
+        username = generate_unique_username(user_model=mock_user)
         assert username.startswith("user_")
 
 

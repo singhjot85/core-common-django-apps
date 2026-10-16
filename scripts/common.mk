@@ -109,13 +109,13 @@ mme: docker-django-makemigrations-empty
 
 docker-django-pytest:
 	@echo "⌛ Running tests...\n"
-	${DJANGO_CONTAINER_COMMAND} pytest ${TEST_DIR}
+	${TEMP_DJANGO_CONTAINER} pytest ${TEST_DIR}
 t: docker-django-pytest
 test: docker-django-pytest
 
 docker-django-pytest-filter:
 	@echo "⌛ Running tests...\n"
-	${DJANGO_CONTAINER_COMMAND} pytest -k ${TEST_FILTER}
+	${TEMP_DJANGO_CONTAINER} pytest -k ${TEST_FILTER}
 t: docker-django-pytest
 
 docker-django-pytest-debug:

@@ -18,6 +18,9 @@ from core.apps.users.constants import (
 
 LOGGER = logging.getLogger(__name__)
 
+User = get_user_model()
+OTPLog = get_otp_log_model()
+
 
 class BaseSMSBackend(abc.ABC):
     """Abstract interface for sending SMS messages."""
@@ -76,9 +79,6 @@ class OTPService:
         """
         Generate and dispatch OTP to a phone number via configured SMS backend.
         """
-        User = get_user_model()
-        OTPLog = get_otp_log_model()
-
         # If login flow, verify user exists
         user_exists = User.objects.filter(phone_number=phone_number).exists()
         if purpose == OTPPurposeChoices.LOGIN and not user_exists:
@@ -119,9 +119,6 @@ class OTPService:
         """
         Generate and dispatch OTP to an email address.
         """
-        User = get_user_model()
-        OTPLog = get_otp_log_model()
-
         user_exists = User.objects.filter(email__iexact=email.strip()).exists()
         if purpose == OTPPurposeChoices.LOGIN and not user_exists:
             LOGGER.info(f"OTP login requested for non-existent email: {email}")
