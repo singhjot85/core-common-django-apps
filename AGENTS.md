@@ -150,6 +150,10 @@ All non-trivial logic additions and refactors should be planned across four dist
   - `Configuration`: Database-stored versioned JSON settings resolved per `interface_type` and cached per schema context.
 - **Zero Heavy Network Dependencies**:
   - Adapter backends and descriptors must avoid requiring optional heavy external packages (e.g., prefer Python's standard library `http.client` / `_http_client` over external `requests` for token verification).
+- **Core Directory Isolation (`CORE_BASE_DIR`, `CORE_APP_DIR`, `CORE_SETUP_DIR`)**:
+  - **Never Override Core Settings for Inheriting Projects**: Inheriting projects (host projects) define their own `BASE_DIR` and `APP_DIR` pointing to their own project root and host apps. Core settings must never be hijacked or overridden to accommodate host projects.
+  - Core-internal paths (fixtures, dev seeders, autodiscovery) must always anchor to core-specific directory constants (`settings.CORE_BASE_DIR`, `settings.CORE_APP_DIR`, `settings.CORE_SETUP_DIR`).
+  - `FileDataSource` and `AutoDiscovery` must receive complete paths anchored to these constants (e.g. `FileDataSource(os.path.join(settings.CORE_APP_DIR, "crm/fixtures/..."))` or `AutoDiscovery(root_path=settings.CORE_APP_DIR)`), ensuring host projects overriding `BASE_DIR` never break core fixtures, seeders, or module resolution.
 
 ---
 

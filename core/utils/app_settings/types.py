@@ -8,7 +8,6 @@ from django.apps import apps
 from django.conf import settings
 from django.utils.module_loading import import_string
 
-from core.apps.configurations import get_configuration_model
 from core.utils.app_settings.base import (
     AppSettingException,
     BaseDescriptor,
@@ -263,6 +262,8 @@ class Configuration(BaseDescriptor):
         If config object exists, appends that key to details dict if not present.
         Uses get_raw_value to account for project overrides.
         """
+        from core.apps.configurations import get_configuration_model
+
         raw_value = self.get_raw_value(instance)
         key = self.name.lower()
 
@@ -284,6 +285,8 @@ class Configuration(BaseDescriptor):
         """
         Get Configuration from cache or databse
         """
+        from core.apps.configurations import get_configuration_model
+
         Configuration = get_configuration_model()
 
         try:

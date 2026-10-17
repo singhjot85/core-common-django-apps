@@ -1,9 +1,18 @@
+"""
+Fixture seeders for Configurations application.
+"""
+
+import os
+
+from django.conf import settings
+
 from core.apps.configurations import (
     get_configuration_model,
     get_configuration_schema_model,
     get_tenant_configuration_model,
 )
 from core.seeder.base import BaseMeta, BaseSeeder
+from core.seeder.datasource import FileDataSource
 
 
 class ConfigurationSeeder(BaseSeeder):
@@ -12,6 +21,12 @@ class ConfigurationSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_configuration_model()
         fields = ["name", "interface_type", "details"]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_APP_DIR,
+                "configurations/fixtures/configuration/configurations.json",
+            )
+        )
         depends_on = []
         is_fixture = True
         related_seeders = {}
@@ -23,6 +38,12 @@ class ConfigurationSchemaSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_configuration_schema_model()
         fields = ["interface_type", "schema"]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_APP_DIR,
+                "configurations/fixtures/configuration_schema/schemas.json",
+            )
+        )
         depends_on = []
         is_fixture = True
         related_seeders = {}
@@ -36,6 +57,12 @@ class TenantConfigurationSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_tenant_configuration_model()
         fields = ["tenant", "details"]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_APP_DIR,
+                "configurations/fixtures/tenant_configuration/tenant_configs.json",
+            )
+        )
         depends_on = []
         is_fixture = True
         related_seeders = {}

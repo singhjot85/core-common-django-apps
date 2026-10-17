@@ -1,3 +1,11 @@
+"""
+Development mock seeders for Invoices application.
+"""
+
+import os
+
+from django.conf import settings
+
 from core.apps.invoices import (
     get_billing_organization_model,
     get_invoice_item_model,
@@ -9,6 +17,7 @@ from core.apps.invoices import (
     get_organization_phone_model,
 )
 from core.seeder.base import BaseMeta, BaseSeeder
+from core.seeder.datasource import FileDataSource
 
 
 class DevBillingOrganizationSeeder(BaseSeeder):
@@ -21,6 +30,12 @@ class DevBillingOrganizationSeeder(BaseSeeder):
             "billing_suffix",
             "billing_start_sequence",
         ]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR,
+                "setup/invoices/dev_billing_organization/organizations.json",
+            )
+        )
         depends_on = []
         is_fixture = False
         related_seeders = {}
@@ -32,6 +47,12 @@ class DevOrganizationEmailSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_organization_email_model()
         fields = ["organization", "email", "type", "is_primary"]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR,
+                "setup/invoices/dev_organization_email/emails.json",
+            )
+        )
         depends_on = []
         is_fixture = False
         related_seeders = {"organization": DevBillingOrganizationSeeder}
@@ -43,6 +64,12 @@ class DevOrganizationPhoneSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_organization_phone_model()
         fields = ["organization", "phone", "type", "is_primary"]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR,
+                "setup/invoices/dev_organization_phone/phones.json",
+            )
+        )
         depends_on = []
         is_fixture = False
         related_seeders = {"organization": DevBillingOrganizationSeeder}
@@ -59,6 +86,12 @@ class DevInvoicePartySeeder(BaseSeeder):
             "party_type",
             "customer",
         ]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR,
+                "setup/invoices/dev_invoice_party/parties.json",
+            )
+        )
         depends_on = []
         is_fixture = False
         related_seeders = {}
@@ -70,6 +103,12 @@ class DevInvoicePartyEmailSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_invoice_party_email_model()
         fields = ["invoice_party", "email", "email_type"]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR,
+                "setup/invoices/dev_invoice_party_email/emails.json",
+            )
+        )
         depends_on = []
         is_fixture = False
         related_seeders = {"invoice_party": DevInvoicePartySeeder}
@@ -81,6 +120,12 @@ class DevInvoicePartyPhoneSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_invoice_party_phone_model()
         fields = ["invoice_party", "phone", "phone_type"]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR,
+                "setup/invoices/dev_invoice_party_phone/phones.json",
+            )
+        )
         depends_on = []
         is_fixture = False
         related_seeders = {"invoice_party": DevInvoicePartySeeder}
@@ -92,6 +137,12 @@ class DevInvoiceItemSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_invoice_item_model()
         fields = ["name", "description", "price", "HSN_code", "is_active"]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR,
+                "setup/invoices/dev_invoice_item/items.json",
+            )
+        )
         depends_on = []
         is_fixture = False
         related_seeders = {}

@@ -1,3 +1,10 @@
+"""
+Global registries for BaseSeeder subclasses.
+
+Maintains class registries for all registered seeders (global development seeders)
+and static production fixtures (`fixture_registry`).
+"""
+
 from core.utils.registry import ClassRegistry
 
 # Global registry for all the seeders

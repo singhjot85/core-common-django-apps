@@ -7,6 +7,7 @@ import typing
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import connection
 from django.utils.translation import gettext_lazy as _
 
 from core.apps.users import app_settings, get_otp_log_model
@@ -32,12 +33,12 @@ class BaseOTPService(abc.ABC):
     @classmethod
     def _make_cache_key(cls, identifier: str) -> str:
         clean = identifier.strip().lower()
-        return f"users_otp:{clean}"
+        return f"{connection.schema_name}:users_otp:{clean}"
 
     @classmethod
     def _make_attempts_key(cls, identifier: str) -> str:
         clean = identifier.strip().lower()
-        return f"users_otp_attempts:{clean}"
+        return f"{connection.schema_name}:users_otp_attempts:{clean}"
 
     @classmethod
     def generate_code(cls, length: int = 6) -> str:

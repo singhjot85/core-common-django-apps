@@ -1,80 +1,67 @@
-import importlib
-import json
-import logging
-from pathlib import Path
+"""
+Management command to run development seeders and bootstrap local setup.
+"""
 
+from __future__ import annotations
+
+import logging
+import os
+
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from core.seeder.runners import SeedData
+from core.apps.configurations import app_settings
+from core.seeder.runners import SeedDevelopmentData
+from core.utils.autodiscovery import AutoDiscovery
 from core.utils.checks import is_development
 
 LOGGER = logging.getLogger(__name__)
 
 
-def auto_discover_seeders():
-    """Import all known and discoverable seeder modules to ensure registration."""
-    known_modules = [
-        "core.setup.crm.seeder",
-        "core.setup.invoices.seeder",
-        "core.setup.tenants.seeder",
-    ]
-    for mod_name in known_modules:
-        try:
-            importlib.import_module(mod_name)
-        except (ImportError, ModuleNotFoundError) as exc:
-            LOGGER.debug("Could not import %s: %s", mod_name, exc)
+def auto_discover_seeders() -> list:
+    """
+    Discover and import all seeder modules across development setup and core apps.
 
-    # Dynamically scan core/apps and core/setup for additional seeder files
-    core_dir = Path(__file__).resolve().parents[4]
-    if core_dir.exists():
-        for seeder_file in list(core_dir.glob("apps/*/fixtures/seeder.py")) + list(
-            core_dir.glob("setup/*/seeder.py")
-        ):
-            rel_parts = seeder_file.relative_to(core_dir.parent).with_suffix("").parts
-            mod_str = ".".join(rel_parts)
-            if mod_str not in known_modules:
-                try:
-                    importlib.import_module(mod_str)
-                except (ImportError, ModuleNotFoundError) as exc:
-                    LOGGER.debug("Could not import %s: %s", mod_str, exc)
+    Uses `app_settings.DEV_SEEDER_SETUP_PATH` (anchored to `settings.CORE_BASE_DIR`)
+    for development seeders, and `settings.CORE_APP_DIR` for production app fixtures.
 
+    Returns:
+        list: List of discovered and imported module objects.
+    """
+    discovered = []
 
-def load_seed_data() -> dict:
-    """Load fixture and setup JSON files into a dictionary keyed by seeder labels."""
-    seed_data: dict[str, list] = {}
-    core_dir = Path(__file__).resolve().parents[4]
-    if not core_dir.exists():
-        return seed_data
+    # 1. Discover development seeders from configured setup path
+    setup_path = app_settings.DEV_SEEDER_SETUP_PATH
+    setup_path = os.path.join(settings.BASE_DIR, setup_path)
 
-    json_files = list(core_dir.glob("apps/*/fixtures/*/*.json")) + list(
-        core_dir.glob("setup/*/*/*.json")
+    dev_discovery = AutoDiscovery(
+        root_path=setup_path,
+        scan_all=True,
+        scan_depth=4,
+        file_name=["seeder.py", "seeders.py"],
     )
+    discovered.extend(dev_discovery.autodiscover())
 
-    for json_file in json_files:
-        try:
-            with open(json_file, "r", encoding="utf-8") as f:
-                content = json.load(f)
-        except Exception as exc:
-            LOGGER.warning("Could not load seed data from %s: %s", json_file, exc)
-            continue
+    # 2. Discover production fixture seeders under CORE_APP_DIR
+    fixtures_discovery = AutoDiscovery(
+        root_path=settings.CORE_APP_DIR,
+        scan_all=True,
+        scan_depth=2,
+        file_name=["seeder.py", "seeders.py"],
+    )
+    discovered.extend(fixtures_discovery.autodiscover())
 
-        dir_name = json_file.parent.name
-        stem_name = json_file.stem
-
-        keys_to_register = [
-            dir_name,
-            f"{dir_name}_seeder",
-            stem_name,
-            f"{stem_name}_seeder",
-        ]
-        for key in keys_to_register:
-            if key not in seed_data:
-                seed_data[key] = content
-
-    return seed_data
+    return discovered
 
 
 class Command(BaseCommand):
+    """
+    Django management command: `dev_setup` (alias: `seed_data`).
+
+    Discovers all registered seeders and triggers the SeedData runner
+    to populate development environments with initial and mock records.
+    """
+
     help = "Run development seeders to populate initial and development mock data."
 
     def handle(self, *args, **options):
@@ -84,13 +71,13 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(self.style.NOTICE("Discovering and loading seeders..."))
-        auto_discover_seeders()
+        discovered = auto_discover_seeders()
+        self.stdout.write(
+            self.style.NOTICE(f"Discovered {len(discovered)} seeder modules.")
+        )
 
-        self.stdout.write(self.style.NOTICE("Loading seed fixture data..."))
-        seed_data = load_seed_data()
-
-        self.stdout.write(self.style.NOTICE("Executing SeedData runner..."))
-        runner = SeedData(seed_data=seed_data)
+        self.stdout.write(self.style.NOTICE("Executing SeedDevelopmentData runner..."))
+        runner = SeedDevelopmentData()
         runner.run()
 
         self.stdout.write(

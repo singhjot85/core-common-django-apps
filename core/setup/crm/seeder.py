@@ -1,3 +1,11 @@
+"""
+Development mock seeders for CRM application.
+"""
+
+import os
+
+from django.conf import settings
+
 from core.apps.crm import (
     get_customer_address_model,
     get_customer_email_model,
@@ -5,6 +13,7 @@ from core.apps.crm import (
     get_customer_phone_model,
 )
 from core.seeder.base import BaseMeta, BaseSeeder
+from core.seeder.datasource import FileDataSource
 
 
 class DevCustomerSeeder(BaseSeeder):
@@ -19,6 +28,11 @@ class DevCustomerSeeder(BaseSeeder):
             "customer_type",
             "status",
         ]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR, "setup/crm/dev_customer/customers.json"
+            )
+        )
         depends_on = []
         is_fixture = False
         related_seeders = {}
@@ -30,6 +44,11 @@ class DevCustomerPhoneSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_customer_phone_model()
         fields = ["customer", "phone", "phone_type", "is_primary"]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR, "setup/crm/dev_customer_phone/phones.json"
+            )
+        )
         depends_on = []
         is_fixture = False
         related_seeders = {"customer": DevCustomerSeeder}
@@ -41,6 +60,11 @@ class DevCustomerEmailSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_customer_email_model()
         fields = ["customer", "email", "email_type", "is_primary"]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR, "setup/crm/dev_customer_email/emails.json"
+            )
+        )
         depends_on = []
         is_fixture = False
         related_seeders = {"customer": DevCustomerSeeder}
@@ -61,6 +85,12 @@ class DevCustomerAddressSeeder(BaseSeeder):
             "address_type",
             "is_primary",
         ]
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR,
+                "setup/crm/dev_customer_address/addresses.json",
+            )
+        )
         depends_on = []
         is_fixture = False
         related_seeders = {"customer": DevCustomerSeeder}
