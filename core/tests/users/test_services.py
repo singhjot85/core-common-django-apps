@@ -4,24 +4,28 @@ import pytest
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 
-from core.apps.users import get_social_account_model, get_user_model
+from core.apps.users import get_otp_log_model, get_social_account_model, get_user_model
 from core.apps.users.constants import (
     OTPChannelChoices,
+    OTPDeliveryStatusChoices,
     OTPPurposeChoices,
     SocialProviderChoices,
 )
 from core.apps.users.services.otp import (
+    BaseOTPService,
     EmailOTPService,
     OTPService,
     OTPServiceFactory,
     PhoneOTPService,
 )
 from core.apps.users.services.social import GoogleAuthService, SocialAuthServiceFactory
+from core.apps.users.tasks import create_otp_log_task, send_otp_task
 from core.utils.backends.sms import BaseSMSBackend, ConsoleSMSBackend
 from core.utils.generators.username import UsernameGenerator, generate_unique_username
 
 User = get_user_model()
 SocialAccount = get_social_account_model()
+OTPLog = get_otp_log_model()
 
 
 class TestUsernameGeneratorService:
@@ -396,3 +400,193 @@ class TestSMSBackends:
     def test_base_sms_backend_cannot_instantiate_abstract(self):
         with pytest.raises(TypeError):
             BaseSMSBackend()  # Can't instantiate abstract class with abstract method
+
+
+class TestOTPLogServiceFunctionality:
+    """Tests covering OTPLog creation, audit trail tracking, and verification marking."""
+
+    def setup_method(self):
+        cache.clear()
+
+    def teardown_method(self):
+        cache.clear()
+
+    @patch("core.apps.users.services.otp.base.queue_task")
+    @patch.object(PhoneOTPService, "check_user_exists", return_value=True)
+    @patch.object(PhoneOTPService, "deliver", return_value=True)
+    def test_send_otp_success_queues_sent_log(
+        self, mock_deliver, mock_exists, mock_queue_task
+    ):
+        service = PhoneOTPService()
+        result = service.send_otp(
+            identifier="+1555123456", purpose=OTPPurposeChoices.LOGIN
+        )
+
+        assert result is True
+        mock_exists.assert_called_once_with("+1555123456")
+        mock_deliver.assert_called_once()
+        mock_queue_task.assert_called_once()
+        task_name = mock_queue_task.call_args[0][0]
+        task_args = mock_queue_task.call_args[1]["task_args"]
+        task_kwargs = mock_queue_task.call_args[1]["task_kwargs"]
+
+        assert task_name == "core.apps.users.tasks.create_otp_log_task"
+        assert task_args == ("+1555123456",)
+        assert task_kwargs["recipient"] == "+1555123456"
+        assert task_kwargs["status"] == OTPDeliveryStatusChoices.SENT.value
+        assert task_kwargs["channel"] == OTPChannelChoices.PHONE
+        assert task_kwargs["purpose"] == OTPPurposeChoices.LOGIN
+        assert "successfully" in task_kwargs["message"]
+
+    @patch("core.apps.users.services.otp.base.queue_task")
+    @patch.object(PhoneOTPService, "check_user_exists", return_value=False)
+    @patch.object(PhoneOTPService, "deliver")
+    def test_send_otp_user_not_found_queues_failed_log(
+        self, mock_deliver, mock_exists, mock_queue_task
+    ):
+        service = PhoneOTPService()
+        result = service.send_otp(
+            identifier="+1555000000", purpose=OTPPurposeChoices.LOGIN
+        )
+
+        assert result is False
+        mock_deliver.assert_not_called()
+        mock_queue_task.assert_called_once()
+        task_kwargs = mock_queue_task.call_args[1]["task_kwargs"]
+        assert task_kwargs["status"] == OTPDeliveryStatusChoices.FAILED.value
+        assert "No user found" in task_kwargs["message"]
+        assert "traceback" in task_kwargs
+
+    @patch("core.apps.users.services.otp.base.queue_task")
+    @patch.object(PhoneOTPService, "check_user_exists")
+    @patch.object(PhoneOTPService, "deliver", return_value=False)
+    def test_send_otp_delivery_failure_queues_failed_log(
+        self, mock_deliver, mock_exists, mock_queue_task
+    ):
+        service = PhoneOTPService()
+        result = service.send_otp(
+            identifier="+1555123456", purpose=OTPPurposeChoices.SIGNUP
+        )
+
+        assert result is False
+        mock_exists.assert_not_called()
+        mock_queue_task.assert_called_once()
+        task_kwargs = mock_queue_task.call_args[1]["task_kwargs"]
+        assert task_kwargs["status"] == OTPDeliveryStatusChoices.FAILED.value
+        assert "Failed to deliver" in task_kwargs["message"]
+
+    @patch("core.apps.users.services.otp.base.queue_task")
+    @patch.object(
+        PhoneOTPService, "deliver", side_effect=RuntimeError("SMS Gateway 500")
+    )
+    def test_send_otp_delivery_exception_queues_failed_log(
+        self, mock_deliver, mock_queue_task
+    ):
+        service = PhoneOTPService()
+        result = service.send_otp(
+            identifier="+1555123456", purpose=OTPPurposeChoices.SIGNUP
+        )
+
+        assert result is False
+        mock_queue_task.assert_called_once()
+        task_kwargs = mock_queue_task.call_args[1]["task_kwargs"]
+        assert task_kwargs["status"] == OTPDeliveryStatusChoices.FAILED.value
+        assert "SMS Gateway 500" in task_kwargs["message"]
+
+    @patch.object(OTPLog.objects, "filter")
+    def test_mark_otp_log_verified_success(self, mock_filter):
+        mock_log = MagicMock()
+        mock_log.recipient = "+1555123456"
+        mock_log.status = OTPDeliveryStatusChoices.SENT.value
+        mock_filter.return_value.order_by.return_value.first.return_value = mock_log
+
+        updated = BaseOTPService._mark_otp_log_verified("+1555123456")
+
+        assert updated is mock_log
+        assert mock_log.status == OTPDeliveryStatusChoices.VERIFIED.value
+        assert "verified successfully" in mock_log.message
+        mock_log.save.assert_called_once()
+
+    @patch.object(OTPLog.objects, "filter")
+    def test_mark_otp_log_verified_case_insensitive(self, mock_filter):
+        mock_log = MagicMock()
+        mock_filter.return_value.order_by.return_value.first.return_value = mock_log
+
+        BaseOTPService._mark_otp_log_verified("Alice@EXAMPLE.com ")
+
+        mock_filter.assert_called_once()
+        filter_kwargs = mock_filter.call_args[1]
+        assert filter_kwargs["recipient__iexact"] == "Alice@EXAMPLE.com"
+        assert filter_kwargs["status"] == OTPDeliveryStatusChoices.SENT.value
+
+    @patch.object(OTPLog.objects, "filter")
+    def test_mark_otp_log_verified_not_found(self, mock_filter):
+        mock_filter.return_value.order_by.return_value.first.return_value = None
+
+        updated = BaseOTPService._mark_otp_log_verified("+1555999999")
+
+        assert updated is None
+
+    @patch.object(
+        OTPLog.objects, "filter", side_effect=Exception("DB connection dropped")
+    )
+    def test_mark_otp_log_verified_handles_exception_gracefully(self, mock_filter):
+        updated = BaseOTPService._mark_otp_log_verified("+1555123456")
+        assert updated is None
+
+    @patch.object(OTPLog.objects, "create")
+    def test_create_otp_log_task_execution(self, mock_create):
+        result = create_otp_log_task(
+            identifier="+1555123456",
+            recipient="+1555123456",
+            channel=OTPChannelChoices.PHONE,
+            purpose=OTPPurposeChoices.LOGIN,
+            status=OTPDeliveryStatusChoices.SENT.value,
+            message="OTP dispatched successfully.",
+            traceback="",
+        )
+
+        assert "created successfully" in result
+        mock_create.assert_called_once_with(
+            recipient="+1555123456",
+            channel=OTPChannelChoices.PHONE,
+            purpose=OTPPurposeChoices.LOGIN,
+            status=OTPDeliveryStatusChoices.SENT.value,
+            message="OTP dispatched successfully.",
+            traceback="",
+        )
+
+    @patch.object(OTPLog.objects, "create")
+    def test_create_otp_log_task_with_recipient_only(self, mock_create):
+        result = create_otp_log_task(
+            recipient="test@example.com",
+            channel=OTPChannelChoices.EMAIL,
+            purpose=OTPPurposeChoices.SIGNUP,
+            status=OTPDeliveryStatusChoices.SENT.value,
+        )
+
+        assert "created successfully" in result
+        mock_create.assert_called_once_with(
+            recipient="test@example.com",
+            channel=OTPChannelChoices.EMAIL,
+            purpose=OTPPurposeChoices.SIGNUP,
+            status=OTPDeliveryStatusChoices.SENT.value,
+            message="",
+            traceback="",
+        )
+
+    @patch.object(OTPServiceFactory, "send_otp")
+    def test_send_otp_task_execution(self, mock_factory_send):
+        mock_factory_send.return_value = True
+        result = send_otp_task(
+            identifier="+1555123456",
+            channel=OTPChannelChoices.PHONE,
+            purpose=OTPPurposeChoices.LOGIN,
+        )
+
+        assert "sent successfully" in result
+        mock_factory_send.assert_called_once_with(
+            identifier="+1555123456",
+            channel=OTPChannelChoices.PHONE,
+            purpose=OTPPurposeChoices.LOGIN,
+        )

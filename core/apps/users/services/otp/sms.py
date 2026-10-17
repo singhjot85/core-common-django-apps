@@ -20,13 +20,18 @@ class PhoneOTPService(BaseOTPService):
         """Check if user exists with the given phone number."""
         return User.objects.filter(phone_number=identifier.strip()).exists()
 
-    def deliver(self, identifier: str, code: str, message: str):
+    def deliver(self, identifier: str, code: str, message: str) -> bool:
         """
         Deliver the OTP code via configured SMS backend.
 
         TODO: Build out sms service, that sends email's from template's and effectively
             Keep swappable backends on that sms service and move this backend.send_sms there
         """
-        sms_backend_class = app_settings.SMS_BACKEND
-        sms_backend: BaseSMSBackend = sms_backend_class()
-        sms_backend.send_sms(to=identifier.strip(), message=message)
+        try:
+            sms_backend_class = app_settings.SMS_BACKEND
+            sms_backend: BaseSMSBackend = sms_backend_class()
+            result = sms_backend.send_sms(to=identifier.strip(), message=message)
+            return True if result is None else bool(result)
+        except Exception as e:
+            LOGGER.exception(f"Failed to send OTP SMS to {identifier}: {e}")
+            return False

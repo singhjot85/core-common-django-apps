@@ -12,7 +12,6 @@ from django.utils.translation import gettext_lazy as _
 
 from core.apps.users import app_settings, get_otp_log_model
 from core.apps.users.constants import OTPDeliveryStatusChoices, OTPPurposeChoices
-from core.apps.users.tasks import create_otp_log_task
 from core.utils.dates import get_local_date, get_local_datetime
 from core.utils.tasks import queue_task
 
@@ -111,6 +110,7 @@ class BaseOTPService(abc.ABC):
             "purpose": purpose,
             "status": OTPDeliveryStatusChoices.PENDING.value,
         }
+        success = False
         try:
             if purpose == OTPPurposeChoices.LOGIN and not self.check_user_exists(
                 clean_identifier
@@ -123,22 +123,28 @@ class BaseOTPService(abc.ABC):
             self.set_otp_cache(clean_identifier, code, timeout=timeout)
 
             message = self.build_message(code=code, timeout=timeout)
-            self.deliver(identifier=clean_identifier, code=code, message=message)
+            if not self.deliver(
+                identifier=clean_identifier, code=code, message=message
+            ):
+                raise RuntimeError(f"Failed to deliver OTP via {self.channel}")
 
             log_data["status"] = OTPDeliveryStatusChoices.SENT.value
             log_data.update({"message": "OTP dispatched successfully."})
+            success = True
         except Exception as e:
             log_data["status"] = OTPDeliveryStatusChoices.FAILED.value
-            log_data.update({"message": str(e)})
+            log_data.update({"message": str(e)[:255]})
             log_data.update({"traceback": traceback.format_exc()})
             LOGGER.exception(f"Failed to send OTP to {clean_identifier}: {e}")
+            success = False
         finally:
             queue_task(
-                create_otp_log_task,
+                "core.apps.users.tasks.create_otp_log_task",
                 task_args=(identifier,),
                 task_kwargs=log_data,
                 on_commit=False,  # Raised exceptions can cause rollback, but we still want to log the attempt
             )
+        return success
 
     @classmethod
     def _mark_otp_log_verified(cls, identifier: str):
@@ -149,21 +155,30 @@ class BaseOTPService(abc.ABC):
         Args:
             identifier (str): Identifier for OTP, could be phone or email
         """
-        otp_log = (
-            OTPLog.objects.filter(
-                identifier=identifier,
-                status=OTPDeliveryStatusChoices.SENT.value,
-                created__date__gte=get_local_date(),
+        clean_identifier = identifier.strip()
+        try:
+            otp_log = (
+                OTPLog.objects.filter(
+                    recipient__iexact=clean_identifier,
+                    status=OTPDeliveryStatusChoices.SENT.value,
+                    created__date__gte=get_local_date(),
+                )
+                .order_by("-created")
+                .first()
             )
-            .order_by("-created")
-            .first()
-        )
-        if otp_log:
-            otp_log.update(
-                status=OTPDeliveryStatusChoices.VERIFIED.value,
-                message=f"OTP verified successfully at: {get_local_datetime}",
+            if otp_log:
+                otp_log.status = OTPDeliveryStatusChoices.VERIFIED.value
+                otp_log.message = (
+                    f"OTP verified successfully at: {get_local_datetime()}"
+                )
+                otp_log.save()
+                return otp_log
+            return None
+        except Exception as e:
+            LOGGER.exception(
+                f"Failed to mark OTP log verified for {clean_identifier}: {e}"
             )
-            return otp_log
+            return None
 
     @classmethod
     def verify_otp(cls, identifier: str, code: str) -> tuple[bool, str]:

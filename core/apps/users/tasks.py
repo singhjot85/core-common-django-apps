@@ -1,11 +1,12 @@
 import logging
+from contextlib import nullcontext
 
 from celery import shared_task
 from django.core.cache import cache
 
 from core.apps.users import get_otp_log_model
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
-from core.apps.users.services.otp import OTPServiceFactory
+from core.apps.users.services.otp.factory import OTPServiceFactory
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +27,9 @@ def send_otp_task(
 
     try:
         cache_key = OTPServiceFactory.cache_lock_key(identifier)
-        with cache.lock(cache_key):
+        # TODO: Implement custom LocalMemCache backend for tests, and then avoid this nullcontext(...)
+        lock = cache.lock(cache_key) if hasattr(cache, "lock") else nullcontext()
+        with lock:
             OTPServiceFactory.send_otp(
                 identifier=identifier, channel=channel, purpose=purpose
             )
@@ -40,25 +43,26 @@ def send_otp_task(
 @shared_task(bind=True, name="core.apps.users.tasks.create_otp_log_task")
 def create_otp_log_task(
     self,
-    identifier,
-    recipient: str,
-    channel: str,
-    purpose: str,
-    status: str,
+    identifier: str = None,
+    recipient: str = "",
+    channel: str = OTPChannelChoices.PHONE,
+    purpose: str = OTPPurposeChoices.LOGIN,
+    status: str = "",
     message: str = "",
     traceback: str = "",
 ):
     """
     Asynchronous worker task to create an OTP log entry in the database.
     """
-    LOGGER.info(
-        f"Executing create_otp_log_task for {recipient} via {channel} ({purpose})"
-    )
+    target = recipient or identifier
+    LOGGER.info(f"Executing create_otp_log_task for {target} via {channel} ({purpose})")
     try:
-        cache_key = OTPServiceFactory.cache_lock_key(identifier)
-        with cache.lock(cache_key):
+        cache_key = OTPServiceFactory.cache_lock_key(target)
+        # TODO: Implement custom LocalMemCache backend for tests, and then avoid this nullcontext(...)
+        lock = cache.lock(cache_key) if hasattr(cache, "lock") else nullcontext()
+        with lock:
             OTPLog.objects.create(
-                recipient=recipient,
+                recipient=target,
                 channel=channel,
                 purpose=purpose,
                 status=status,
@@ -66,9 +70,7 @@ def create_otp_log_task(
                 traceback=traceback,
             )
     except Exception as exc:
-        LOGGER.error(
-            f"Error in create_otp_log_task for {recipient}: {exc}", exc_info=exc
-        )
+        LOGGER.error(f"Error in create_otp_log_task for {target}: {exc}", exc_info=exc)
         raise self.retry(exc=exc)
 
-    return f"OTP log created successfully for {recipient} via {channel} ({purpose})"
+    return f"OTP log created successfully for {target} via {channel} ({purpose})"

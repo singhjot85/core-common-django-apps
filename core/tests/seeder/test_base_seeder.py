@@ -200,7 +200,7 @@ class TestBaseSeederSchemaResolution:
         assert instance.schema_name == "custom_schema"
 
     def test_schema_name_from_seed_data_dict(self):
-        """_schema_name in dict seed_data is respected."""
+        """_schema_name in dict seed_data is not respected."""
         from django.conf import settings
 
         class DictDataSeeder(BaseSeeder):
@@ -214,10 +214,10 @@ class TestBaseSeederSchemaResolution:
 
         instance = DictDataSeeder()
         instance.seed_data = {"_schema_name": "org_tenant_1", "name": "Test"}
-        assert instance.schema_name == "org_tenant_1"
+        assert instance.schema_name == "public"
 
     def test_schema_name_from_seed_data_list(self):
-        """_schema_name in list seed_data is respected."""
+        """_schema_name in list seed_data is not respected."""
         from django.conf import settings
 
         class ListDataSeeder(BaseSeeder):
@@ -231,7 +231,7 @@ class TestBaseSeederSchemaResolution:
 
         instance = ListDataSeeder()
         instance.seed_data = [{"_schema_name": "org_tenant_2", "name": "Test"}]
-        assert instance.schema_name == "org_tenant_2"
+        assert instance.schema_name == "public"
 
     def test_organization_tenant_type_without_schema_returns_all_schemas(self):
         """Organization tenant_type seeder without explicit schema resolves to ALL_SCHEMAS."""

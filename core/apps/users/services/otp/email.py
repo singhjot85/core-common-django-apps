@@ -23,18 +23,23 @@ class EmailOTPService(BaseOTPService):
         """Check if user exists with the given email address."""
         return User.objects.filter(email__iexact=identifier.strip()).exists()
 
-    def deliver(self, identifier: str, code: str, message: str):
+    def deliver(self, identifier: str, code: str, message: str) -> bool:
         """Deliver the OTP code via Django send_mail.
 
         TODO: Build out email service, that sends email's from template's and effectively.
             Keep swappable backends on that email service.
         """
         subject = str(_("Your Verification Code"))
-        from_email = getattr(settings, "DEFAULT_FROM_EMAIL")
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=from_email,
-            recipient_list=[identifier.strip()],
-            fail_silently=False,
-        )
+        from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "")
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=from_email,
+                recipient_list=[identifier.strip()],
+                fail_silently=False,
+            )
+            return True
+        except Exception as e:
+            LOGGER.exception(f"Failed to send OTP email to {identifier}: {e}")
+            return False
