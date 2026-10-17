@@ -17,6 +17,8 @@ class TenantConfigurationSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_tenant_configuration_model()
         fields = ["tenant", "details"]
+        tenant_type = settings.TENANT_TYPE_PUBLIC
+        schema_name = "public"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_APP_DIR,

@@ -174,3 +174,82 @@ class TestEmptySentinel:
         assert empty is not None
         assert empty is not False
         assert empty != 0
+
+
+class TestBaseSeederSchemaResolution:
+    """Unit tests for BaseSeeder.schema_name property."""
+
+    def test_schema_name_from_meta(self):
+        """schema_name explicitly defined on Meta takes highest precedence."""
+        from django.conf import settings
+
+        class CustomMeta(BaseMeta):
+            model = Configuration
+            fields = ["name"]
+            tenant_type = settings.TENANT_TYPE_PUBLIC
+            schema_name = "custom_schema"
+            depends_on = []
+            is_fixture = False
+            related_seeders = {}
+
+        class CustomSeeder(BaseSeeder):
+            class Meta(CustomMeta):
+                pass
+
+        instance = CustomSeeder()
+        assert instance.schema_name == "custom_schema"
+
+    def test_schema_name_from_seed_data_dict(self):
+        """_schema_name in dict seed_data is respected."""
+        from django.conf import settings
+
+        class DictDataSeeder(BaseSeeder):
+            class Meta(BaseMeta):
+                model = Configuration
+                fields = ["name"]
+                tenant_type = settings.TENANT_TYPE_PUBLIC
+                depends_on = []
+                is_fixture = False
+                related_seeders = {}
+
+        instance = DictDataSeeder()
+        instance.seed_data = {"_schema_name": "org_tenant_1", "name": "Test"}
+        assert instance.schema_name == "org_tenant_1"
+
+    def test_schema_name_from_seed_data_list(self):
+        """_schema_name in list seed_data is respected."""
+        from django.conf import settings
+
+        class ListDataSeeder(BaseSeeder):
+            class Meta(BaseMeta):
+                model = Configuration
+                fields = ["name"]
+                tenant_type = settings.TENANT_TYPE_PUBLIC
+                depends_on = []
+                is_fixture = False
+                related_seeders = {}
+
+        instance = ListDataSeeder()
+        instance.seed_data = [{"_schema_name": "org_tenant_2", "name": "Test"}]
+        assert instance.schema_name == "org_tenant_2"
+
+    def test_organization_tenant_type_raises_on_public_schema(self, monkeypatch):
+        """Organization tenant_type seeder raises SeederException when connection is public."""
+        from django.conf import settings
+        from django.db import connection
+
+        class OrgSeeder(BaseSeeder):
+            class Meta(BaseMeta):
+                model = Configuration
+                fields = ["name"]
+                tenant_type = settings.TENANT_TYPE_ORGANIZATION
+                depends_on = []
+                is_fixture = False
+                related_seeders = {}
+
+        monkeypatch.setattr(connection, "schema_name", "public")
+        instance = OrgSeeder()
+        instance.seed_data = []
+        with pytest.raises(SeederException) as exc_info:
+            _ = instance.schema_name
+        assert "cannot run on public schema" in str(exc_info.value)

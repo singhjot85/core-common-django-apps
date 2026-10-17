@@ -17,6 +17,7 @@ class CustomerPreferenceTypeSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_customer_preference_type_model()
         fields = ["code", "label", "data_type", "default_value", "values"]
+        tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_APP_DIR,

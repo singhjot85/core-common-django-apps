@@ -49,6 +49,28 @@ STATIC_URL = "static/"
 ROOT_URLCONF = "config.urls"
 PUBLIC_SCHEMA_URLCONF = "config.public_urls"
 
+
+TENANT_TYPE_PUBLIC = "public"
+TENANT_TYPE_ORGANIZATION = "organization"
+TENANT_TYPES = {
+    TENANT_TYPE_PUBLIC: {
+        "label": "Public Tenant",
+        "models": [
+            *SHARED_DJANGO_APPS,
+            *PUBLIC_ONLY_DJANGO_APPS,
+            *PUBLIC_ONLY_EXTRA_DEPENDENCIES,
+        ],
+    },
+    TENANT_TYPE_ORGANIZATION: {
+        "label": "Organization Tenant",
+        "models": [
+            *SHARED_DJANGO_APPS,
+            *TENANT_ONLY_DJANGO_APPS,
+            *TENANT_ONLY_EXTRA_DEPENDENCIES,
+        ],
+    },
+}
+
 TENANT_MODEL = TENANTS_TENANT_MODEL
 TENANT_DOMAIN_MODEL = TENANTS_DOMAIN_MODEL
 

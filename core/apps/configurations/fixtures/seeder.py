@@ -21,6 +21,8 @@ class ConfigurationSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_configuration_model()
         fields = ["name", "interface_type", "details"]
+        tenant_type = settings.TENANT_TYPE_PUBLIC
+        schema_name = "public"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_APP_DIR,
@@ -38,6 +40,8 @@ class ConfigurationSchemaSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_configuration_schema_model()
         fields = ["interface_type", "schema"]
+        tenant_type = settings.TENANT_TYPE_PUBLIC
+        schema_name = "public"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_APP_DIR,
@@ -57,6 +61,8 @@ class TenantConfigurationSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_tenant_configuration_model()
         fields = ["tenant", "details"]
+        tenant_type = settings.TENANT_TYPE_PUBLIC
+        schema_name = "public"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_APP_DIR,

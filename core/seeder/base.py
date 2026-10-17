@@ -10,11 +10,13 @@ from __future__ import annotations
 import typing
 from functools import cached_property
 
+from django.conf import settings
 from django.db import DEFAULT_DB_ALIAS, connection, models, transaction
 
 from core.exceptions import InvalidTypeError, SeederException
 from core.seeder.registry import fixture_registry, seeder_registry
-from core.utils.checks import is_model
+from core.utils.checks import is_model, is_multi_tenant
+from core.utils.database import get_public_schema_name
 from core.utils.strings import camel_to_snake_case
 
 if typing.TYPE_CHECKING:
@@ -40,12 +42,12 @@ class BaseMeta:
     model: models.Model
     fields: list
     data_source: AbstractDataSource
+    tenant_type: str = settings.TENANT_TYPE_ORGANIZATION
 
+    schema_name: typing.Optional[str] = None
     depends_on: typing.Optional[list]
     is_fixture: typing.Optional[bool]
-    execution_order: typing.Optional[
-        int
-    ]  # Order in which the seeder needs to be executed, lower number means higher priority
+    execution_order: typing.Optional[int]
     related_seeders: typing.Optional[dict[str, BaseSeeder]]
 
     @classmethod
@@ -125,6 +127,8 @@ class BaseSeeder:
 
     # Can be overriden on base classes
     REGISTRY_KEY: str
+
+    ALL_SCHEMAS = "all_tenant_schemas"
 
     # Only for type convention, do not override
     _model: models.Model
@@ -221,19 +225,30 @@ class BaseSeeder:
         """
         Schema in which the seeder is supposed to run.
         """
-        if isinstance(self.seed_data, dict):
-            schema_name = self.seed_data.get("_schema_name", None)
-            if schema_name:
-                return schema_name
-        elif isinstance(self.seed_data, list) and self.seed_data:
-            if isinstance(self.seed_data[0], dict):
-                schema_name = self.seed_data[0].get("_schema_name") or self.seed_data[
-                    0
-                ].get("tenant_schema")
-                if schema_name:
-                    return schema_name
+        if schema_name := getattr(self._meta, "schema_name", None):
+            return schema_name
 
-        return getattr(connection, "schema_name", "public")
+        if (
+            self.seed_data
+            and isinstance(self.seed_data, dict)
+            and (schema_name := self.seed_data.get("_schema_name", None))
+        ):
+            return schema_name
+
+        if (
+            is_multi_tenant()
+            and self._meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION
+            and getattr(connection, "schema_name") == get_public_schema_name()
+        ):
+            raise SeederException(
+                seeder_name=self.__class__.__name__,
+                message="Seeder for organization tenant type cannot run on public schema",
+            )
+
+        if self._meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION:
+            return self.ALL_SCHEMAS
+
+        return get_public_schema_name()
 
     @classmethod
     def get_dependencies(cls) -> list:

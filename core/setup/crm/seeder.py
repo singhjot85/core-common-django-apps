@@ -28,6 +28,8 @@ class DevCustomerSeeder(BaseSeeder):
             "customer_type",
             "status",
         ]
+        tenant_type = settings.TENANT_TYPE_ORGANIZATION
+        schema_name = "private"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR, "setup/crm/dev_customer/customers.json"
@@ -44,6 +46,8 @@ class DevCustomerPhoneSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_customer_phone_model()
         fields = ["customer", "phone", "phone_type", "is_primary"]
+        tenant_type = settings.TENANT_TYPE_ORGANIZATION
+        schema_name = "private"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR, "setup/crm/dev_customer_phone/phones.json"
@@ -60,6 +64,8 @@ class DevCustomerEmailSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_customer_email_model()
         fields = ["customer", "email", "email_type", "is_primary"]
+        tenant_type = settings.TENANT_TYPE_ORGANIZATION
+        schema_name = "private"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR, "setup/crm/dev_customer_email/emails.json"
@@ -85,6 +91,8 @@ class DevCustomerAddressSeeder(BaseSeeder):
             "address_type",
             "is_primary",
         ]
+        tenant_type = settings.TENANT_TYPE_ORGANIZATION
+        schema_name = "private"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR,

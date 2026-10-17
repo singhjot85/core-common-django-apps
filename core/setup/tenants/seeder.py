@@ -18,6 +18,8 @@ class DevTenantSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_tenant_model()
         fields = ["schema_name", "label", "is_active"]
+        tenant_type = settings.TENANT_TYPE_PUBLIC
+        schema_name = "public"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR, "setup/tenants/dev_tenant/tenants.json"
@@ -34,6 +36,8 @@ class DevUserSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_user_model()
         fields = ["email", "first_name", "last_name", "is_staff", "is_superuser"]
+        tenant_type = settings.TENANT_TYPE_PUBLIC
+        schema_name = "public"
         data_source = FileDataSource(
             os.path.join(settings.CORE_BASE_DIR, "setup/tenants/dev_user/users.json")
         )

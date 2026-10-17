@@ -1,5 +1,6 @@
 [
     {
+        "_schema_name": "public",
         "name": "Default Site Configuration",
         "interface_type": "ui_configuration",
         "details": {

@@ -100,6 +100,58 @@ class TestFixtureJSONFiles:
             assert "schema" in entry
             assert isinstance(entry["schema"], dict)
 
+    @pytest.mark.parametrize("fixture_path", FIXTURE_PATHS, ids=lambda p: p.name)
+    def test_fixture_entries_have_schema_name(self, fixture_path):
+        """Every production fixture JSON object must declare _schema_name."""
+        if not fixture_path.exists():
+            pytest.skip(f"File missing: {fixture_path}")
+        data = json.loads(fixture_path.read_text())
+        for entry in data:
+            assert (
+                "_schema_name" in entry
+            ), f"Missing '_schema_name' in {entry} ({fixture_path.name})"
+            assert entry["_schema_name"] in [
+                "public",
+                "private",
+            ], f"Unexpected schema in {entry}"
+
+
+class TestFixtureSeedersSchemaConfiguration:
+    """Validate that production fixture seeder classes have correct tenant_type and schema_name."""
+
+    def test_configuration_seeders_are_public_tenant_type(self):
+        """Configuration seeders must be public tenant_type and public schema."""
+        from django.conf import settings
+
+        from core.apps.configurations.fixtures.seeder import (
+            ConfigurationSchemaSeeder,
+            ConfigurationSeeder,
+            TenantConfigurationSeeder,
+        )
+
+        for seeder_cls in [
+            ConfigurationSeeder,
+            ConfigurationSchemaSeeder,
+            TenantConfigurationSeeder,
+        ]:
+            meta = getattr(seeder_cls, "Meta", None)
+            assert meta is not None
+            assert meta.tenant_type == settings.TENANT_TYPE_PUBLIC
+            assert meta.schema_name == "public"
+
+    def test_customer_preference_type_seeder_is_organization_tenant_type(self):
+        """CustomerPreferenceTypeSeeder must be organization tenant_type."""
+        from django.conf import settings
+
+        from core.apps.crm.fixtures.seeder import CustomerPreferenceTypeSeeder
+
+        meta = getattr(CustomerPreferenceTypeSeeder, "Meta", None)
+        assert meta is not None
+        assert meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION
+        instance = CustomerPreferenceTypeSeeder()
+        # Seed data has _schema_name: 'private'
+        assert instance.schema_name == "private"
+
 
 class TestDevSetupJSONFiles:
     """Validate that all dev setup JSON files exist and are valid."""
