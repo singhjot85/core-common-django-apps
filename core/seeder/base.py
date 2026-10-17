@@ -226,26 +226,21 @@ class BaseSeeder:
         Schema in which the seeder is supposed to run.
         """
         if schema_name := getattr(self._meta, "schema_name", None):
-            return schema_name
-
-        if (
-            self.seed_data
-            and isinstance(self.seed_data, dict)
-            and (schema_name := self.seed_data.get("_schema_name", None))
-        ):
+            if (
+                is_multi_tenant()
+                and self._meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION
+                and schema_name == get_public_schema_name()
+            ):
+                raise SeederException(
+                    seeder_name=self.__class__.__name__,
+                    message="Seeder for organization tenant type cannot run on public schema",
+                )
             return schema_name
 
         if (
             is_multi_tenant()
             and self._meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION
-            and getattr(connection, "schema_name") == get_public_schema_name()
         ):
-            raise SeederException(
-                seeder_name=self.__class__.__name__,
-                message="Seeder for organization tenant type cannot run on public schema",
-            )
-
-        if self._meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION:
             return self.ALL_SCHEMAS
 
         return get_public_schema_name()
@@ -353,6 +348,16 @@ class BaseSeeder:
         """
         Seed the data
         """
+        if (
+            is_multi_tenant()
+            and self._meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION
+            and getattr(connection, "schema_name", None) == get_public_schema_name()
+        ):
+            raise SeederException(
+                seeder_name=self.__class__.__name__,
+                message="Seeder for organization tenant type cannot run on public schema",
+            )
+
         instance = None
         try:
             validated_data: dict = self.validate(data)

@@ -17,7 +17,7 @@ class DevTenantSeeder(BaseSeeder):
 
     class Meta(BaseMeta):
         model = get_tenant_model()
-        fields = ["schema_name", "label", "is_active"]
+        fields = ["schema_name", "label", "is_active", "status"]
         tenant_type = settings.TENANT_TYPE_PUBLIC
         schema_name = "public"
         data_source = FileDataSource(

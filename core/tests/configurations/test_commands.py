@@ -182,4 +182,4 @@ class TestDevSetupCommand:
         auto_discover_seeders()
         registry = seeder_registry.registry
         assert "dev_customer_seeder" in registry
-        assert "configuration_seeder" in registry
+        assert "dev_tenant_seeder" in registry

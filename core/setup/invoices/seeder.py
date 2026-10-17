@@ -31,7 +31,6 @@ class DevBillingOrganizationSeeder(BaseSeeder):
             "billing_start_sequence",
         ]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        schema_name = "private"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR,
@@ -50,7 +49,6 @@ class DevOrganizationEmailSeeder(BaseSeeder):
         model = get_organization_email_model()
         fields = ["organization", "email", "type", "is_primary"]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        schema_name = "private"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR,
@@ -69,7 +67,6 @@ class DevOrganizationPhoneSeeder(BaseSeeder):
         model = get_organization_phone_model()
         fields = ["organization", "phone", "type", "is_primary"]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        schema_name = "private"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR,
@@ -93,7 +90,6 @@ class DevInvoicePartySeeder(BaseSeeder):
             "customer",
         ]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        schema_name = "private"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR,
@@ -112,7 +108,6 @@ class DevInvoicePartyEmailSeeder(BaseSeeder):
         model = get_invoice_party_email_model()
         fields = ["invoice_party", "email", "email_type"]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        schema_name = "private"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR,
@@ -131,7 +126,6 @@ class DevInvoicePartyPhoneSeeder(BaseSeeder):
         model = get_invoice_party_phone_model()
         fields = ["invoice_party", "phone", "phone_type"]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        schema_name = "private"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR,
@@ -150,7 +144,6 @@ class DevInvoiceItemSeeder(BaseSeeder):
         model = get_invoice_item_model()
         fields = ["name", "description", "price", "HSN_code", "is_active"]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        schema_name = "private"
         data_source = FileDataSource(
             os.path.join(
                 settings.CORE_BASE_DIR,
@@ -175,7 +168,6 @@ class DevInvoiceSeeder(BaseSeeder):
             "billing_address",
         ]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        schema_name = "private"
         depends_on = []
         is_fixture = False
         related_seeders = {

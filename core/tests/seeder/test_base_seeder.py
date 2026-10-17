@@ -233,10 +233,9 @@ class TestBaseSeederSchemaResolution:
         instance.seed_data = [{"_schema_name": "org_tenant_2", "name": "Test"}]
         assert instance.schema_name == "org_tenant_2"
 
-    def test_organization_tenant_type_raises_on_public_schema(self, monkeypatch):
-        """Organization tenant_type seeder raises SeederException when connection is public."""
+    def test_organization_tenant_type_without_schema_returns_all_schemas(self):
+        """Organization tenant_type seeder without explicit schema resolves to ALL_SCHEMAS."""
         from django.conf import settings
-        from django.db import connection
 
         class OrgSeeder(BaseSeeder):
             class Meta(BaseMeta):
@@ -247,9 +246,132 @@ class TestBaseSeederSchemaResolution:
                 is_fixture = False
                 related_seeders = {}
 
-        monkeypatch.setattr(connection, "schema_name", "public")
         instance = OrgSeeder()
-        instance.seed_data = []
+        assert instance.schema_name == BaseSeeder.ALL_SCHEMAS
+
+    def test_organization_tenant_type_with_explicit_public_schema_raises(self):
+        """Organization tenant_type seeder raises if schema_name is explicitly set to public."""
+        from django.conf import settings
+
+        class BadOrgSeeder(BaseSeeder):
+            class Meta(BaseMeta):
+                model = Configuration
+                fields = ["name"]
+                tenant_type = settings.TENANT_TYPE_ORGANIZATION
+                schema_name = "public"
+                depends_on = []
+                is_fixture = False
+                related_seeders = {}
+
+        instance = BadOrgSeeder()
         with pytest.raises(SeederException) as exc_info:
             _ = instance.schema_name
         assert "cannot run on public schema" in str(exc_info.value)
+
+    def test_organization_tenant_type_seed_directly_on_public_raises(self, monkeypatch):
+        """Calling seed() directly for an organization seeder on public schema raises."""
+        from django.conf import settings
+        from django.db import connection
+
+        class DirectPublicOrgSeeder(BaseSeeder):
+            class Meta(BaseMeta):
+                model = Configuration
+                fields = ["name"]
+                tenant_type = settings.TENANT_TYPE_ORGANIZATION
+                depends_on = []
+                is_fixture = False
+                related_seeders = {}
+
+        monkeypatch.setattr(connection, "schema_name", "public")
+        instance = DirectPublicOrgSeeder()
+        with pytest.raises(SeederException) as exc_info:
+            instance.seed({"name": "Test"})
+        assert "cannot run on public schema" in str(exc_info.value)
+
+
+class TestSeederRunnerExecution:
+    """Unit tests for SeederRunner schema dispatch logic."""
+
+    def test_runner_runs_all_schemas_for_org_seeder(self, monkeypatch):
+        """When an org seeder has ALL_SCHEMAS, runner seeds into all ready tenants."""
+        from core.apps import tenants
+        from core.seeder import runners
+        from core.seeder.runners import SeederRunner
+        from core.utils.registry import ClassRegistry
+
+        seeded_schemas = []
+
+        class DummyOrgSeeder(BaseSeeder):
+            class Meta(BaseMeta):
+                model = Configuration
+                fields = ["name"]
+                tenant_type = "organization"
+                depends_on = []
+                is_fixture = False
+                related_seeders = {}
+
+            def seed(self, data):
+                from django.db import connection
+
+                seeded_schemas.append(getattr(connection, "schema_name", None))
+
+        registry = ClassRegistry()
+        registry.register(DummyOrgSeeder, key="dummy_org_seeder")
+
+        class MockQuerySet:
+            def filter(self, **kwargs):
+                return self
+
+            def exclude(self, **kwargs):
+                return self
+
+            def values_list(self, *args, **kwargs):
+                return ["tenant_one", "tenant_two"]
+
+        class MockTenantModel:
+            objects = MockQuerySet()
+
+        monkeypatch.setattr(tenants, "get_tenant_model", lambda: MockTenantModel)
+        monkeypatch.setattr(runners, "get_tenant_model", lambda: MockTenantModel)
+
+        runner = SeederRunner(seeder_registry=registry)
+        seeder_instance = DummyOrgSeeder()
+        seeder_instance.seed_data = [{"name": "Item1"}]
+
+        runner._run(seeder_instance)
+        assert seeded_schemas == ["tenant_one", "tenant_two"]
+
+    def test_runner_runs_item_schema_override(self):
+        """When an item specifies _schema_name, runner switches to that schema."""
+        from core.seeder.runners import SeederRunner
+        from core.utils.registry import ClassRegistry
+
+        seeded_schemas = []
+
+        class SingleSeeder(BaseSeeder):
+            class Meta(BaseMeta):
+                model = Configuration
+                fields = ["name"]
+                tenant_type = "public"
+                schema_name = "public"
+                depends_on = []
+                is_fixture = False
+                related_seeders = {}
+
+            def seed(self, data):
+                from django.db import connection
+
+                seeded_schemas.append(getattr(connection, "schema_name", None))
+
+        registry = ClassRegistry()
+        registry.register(SingleSeeder, key="single_seeder")
+
+        runner = SeederRunner(seeder_registry=registry)
+        seeder_instance = SingleSeeder()
+        seeder_instance.seed_data = [
+            {"_schema_name": "custom_schema_1", "name": "Item1"},
+            {"name": "Item2"},
+        ]
+
+        runner._run(seeder_instance)
+        assert seeded_schemas == ["custom_schema_1", "public"]

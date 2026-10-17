@@ -1,6 +1,5 @@
 [
     {
-        "_schema_name": "private",
         "code": "newsletter",
         "label": "Newsletter Subscription",
         "data_type": "bool",
@@ -8,7 +7,6 @@
         "values": []
     },
     {
-        "_schema_name": "private",
         "code": "dark_mode",
         "label": "Dark Mode",
         "data_type": "bool",
@@ -16,7 +14,6 @@
         "values": []
     },
     {
-        "_schema_name": "private",
         "code": "language",
         "label": "Preferred Language",
         "data_type": "choices",

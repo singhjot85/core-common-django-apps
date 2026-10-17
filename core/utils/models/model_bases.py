@@ -159,6 +159,17 @@ class DefaultLogStatusChoices(models.TextChoices):
     FAILED = "failed", _("Failed")
 
 
+class DefaultLogTypeChoices(models.TextChoices):
+    """
+    Default Choices for a logging model
+    """
+
+    INFO = "info", _("Info")
+    WARNING = "warning", _("Warning")
+    ERROR = "error", _("Error")
+    CRITICAL = "critical", _("Critical")
+
+
 class BaseLogModel(UUIDModel, TimeStampedModel, StatusModel):
     """
     Base Model for any log(s) related models
@@ -174,6 +185,24 @@ class BaseLogModel(UUIDModel, TimeStampedModel, StatusModel):
     DEFAULT_ORDERING = ("-created", "-modified", "-pk")
 
     STATUS = DefaultLogStatusChoices.choices
+    message_type = models.CharField(
+        max_length=124,
+        null=True,
+        blank=True,
+        default=DefaultLogTypeChoices.INFO,
+        verbose_name=_("Message Type"),
+    )
+    message = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name=_("Message"),
+    )
+    traceback = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name=_("Traceback"),
+    )
 
     class Meta:
         abstract = True

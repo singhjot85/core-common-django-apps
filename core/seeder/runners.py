@@ -14,11 +14,13 @@ from functools import cached_property
 from django.db import DEFAULT_DB_ALIAS, transaction
 from rest_framework.exceptions import MethodNotAllowed
 
+from core.apps.tenants import get_tenant_model
+from core.apps.tenants.constants import TenantStatus
 from core.exceptions import SeederException
 from core.seeder.registry import fixture_registry
 from core.seeder.registry import seeder_registry as default_seeder_registry
-from core.utils.checks import is_production
-from core.utils.database import core_schema_context
+from core.utils.checks import is_multi_tenant, is_production
+from core.utils.database import core_schema_context, get_public_schema_name
 from core.utils.datatypes import InstanceDAGBuilder
 from core.utils.registry import ClassRegistry
 from core.utils.strings import camel_to_snake_case
@@ -162,7 +164,30 @@ class SeederRunner(InstanceDAGBuilder):
         )
 
         for data in seed_data:
-            seeder.seed(data=data)
+
+            # If schema for an object is defined, only run for that schema
+            if item_schema := data.get("_schema_name"):
+                with core_schema_context(item_schema):
+                    seeder.seed(data=data)
+                continue
+
+            # If needs to run for all schemas, iterate through all tenants and run in their schema context
+            if is_multi_tenant() and seeder.schema_name == seeder.ALL_SCHEMAS:
+                TenantModel = get_tenant_model()
+                for tenant_schema in (
+                    TenantModel.objects.filter(
+                        is_active=True, status=TenantStatus.READY.value
+                    )
+                    .exclude(schema_name=get_public_schema_name())
+                    .values_list("schema_name", flat=True)
+                ):
+                    with core_schema_context(tenant_schema):
+                        seeder.seed(data=data)
+                continue
+
+            # For single-schema seeders, run in the seeder's target schema context
+            with core_schema_context(seeder.schema_name):
+                seeder.seed(data=data)
 
     def run(self):
         """
@@ -178,9 +203,7 @@ class SeederRunner(InstanceDAGBuilder):
                 label = self.seeder_label(Seeder)
                 try:
                     seeder = Seeder()
-
-                    with core_schema_context(seeder.schema_name):
-                        self._run(seeder)
+                    self._run(seeder)
 
                     LOGGER.info(
                         msg=f"[{seeder.schema_name}] Successfully Executed Seeder >>> {label}"

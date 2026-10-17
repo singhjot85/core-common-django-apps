@@ -29,8 +29,12 @@ def setup_test_tenant(db):
             defaults={
                 "label": " ".join(tenant_schema_name.split("_")).title(),
                 "is_active": True,
+                "status": "ready",
             },
         )
+        if tenant.status != "ready":
+            tenant.status = "ready"
+            tenant.save(update_fields=["status"])
         Domain.objects.get_or_create(
             tenant=tenant,
             domain="localhost",
