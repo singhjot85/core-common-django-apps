@@ -1,3 +1,5 @@
+from django.db import connection
+
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
 from core.apps.users.services.otp.base import BaseOTPService
 from core.apps.users.services.otp.email import EmailOTPService
@@ -49,6 +51,19 @@ class OTPServiceFactory:
         Verify the provided OTP against cache.
         """
         return BaseOTPService.verify_otp(identifier=identifier, code=code)
+
+    @classmethod
+    def cache_lock_key(cls, identifier: str) -> str:
+        """
+        Generate a unique cache key for locking OTP operations for a given identifier.
+
+        Args:
+            identifier (str): User identifier (phone/email).
+
+        Returns:
+            str: Cache key for locking.
+        """
+        return f"{connection.schema_name}:otp_lock:{identifier}"
 
 
 # Backward-compatible singleton/wrapper facade

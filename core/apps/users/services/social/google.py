@@ -20,7 +20,10 @@ class GoogleAuthService(BaseSocialAuthService):
     provider = SocialProviderChoices.GOOGLE
 
     def verify_token(self, token_str: str) -> dict:
-        """Verify Google OAuth2 / OIDC ID token."""
+        """
+        Verify Google OAuth2 / OIDC ID token.
+        TODO: Use encrypted credentials from database instead of plain creds from django-settings.
+        """
         try:
             client_id = getattr(settings, "GOOGLE_AUTH_CLIENT_ID", None)
             request = GoogleAuthRequest()

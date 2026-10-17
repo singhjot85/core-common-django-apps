@@ -19,6 +19,7 @@ from core.apps.users.api.serializers import (
 from core.apps.users.constants import OTPChannelChoices, SocialProviderChoices
 from core.apps.users.services.otp import OTPServiceFactory
 from core.apps.users.services.social import SocialAuthServiceFactory
+from core.apps.users.tasks import send_otp_task
 from core.utils.tasks import queue_task
 
 if typing.TYPE_CHECKING:
@@ -116,13 +117,13 @@ class OTPSendView(APIView):
         # Dispatch via standardized queue_task
         try:
             queue_task(
-                task="core.apps.users.tasks.send_otp_task",
+                task=send_otp_task,
                 task_kwargs={
                     "identifier": identifier,
                     "channel": channel,
                     "purpose": purpose,
                 },
-                on_commit=False,
+                on_commit=True,  # API failure should not queue task
             )
         except Exception as e:
             LOGGER.error(f"Failed to queue OTP task for {identifier}: {e}")

@@ -101,10 +101,9 @@ class BaseSocialAuthService(abc.ABC):
                 is_email_verified=True,
             )
             created = True
-        else:
-            if not user.is_email_verified:
-                user.is_email_verified = True
-                user.save(update_fields=["is_email_verified", "modified"])
+        elif not user.is_email_verified:
+            user.is_email_verified = True
+            user.save(update_fields=["is_email_verified", "modified"])
 
         # Link social account
         SocialAccount.objects.create(
