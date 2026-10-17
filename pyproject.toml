@@ -44,7 +44,7 @@ dev = ["pre-commit (>=4.6.2,<5.0.0)", "black (>=26.5.1,<27.0.0)"]
 [tool.isort]
 profile = "black"
 atomic = true
-skip_glob = ["*/migrations/*"]
+skip_glob = ["*/migrations/*", "*/db_migrations/*"]
 
 
 [tool.pytest.ini_options]
