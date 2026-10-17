@@ -1,50 +1,94 @@
-from unittest.mock import MagicMock
-
 import pytest
 
+from core.apps.configurations import get_configuration_model
 from core.exceptions import InvalidTypeError, SeederException
 from core.seeder.base import BaseMeta, BaseSeeder, empty
 from core.seeder.registry import fixture_registry, seeder_registry
 
+Configuration = get_configuration_model()
 
-@pytest.mark.skip(
-    "Fix them post changing validation form Meta.__init_subclass__ to BaseSeeder.__init__"
-)
+
 class TestBaseMeta:
     """Unit tests for BaseMeta validation logic."""
 
     def test_validate_fields_rejects_non_list(self):
         """Fields must be a list or tuple."""
-        with pytest.raises((InvalidTypeError, SeederException, TypeError)):
 
-            class BadFieldsMeta(BaseMeta):
-                model = MagicMock()
-                fields = "not_a_list"
-                depends_on = []
-                is_fixture = False
-                relation_map = {}
+        class BadFieldsMeta(BaseMeta):
+            model = Configuration
+            fields = "not_a_list"
+            depends_on = []
+            is_fixture = False
+            related_seeders = {}
+
+        with pytest.raises((InvalidTypeError, SeederException, TypeError)):
+            BadFieldsMeta.validate_meta("BadFieldsSeeder")
 
     def test_validate_fields_rejects_empty(self):
         """Empty fields should raise SeederException."""
-        with pytest.raises((SeederException, TypeError)):
 
-            class EmptyFieldsMeta(BaseMeta):
-                model = MagicMock()
-                fields = []
-                depends_on = []
-                is_fixture = False
-                relation_map = {}
+        class EmptyFieldsMeta(BaseMeta):
+            model = Configuration
+            fields = []
+            depends_on = []
+            is_fixture = False
+            related_seeders = {}
+
+        with pytest.raises((SeederException, TypeError)):
+            EmptyFieldsMeta.validate_meta("EmptyFieldsSeeder")
 
     def test_validate_relation_map_rejects_non_dict(self):
-        """relation_map must be a dict."""
-        with pytest.raises((InvalidTypeError, SeederException, TypeError)):
+        """related_seeders must be a dict."""
 
-            class BadRelMapMeta(BaseMeta):
-                model = MagicMock()
-                fields = ["name"]
+        class BadRelMapMeta(BaseMeta):
+            model = Configuration
+            fields = ["name"]
+            depends_on = []
+            is_fixture = False
+            related_seeders = "bad"
+
+        with pytest.raises((InvalidTypeError, SeederException, TypeError)):
+            BadRelMapMeta.validate_meta("BadRelMapSeeder")
+
+    def test_validate_relation_map_rejects_non_seeder_class(self):
+        """related_seeders values must be BaseSeeder subclasses."""
+
+        class BadRelValMeta(BaseMeta):
+            model = Configuration
+            fields = ["name"]
+            depends_on = []
+            is_fixture = False
+            related_seeders = {"rel": str}
+
+        with pytest.raises(InvalidTypeError):
+            BadRelValMeta.validate_meta("BadRelValSeeder")
+
+    def test_validate_model_rejects_non_model(self):
+        """model must be a Django Model subclass."""
+
+        class BadModelMeta(BaseMeta):
+            model = "not_a_model"
+            fields = ["name"]
+            depends_on = []
+            is_fixture = False
+            related_seeders = {}
+
+        with pytest.raises(SeederException):
+            BadModelMeta.validate_meta("BadModelSeeder")
+
+    def test_seeder_init_triggers_meta_validation(self):
+        """BaseSeeder.__init__ should trigger Meta.validate_meta and reject bad fields."""
+
+        class BadSeeder(BaseSeeder):
+            class Meta(BaseMeta):
+                model = Configuration
+                fields = "not_a_list"
                 depends_on = []
                 is_fixture = False
-                relation_map = "bad"
+                related_seeders = {}
+
+        with pytest.raises((InvalidTypeError, SeederException, TypeError)):
+            BadSeeder()
 
 
 class TestBaseSeederRegistration:
@@ -72,9 +116,6 @@ class TestBaseSeederRegistration:
             assert " " not in key, f"Registry key '{key}' contains spaces"
 
 
-@pytest.mark.skip(
-    "Fix them post changing validation form Meta.__init_subclass__ to BaseSeeder.__init__"
-)
 class TestBaseSeederInit:
     """Unit tests for BaseSeeder instance initialization."""
 
@@ -97,9 +138,6 @@ class TestBaseSeederInit:
         assert len(instance.seedable_fields) > 0
 
 
-@pytest.mark.skip(
-    "Fix them post changing validation form Meta.__init_subclass__ to BaseSeeder.__init__"
-)
 class TestBaseSeederValidate:
     """Unit tests for BaseSeeder.validate()."""
 

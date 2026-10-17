@@ -14,7 +14,7 @@ class ConfigurationSeeder(BaseSeeder):
         fields = ["name", "interface_type", "details"]
         depends_on = []
         is_fixture = True
-        relation_map = {}
+        related_seeders = {}
 
 
 class ConfigurationSchemaSeeder(BaseSeeder):
@@ -25,7 +25,7 @@ class ConfigurationSchemaSeeder(BaseSeeder):
         fields = ["interface_type", "schema"]
         depends_on = []
         is_fixture = True
-        relation_map = {}
+        related_seeders = {}
 
 
 class TenantConfigurationSeeder(BaseSeeder):
@@ -38,4 +38,4 @@ class TenantConfigurationSeeder(BaseSeeder):
         fields = ["tenant", "details"]
         depends_on = []
         is_fixture = True
-        relation_map = {}
+        related_seeders = {}

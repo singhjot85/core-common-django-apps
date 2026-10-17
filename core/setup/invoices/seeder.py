@@ -23,7 +23,7 @@ class DevBillingOrganizationSeeder(BaseSeeder):
         ]
         depends_on = []
         is_fixture = False
-        relation_map = {}
+        related_seeders = {}
 
 
 class DevOrganizationEmailSeeder(BaseSeeder):
@@ -34,7 +34,7 @@ class DevOrganizationEmailSeeder(BaseSeeder):
         fields = ["organization", "email", "type", "is_primary"]
         depends_on = []
         is_fixture = False
-        relation_map = {"organization": DevBillingOrganizationSeeder}
+        related_seeders = {"organization": DevBillingOrganizationSeeder}
 
 
 class DevOrganizationPhoneSeeder(BaseSeeder):
@@ -45,7 +45,7 @@ class DevOrganizationPhoneSeeder(BaseSeeder):
         fields = ["organization", "phone", "type", "is_primary"]
         depends_on = []
         is_fixture = False
-        relation_map = {"organization": DevBillingOrganizationSeeder}
+        related_seeders = {"organization": DevBillingOrganizationSeeder}
 
 
 class DevInvoicePartySeeder(BaseSeeder):
@@ -61,7 +61,7 @@ class DevInvoicePartySeeder(BaseSeeder):
         ]
         depends_on = []
         is_fixture = False
-        relation_map = {}
+        related_seeders = {}
 
 
 class DevInvoicePartyEmailSeeder(BaseSeeder):
@@ -72,7 +72,7 @@ class DevInvoicePartyEmailSeeder(BaseSeeder):
         fields = ["invoice_party", "email", "email_type"]
         depends_on = []
         is_fixture = False
-        relation_map = {"invoice_party": DevInvoicePartySeeder}
+        related_seeders = {"invoice_party": DevInvoicePartySeeder}
 
 
 class DevInvoicePartyPhoneSeeder(BaseSeeder):
@@ -83,7 +83,7 @@ class DevInvoicePartyPhoneSeeder(BaseSeeder):
         fields = ["invoice_party", "phone", "phone_type"]
         depends_on = []
         is_fixture = False
-        relation_map = {"invoice_party": DevInvoicePartySeeder}
+        related_seeders = {"invoice_party": DevInvoicePartySeeder}
 
 
 class DevInvoiceItemSeeder(BaseSeeder):
@@ -94,7 +94,7 @@ class DevInvoiceItemSeeder(BaseSeeder):
         fields = ["name", "description", "price", "HSN_code", "is_active"]
         depends_on = []
         is_fixture = False
-        relation_map = {}
+        related_seeders = {}
 
 
 class DevInvoiceSeeder(BaseSeeder):
@@ -111,7 +111,7 @@ class DevInvoiceSeeder(BaseSeeder):
         ]
         depends_on = []
         is_fixture = False
-        relation_map = {
+        related_seeders = {
             "party": DevInvoicePartySeeder,
             "biller": DevBillingOrganizationSeeder,
         }

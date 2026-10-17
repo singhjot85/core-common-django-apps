@@ -21,7 +21,7 @@ class DevCustomerSeeder(BaseSeeder):
         ]
         depends_on = []
         is_fixture = False
-        relation_map = {}
+        related_seeders = {}
 
 
 class DevCustomerPhoneSeeder(BaseSeeder):
@@ -32,7 +32,7 @@ class DevCustomerPhoneSeeder(BaseSeeder):
         fields = ["customer", "phone", "phone_type", "is_primary"]
         depends_on = []
         is_fixture = False
-        relation_map = {"customer": DevCustomerSeeder}
+        related_seeders = {"customer": DevCustomerSeeder}
 
 
 class DevCustomerEmailSeeder(BaseSeeder):
@@ -43,7 +43,7 @@ class DevCustomerEmailSeeder(BaseSeeder):
         fields = ["customer", "email", "email_type", "is_primary"]
         depends_on = []
         is_fixture = False
-        relation_map = {"customer": DevCustomerSeeder}
+        related_seeders = {"customer": DevCustomerSeeder}
 
 
 class DevCustomerAddressSeeder(BaseSeeder):
@@ -63,4 +63,4 @@ class DevCustomerAddressSeeder(BaseSeeder):
         ]
         depends_on = []
         is_fixture = False
-        relation_map = {"customer": DevCustomerSeeder}
+        related_seeders = {"customer": DevCustomerSeeder}

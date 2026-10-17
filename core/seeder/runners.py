@@ -2,13 +2,16 @@ import logging
 import typing
 from functools import cached_property
 
-from django.db import DEFAULT_DB_ALIAS, connection, transaction
-from rest_framework.exceptions import MethodNotAllowed
+from django.db import DEFAULT_DB_ALIAS, connection, transaction  # noqa: F401
+from rest_framework.exceptions import MethodNotAllowed  # noqa: F401
 
 from core.exceptions import InvalidTypeError, SeederException
-from core.seeder.registry import fixture_registry
-from core.seeder.registry import seeder_registry as default_seeder_registry
-from core.utils.checks import is_production
+from core.seeder.registry import fixture_registry  # noqa: F401
+from core.seeder.registry import (  # noqa: F401
+    seeder_registry as default_seeder_registry,
+)
+from core.utils.checks import is_production  # noqa: F401
+from core.utils.database import core_schema_context
 from core.utils.datatypes import InstanceDAGBuilder
 from core.utils.registry import ClassRegistry
 from core.utils.strings import camel_to_snake_case
@@ -19,7 +22,7 @@ if typing.TYPE_CHECKING:
     from core.seeder.base import BaseSeeder
 
 
-class BaseRunner(InstanceDAGBuilder):
+class SeederRunner(InstanceDAGBuilder):
     """
     Base Runner class to run fixture's
     """
@@ -57,11 +60,11 @@ class BaseRunner(InstanceDAGBuilder):
     # Overrides for DAG Builder Methods
     # ------------------------------
 
-    def instance_label(self) -> str:
+    def instance_label(self, Seeder: type["BaseSeeder"]) -> str:
         """
         Override for DAGBuilder's get stringified notation of the instance.
         """
-        return self.seeder_label()
+        return self.seeder_label(Seeder)
 
     def get_instance_sequence(self) -> typing.Union[list, tuple]:
         """
@@ -69,7 +72,7 @@ class BaseRunner(InstanceDAGBuilder):
         """
         return self.seeders
 
-    def is_initial_attribute(self, seeder: type[BaseSeeder]) -> bool:
+    def is_initial_attribute(self, seeder: type["BaseSeeder"]) -> bool:
         """
         Get the attribute representing inital instance.
 
@@ -78,7 +81,7 @@ class BaseRunner(InstanceDAGBuilder):
         """
         return seeder.is_inital_seeder()
 
-    def get_dependencies(self, seeder: type[BaseSeeder]) -> list:
+    def get_dependencies(self, seeder: type["BaseSeeder"]) -> list:
         """
         Get the attribute representing dependencies for the instance.
 
@@ -110,39 +113,27 @@ class BaseRunner(InstanceDAGBuilder):
         with transaction.atomic(using=DEFAULT_DB_ALIAS):
             for Seeder in seeders:
                 label = self.seeder_label(Seeder)
+                schema_name = Seeder.get_schema_name(self.seed_data)
                 try:
-                    Seeder().seed(data=self.seed_data.get(label))
+                    if self.seed_data is None:
+                        LOGGER.error(
+                            msg=f"[{schema_name}] No seed data for Seeder >>> {label}, skipping"
+                        )
+                        raise SeederException(
+                            f"[{schema_name}] No seed data for Seeder >>> {label}, skipping"
+                        )
+
+                    with core_schema_context(schema_name):
+                        Seeder().seed(data=self.seed_data)
+
                     LOGGER.info(
-                        msg=f"[{connection.schema_name}] Succefully Executed Seeder >>> {label}"
+                        msg=f"[{schema_name}] Successfully Executed Seeder >>> {label}"
                     )
                 except Exception as e:
                     LOGGER.error(
-                        msg=f"[{connection.schema_name}] Failed Executing Seeder >>> {label}",
+                        msg=f"[{schema_name}] Failed Executing Seeder >>> {label}",
                         exc_info=e,
                     )
                     raise e
 
         LOGGER.info("Seeder Execution Finished...")
-
-
-class SeedData(BaseRunner):
-    """
-    Run all the fixture's that are available
-    """
-
-    def __init__(self, seed_data, *args, **kwargs):
-        if is_production():
-            raise MethodNotAllowed("Seeding data not allowed in current env.")
-
-        seeder_registry = default_seeder_registry
-        super().__init__(seed_data, seeder_registry, *args, **kwargs)
-
-
-class SeedFixtures(BaseRunner):
-    """
-    Seed fixtures in production enviurnment
-    """
-
-    def __init__(self, seed_data, *args, **kwargs):
-        seeder_registry = fixture_registry
-        super().__init__(seed_data, seeder_registry, *args, **kwargs)

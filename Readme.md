@@ -125,3 +125,10 @@ This repository follows a strict modular design pattern to ensure swappability, 
   poetry run pre-commit run --all-files
   ```
 - Ensures consistent Black formatting, isort import ordering, and flake8 compliance across the codebase.
+
+### 6. Testing Norms & Anti-Patterns
+
+- **Never Accommodate `Mock` in Production Code (Anti-Pattern)**:
+  Production framework code (such as `BaseMeta`, `BaseSeeder`, managers, descriptors) must never import `unittest.mock` or check `isinstance(..., Mock)`. Production validation must enforce genuine domain types (`isinstance(model, type) and issubclass(model, models.Model)`).
+- **Use Real Entities or Factories in Tests**:
+  Tests must use genuine models or dedicated model factories rather than raw mocks that bypass or pollute production type contracts.

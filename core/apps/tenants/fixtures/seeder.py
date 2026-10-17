@@ -10,4 +10,4 @@ class TenantConfigurationSeeder(BaseSeeder):
         fields = ["tenant", "details"]
         depends_on = []
         is_fixture = True
-        relation_map = {}
+        related_seeders = {}

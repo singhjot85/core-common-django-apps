@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from django.db import DEFAULT_DB_ALIAS, models, transaction
+from django.db import DEFAULT_DB_ALIAS, connection, models, transaction
 
 from core.exceptions import InvalidTypeError, SeederException
 from core.seeder.registry import fixture_registry, seeder_registry
+from core.utils.checks import is_model
 from core.utils.strings import camel_to_snake_case
 
 empty = object()
@@ -20,7 +21,7 @@ class BaseMeta:
     ...         model = SomeModel
     ...         depends_on = [User, Tenant]
     ...         is_fixture = True
-    ...         relation_map = {
+    ...         related_seeders = {
     ...             "crated_by": UserSeeder,
     ...             "current_tenant": TenantSeeder
     ...         }
@@ -30,7 +31,8 @@ class BaseMeta:
     fields: list
     depends_on: list
     is_fixture: bool
-    relation_map: dict[str, BaseSeeder]
+    initial: bool  # Can be an candidate for initial seeder
+    related_seeders: dict[str, BaseSeeder]
 
     @classmethod
     def validate_meta(cls, seeder_name):
@@ -47,7 +49,7 @@ class BaseMeta:
         """
         Validate depends_on
         """
-        depends_on = cls.depends_on
+        depends_on = getattr(cls, "depends_on", None)
         if not depends_on:
             return
 
@@ -55,45 +57,51 @@ class BaseMeta:
             raise InvalidTypeError(type=type(depends_on), expected=list)
 
         for val in depends_on:
-            if not isinstance(val, models.Model):
-                SeederException(seeder_name, f"Invalid depends_on value: {val}")
+            if not is_model(val):
+                raise SeederException(seeder_name, f"Invalid depends_on value: {val}")
 
     @classmethod
     def _validate_model(cls, seeder_name):
         """
         Validate model
         """
-        if not cls.model:
+        model = getattr(cls, "model", None)
+        if not model:
             raise SeederException(seeder_name, "Model not defined")
 
-        if not isinstance(cls.model, models.Model):
-            raise TypeError(type(cls.model), models.Model)
+        if not is_model(model):
+            raise SeederException(seeder_name, f"Invalid model: {model}")
 
     @classmethod
     def _validate_fields(cls, seeder_name):
         """
         Validate Fields
         """
-        if not cls.fields:
+        fields = getattr(cls, "fields", None)
+        if fields is None:
             raise SeederException(seeder_name, "Fields not defined for seeder")
 
-        if not isinstance(cls.fields, (list, tuple)):
-            raise InvalidTypeError(type(cls.fields), tuple)
+        if not isinstance(fields, (list, tuple)):
+            raise InvalidTypeError(type=type(fields), expected=list)
+
+        if len(fields) == 0:
+            raise SeederException(seeder_name, "Fields not defined for seeder")
 
     @classmethod
     def _validate_relation_map(cls):
         """
-        Validate relation_map
+        Validate related_seeders
         """
-        if not cls.relation_map:
+        related_seeders = getattr(cls, "related_seeders", None)
+        if not related_seeders:
             return
 
-        if not isinstance(cls.relation_map, dict):
-            raise InvalidTypeError(type(cls.relation_map), dict)
+        if not isinstance(related_seeders, dict):
+            raise InvalidTypeError(type=type(related_seeders), expected=dict)
 
-        for val in cls.relation_map.values():
-            if not isinstance(val, BaseSeeder):
-                raise InvalidTypeError(type(val), BaseSeeder)
+        for val in related_seeders.values():
+            if not (isinstance(val, type) and issubclass(val, BaseSeeder)):
+                raise InvalidTypeError(type=type(val), expected=BaseSeeder)
 
 
 class BaseSeeder:
@@ -147,6 +155,7 @@ class BaseSeeder:
         self._fields = getattr(self._meta, "fields", None)
         self._relation_map = getattr(self._meta, "related_seeders", {})
         self.pick_from_global_registry = find_seeder
+        self._nonconcrete_relations = []
 
     @property
     def seedable_fields(self):
@@ -157,6 +166,14 @@ class BaseSeeder:
             return self._fields
 
         return []
+
+    @classmethod
+    def get_schema_name(cls, seed_data: dict) -> str:
+        schema_name = seed_data.get("_schema_name", None)
+        if schema_name:
+            return schema_name
+
+        return connection.schema_name
 
     @classmethod
     def is_inital_seeder(cls) -> bool:
@@ -193,6 +210,7 @@ class BaseSeeder:
         """
         if not isinstance(data, dict):
             raise InvalidTypeError(type=type(data), expected=dict)
+        return data
 
     def to_internal_value(self, field_name: str, field_val, model_instance):
         """
@@ -211,6 +229,7 @@ class BaseSeeder:
             self._nonconcrete_relations.append(
                 {"accessor_name": field.name, "instance": related_instance}
             )
+            return empty
         elif (
             field.one_to_many
             or (
@@ -224,6 +243,7 @@ class BaseSeeder:
                     "instance": related_instance,
                 }
             )
+            return empty
         else:
             return model_instance
 
@@ -277,7 +297,7 @@ class BaseSeeder:
                 instance = self._model()
                 for field, val in validated_data.items():
                     field_value = self.to_internal_value(field, val, instance)
-                    if not field_value:
+                    if field_value is empty:
                         continue
 
                     self.set_field_value(field, val, instance)

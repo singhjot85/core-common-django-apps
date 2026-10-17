@@ -12,7 +12,7 @@ class DevTenantSeeder(BaseSeeder):
         fields = ["schema_name", "label", "is_active"]
         depends_on = []
         is_fixture = False
-        relation_map = {}
+        related_seeders = {}
 
 
 class DevUserSeeder(BaseSeeder):
@@ -23,4 +23,4 @@ class DevUserSeeder(BaseSeeder):
         fields = ["email", "first_name", "last_name", "is_staff", "is_superuser"]
         depends_on = []
         is_fixture = False
-        relation_map = {}
+        related_seeders = {}

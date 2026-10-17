@@ -10,4 +10,4 @@ class CustomerPreferenceTypeSeeder(BaseSeeder):
         fields = ["code", "label", "data_type", "default_value", "values"]
         depends_on = []
         is_fixture = True
-        relation_map = {}
+        related_seeders = {}

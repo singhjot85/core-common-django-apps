@@ -20,13 +20,18 @@ DEBUGPY_COMPOSE_CMD ?= docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(
 # --------------------------
 # Development Targets
 # --------------------------
-.PHONY: start-app
+.PHONY: start-app, dev-setup
 
 docker-start-new-app:
 	@echo "⌛ Creating app ${APP_LABEL}...\n"
 	mkdir -p core/apps/${APP_LABEL}
 	$(TEMP_DJANGO_CONTAINER) python sample_project/manage.py startapp $(APP_LABEL) core/apps/$(APP_LABEL)
 start-app: docker-start-new-app
+
+docker-dev-setup:
+	@echo "⌛ Running development setup and seeders...\n"
+	$(TEMP_DJANGO_CONTAINER) python sample_project/manage.py dev_setup
+dev-setup: docker-dev-setup
 
 
 # --------------------------

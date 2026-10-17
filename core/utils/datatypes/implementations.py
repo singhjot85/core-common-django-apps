@@ -67,7 +67,7 @@ class InstanceDAGBuilder(BaseDAGBuilder):
         """
         kls_sequence: list[type] = self.get_instance_sequence()
         for i, kls in enumerate(kls_sequence):
-            self._instance_to_num[self.instance_label(kls)]
+            self._instance_to_num[self.instance_label(kls)] = i
             self._num_to_instance[i] = kls
 
     def _resolve_and_build_adjacency_list(self):
@@ -77,6 +77,10 @@ class InstanceDAGBuilder(BaseDAGBuilder):
         """
         self._instance_to_number_map()
         self._first_instance = None
+        for i in self._num_to_instance.keys():
+            if i not in self._adjanceny_list:
+                self._adjanceny_list[i] = []
+
         for instance in self.get_instance_sequence():
 
             # Add a dependency to adjanceny list
@@ -111,7 +115,7 @@ class InstanceDAGBuilder(BaseDAGBuilder):
         # Append the first at start
         if self._first_instance:
             if self._first_instance in sorted_instances:
-                sorted_instances.remove(self._first_seeder)
-            return [self._first_seeder] + sorted_instances
+                sorted_instances.remove(self._first_instance)
+            return [self._first_instance] + sorted_instances
 
         return sorted_instances

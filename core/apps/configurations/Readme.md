@@ -53,3 +53,11 @@ Configuration = get_configuration_model()
 # Retrieve cached configuration for an interface
 config_details = Configuration.get_configuration(interface_type="CRM_PIPELINE")
 ```
+
+## Management Commands
+
+- **`dev_setup`** (alias: `seed_data`):
+  - Validates development environment using `core.utils.checks.is_development()`.
+  - Discovers all registered seeders across core apps and setup fixtures.
+  - Automatically loads JSON fixtures and triggers `SeedData.run()`.
+  - Executable via make target: `make dev-setup` (runs in temporary Docker container).

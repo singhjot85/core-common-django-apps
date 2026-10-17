@@ -69,8 +69,9 @@ All non-trivial logic additions and refactors should be planned across four dist
 
 ### Phase 4: Testing & Quality Phase
 
-- Write unit tests for individual functions and service methods.
 - Mock external APIs, I/O boundaries, and Celery tasks.
+- **Never Accommodate `Mock` in Production Logic (Anti-Pattern)**:
+  Production framework code (such as `BaseMeta`, `BaseSeeder`, descriptors, managers) must never import `unittest.mock` or check `isinstance(..., Mock)`. Production validation must enforce genuine domain types (`isinstance(model, type) and issubclass(model, models.Model)`). If needed, use real models or factories in tests instead of forcing production code to accept mock types.
 - Validate multi-tenant schema isolation where applicable.
 - **Pre-Commit Hooks Verification**:
   - Always run `poetry run pre-commit run --all-files` post changes.
