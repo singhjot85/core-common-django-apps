@@ -1,5 +1,6 @@
 [
     {
+        "_schema_name": "public",
         "interface_type": "site",
         "schema": {
             "type": "object",

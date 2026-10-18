@@ -53,3 +53,15 @@ Configuration = get_configuration_model()
 # Retrieve cached configuration for an interface
 config_details = Configuration.get_configuration(interface_type="CRM_PIPELINE")
 ```
+
+## App Settings (`app_settings.py`)
+
+- **`DEV_SEEDER_SETUP_PATH`**: Path to the development seeders directory (defaults to `"setup"`, anchored to `settings.CORE_BASE_DIR` or absolute path). Configurable via `settings.CORE_CONFIGURATIONS_SETTINGS["DEV_SEEDER_SETUP_PATH"]`.
+
+## Management Commands
+
+- **`dev_setup`** (alias: `seed_data`):
+  - Validates development environment using `core.utils.checks.is_development()`.
+  - Discovers all registered seeders via `core.utils.autodiscovery.AutoDiscovery` from `DEV_SEEDER_SETUP_PATH` (anchored to `settings.CORE_BASE_DIR`) and core app fixtures (`settings.CORE_APP_DIR`).
+  - Triggers `SeedData().run()` to execute seeders in topological dependency order using each seeder's configured `data_source` (`FileDataSource`).
+  - Executable via make target: `make dev-setup` (runs in temporary Docker container).

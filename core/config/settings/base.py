@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from .base_models import *
@@ -16,8 +17,19 @@ DJANGO_ENV = os.getenv("DJANGO_ENV", "dev")
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # Path to /backend
 APP_DIR = os.path.join(BASE_DIR, APP_NAME)  # Path to /backend/apps
 
+# -----------------------------
+#   Core Framework Directories
+# -----------------------------
+CORE_BASE_DIR = Path(__file__).resolve().parent.parent.parent
+CORE_APP_DIR = os.path.join(CORE_BASE_DIR, APP_NAME)
+CORE_SETUP_DIR = os.path.join(CORE_BASE_DIR, "setup")
+
 SENSITIVE_PHRASES = os.getenv("SENSITIVE_PHRASES", [])
 APPLICATION_TIMEZONE = os.getenv("TIME_ZONE", "UTC")
+SECRET_KEY = os.getenv(
+    "SECRET_KEY", "django-insecure-core-common-apps-secret-key-default"
+)
+PROJECT_MIGRATION_PATH = f"{PROJECT_NAME}.db_migrations"
 
 
 # -----------------------------
@@ -37,6 +49,28 @@ TEMPLATES_DIR = os.path.join(BASE_DIR, "django_templates", "templates")
 STATIC_URL = "static/"
 ROOT_URLCONF = "config.urls"
 PUBLIC_SCHEMA_URLCONF = "config.public_urls"
+
+
+TENANT_TYPE_PUBLIC = "public"
+TENANT_TYPE_ORGANIZATION = "organization"
+TENANT_TYPES = {
+    TENANT_TYPE_PUBLIC: {
+        "label": "Public Tenant",
+        "models": [
+            *SHARED_DJANGO_APPS,
+            *PUBLIC_ONLY_DJANGO_APPS,
+            *PUBLIC_ONLY_EXTRA_DEPENDENCIES,
+        ],
+    },
+    TENANT_TYPE_ORGANIZATION: {
+        "label": "Organization Tenant",
+        "models": [
+            *SHARED_DJANGO_APPS,
+            *TENANT_ONLY_DJANGO_APPS,
+            *TENANT_ONLY_EXTRA_DEPENDENCIES,
+        ],
+    },
+}
 
 TENANT_MODEL = TENANTS_TENANT_MODEL
 TENANT_DOMAIN_MODEL = TENANTS_DOMAIN_MODEL
@@ -100,6 +134,9 @@ CELERY_RESULT_BACKEND = RESULT_BACKEND
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+
+CELERY_MAX_RETRIES = DEFAULT_TASK_RETRY_COUNT
+CELERY_DEFAULT_RETRY_DELAY = DEFAULT_TASK_RETRY_DELAY
 
 CELERY_TIMEZONE = APPLICATION_TIMEZONE
 
@@ -173,17 +210,31 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # -----------------------------
-#   dj-rest-auth
+#   dj-rest-auth & SimpleJWT
 # -----------------------------
-REST_AUTH = {"USER_DETAILS_SERIALIZER": "core.apps.tenants.serializers.UserSerializer"}
+REST_AUTH = {
+    "USE_JWT": True,
+    "TOKEN_MODEL": None,
+    "USER_DETAILS_SERIALIZER": "core.apps.users.api.serializers.UserDetailsSerializer",
+}
 
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+# TODO: Encrypt and put these in database
+GOOGLE_AUTH_CLIENT_ID = os.getenv("GOOGLE_AUTH_CLIENT_ID", "")
 
 # ------------------
 #  drf settings
 # ------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [

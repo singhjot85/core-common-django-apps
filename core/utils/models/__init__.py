@@ -1,6 +1,10 @@
-from .model_bases import (  # noqa: F401
-    AbstractAddress,
-    AbstractParty,
+from core.utils.models.base_models import (  # noqa: F401
+    BaseLogModel,
     BaseModel,
-    BaseVersioningModel,
+    BaseSemanaticVersionModel,
+    BaseSemanticVersionModel,
+    BaseTemplateModel,
+    BaseUserModel,
 )
+
+from .abstracts import AbstractAddress, AbstractParty  # noqa: F401

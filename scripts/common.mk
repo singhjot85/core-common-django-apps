@@ -6,27 +6,32 @@ DEBUGPY_YAML_PATH ?= $(dir $(DEV_YAML_PATH))compose.debugpy.yaml
 # Common Variables
 COMPOSE_YAML ?= $(DEV_YAML_PATH)
 DJANGO_SERVICE ?= django
-TEST_DIR ?= core/tests
+TEST_DIR ?= $(or $(DIR),core/tests)
 TEST_FILTER ?=
 CMD ?= 		# Generic Variable to be used as override for commands
 POETRY_COMMAND ?= install --no-root
 
 COMPOSE_COMMAND := docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(or $(COMPOSE_YAML),$(DEV_YAML_PATH))
-TEMP_DJANGO_CONTAINER = docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) run --rm $(DJANGO_SERVICE)
-DJANGO_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(DJANGO_SERVICE)
+TEMP_DJANGO_CONTAINER = docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) run --rm $(DJANGO_SERVICE)
+DJANGO_CONTAINER_COMMAND ?= docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(DJANGO_SERVICE)
 DEBUGPY_COMPOSE_CMD ?= docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(DEV_YAML_PATH) -f $(DEBUGPY_YAML_PATH)
 
 
 # --------------------------
 # Development Targets
 # --------------------------
-.PHONY: start-app
+.PHONY: start-app, dev-setup
 
 docker-start-new-app:
 	@echo "⌛ Creating app ${APP_LABEL}...\n"
 	mkdir -p core/apps/${APP_LABEL}
 	$(TEMP_DJANGO_CONTAINER) python sample_project/manage.py startapp $(APP_LABEL) core/apps/$(APP_LABEL)
 start-app: docker-start-new-app
+
+docker-dev-setup:
+	@echo "⌛ Running development setup and seeders...\n"
+	$(TEMP_DJANGO_CONTAINER) python sample_project/manage.py dev_setup
+dev-setup: docker-dev-setup
 
 
 # --------------------------
@@ -109,13 +114,13 @@ mme: docker-django-makemigrations-empty
 
 docker-django-pytest:
 	@echo "⌛ Running tests...\n"
-	${DJANGO_CONTAINER_COMMAND} pytest ${TEST_DIR}
+	${TEMP_DJANGO_CONTAINER} pytest ${TEST_DIR}
 t: docker-django-pytest
 test: docker-django-pytest
 
 docker-django-pytest-filter:
 	@echo "⌛ Running tests...\n"
-	${DJANGO_CONTAINER_COMMAND} pytest -k ${TEST_FILTER}
+	${TEMP_DJANGO_CONTAINER} pytest -k ${TEST_FILTER}
 t: docker-django-pytest
 
 docker-django-pytest-debug:

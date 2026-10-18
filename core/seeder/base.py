@@ -1,45 +1,60 @@
+"""
+Base abstractions and lifecycle hooks for database seeders.
+
+Defines BaseSeeder and BaseMeta contracts, registry registration hooks,
+field conversion logic, relation mapping, and transactional database persistence.
+"""
+
 from __future__ import annotations
 
-from django.db import DEFAULT_DB_ALIAS, models, transaction
+import typing
+from functools import cached_property
+
+from django.conf import settings
+from django.db import DEFAULT_DB_ALIAS, connection, models, transaction
 
 from core.exceptions import InvalidTypeError, SeederException
 from core.seeder.registry import fixture_registry, seeder_registry
+from core.utils.checks import is_model, is_multi_tenant
+from core.utils.database import get_public_schema_name
 from core.utils.strings import camel_to_snake_case
+
+if typing.TYPE_CHECKING:
+    from core.seeder.datasource import AbstractDataSource
 
 empty = object()
 
 
 class BaseMeta:
     """
-    Base Meta Class for clear attributes and validations
+    Base Meta configuration class for BaseSeeder subclasses.
 
-    Example:
-    >>> class SomeSeeder(BaseSeeder):
-    ...
-    ...     class Meta(BaseMeta):
-    ...         model = SomeModel
-    ...         depends_on = [User, Tenant]
-    ...         is_fixture = True
-    ...         relation_map = {
-    ...             "crated_by": UserSeeder,
-    ...             "current_tenant": TenantSeeder
-    ...         }
+    Attributes:
+        model (models.Model): Django model class to seed.
+        fields (list[str]): List of model field names to populate.
+        data_source (AbstractDataSource, optional): Data source (FileDataSource, etc.).
+        depends_on (list, optional): Prerequisite model classes or dependencies.
+        is_fixture (bool, optional): If True, registered in fixture_registry for production.
+        execution_order (int, optional): Priority order for initial execution (lower = earlier).
+        related_seeders (dict, optional): Map of relation field names to nested BaseSeeder classes.
     """
 
     model: models.Model
     fields: list
-    depends_on: list
-    is_fixture: bool
-    relation_map: dict[str, BaseSeeder]
+    data_source: AbstractDataSource
+    tenant_type: str = settings.TENANT_TYPE_ORGANIZATION
 
-    def __init_subclass__(cls, **kwargs):
+    schema_name: typing.Optional[str] = None
+    depends_on: typing.Optional[list]
+    is_fixture: typing.Optional[bool]
+    execution_order: typing.Optional[int]
+    related_seeders: typing.Optional[dict[str, BaseSeeder]]
+
+    @classmethod
+    def validate_meta(cls, seeder_name):
         """
         Validate any attribute here.
         """
-        super().__init_subclass__(**kwargs)
-
-        seeder_name = cls.__qualname__.split(".")[0]
-
         cls._validate_model(seeder_name)
         cls._validate_fields(seeder_name)
         cls._validate_depends_on(seeder_name)
@@ -50,7 +65,7 @@ class BaseMeta:
         """
         Validate depends_on
         """
-        depends_on = cls.depends_on
+        depends_on = getattr(cls, "depends_on", None)
         if not depends_on:
             return
 
@@ -58,45 +73,51 @@ class BaseMeta:
             raise InvalidTypeError(type=type(depends_on), expected=list)
 
         for val in depends_on:
-            if not isinstance(val, models.Model):
-                SeederException(seeder_name, f"Invalid depends_on value: {val}")
+            if not is_model(val):
+                raise SeederException(seeder_name, f"Invalid depends_on value: {val}")
 
     @classmethod
     def _validate_model(cls, seeder_name):
         """
         Validate model
         """
-        if not cls.model:
+        model = getattr(cls, "model", None)
+        if not model:
             raise SeederException(seeder_name, "Model not defined")
 
-        if not isinstance(models.Model):
-            raise TypeError(type(cls.model), models.Model)
+        if not is_model(model):
+            raise SeederException(seeder_name, f"Invalid model: {model}")
 
     @classmethod
     def _validate_fields(cls, seeder_name):
         """
         Validate Fields
         """
-        if not cls.fields:
+        fields = getattr(cls, "fields", None)
+        if fields is None:
             raise SeederException(seeder_name, "Fields not defined for seeder")
 
-        if not isinstance(cls.fields, (list, tuple)):
-            raise InvalidTypeError(type(cls.fields), tuple)
+        if not isinstance(fields, (list, tuple)):
+            raise InvalidTypeError(type=type(fields), expected=list)
+
+        if len(fields) == 0:
+            raise SeederException(seeder_name, "Fields not defined for seeder")
 
     @classmethod
     def _validate_relation_map(cls):
         """
-        Validate relation_map
+        Validate related_seeders
         """
-        if not cls.relation_map:
+        related_seeders = getattr(cls, "related_seeders", None)
+        if not related_seeders:
             return
 
-        if not isinstance(cls.relation_map, dict):
-            raise InvalidTypeError(type(cls.relation_map), dict)
+        if not isinstance(related_seeders, dict):
+            raise InvalidTypeError(type=type(related_seeders), expected=dict)
 
-        for val in cls.relation_map.keys():
-            if not isinstance(val, BaseSeeder):
-                raise InvalidTypeError(type(val), BaseSeeder)
+        for val in related_seeders.values():
+            if not (isinstance(val, type) and issubclass(val, BaseSeeder)):
+                raise InvalidTypeError(type=type(val), expected=BaseSeeder)
 
 
 class BaseSeeder:
@@ -106,6 +127,8 @@ class BaseSeeder:
 
     # Can be overriden on base classes
     REGISTRY_KEY: str
+
+    ALL_SCHEMAS = "all_tenant_schemas"
 
     # Only for type convention, do not override
     _model: models.Model
@@ -144,10 +167,20 @@ class BaseSeeder:
         if not self._meta:
             raise SeederException(self.__class__.__name__, "Meta not defined")
 
+        self._meta.validate_meta(self.__class__.__name__)
+
         self._model = getattr(self._meta, "model", None)
         self._fields = getattr(self._meta, "fields", None)
+
+        self.execution_order = getattr(self._meta, "execution_order", None)
         self._relation_map = getattr(self._meta, "related_seeders", {})
+
         self.pick_from_global_registry = find_seeder
+        self._nonconcrete_relations = []
+
+        self._data_source: typing.Optional[AbstractDataSource] = getattr(
+            self._meta, "data_source", None
+        )
 
     @property
     def seedable_fields(self):
@@ -159,16 +192,58 @@ class BaseSeeder:
 
         return []
 
-    @classmethod
-    def is_inital_seeder(cls) -> bool:
+    def _get_data_source(self) -> typing.Optional[AbstractDataSource]:
         """
-        Is Initial Seeder for a seeder chain.
+        Retrieve data source from Meta or infer fallback FileDataSource if configured.
         """
-        meta = getattr(cls, "Meta", None)
-        if meta and getattr(meta, "initial", False):
-            return True
+        if self._data_source:
+            return self._data_source
 
-        return False
+        file_path = getattr(self._meta, "file_path", None)
+        if file_path:
+            from core.seeder.datasource import FileDataSource
+
+            return FileDataSource(file_path)
+
+        return None
+
+    @cached_property
+    def seed_data(self) -> typing.Union[dict, list]:
+        """
+        Load the seed_data for this seeder.
+        """
+        ds = self._get_data_source()
+        if not ds:
+            raise SeederException(
+                seeder_name=self.__class__.__name__,
+                message="Data source not defined for seeder",
+            )
+        return ds.get_data()
+
+    @property
+    def schema_name(self) -> str:
+        """
+        Schema in which the seeder is supposed to run.
+        """
+        if schema_name := getattr(self._meta, "schema_name", None):
+            if (
+                is_multi_tenant()
+                and self._meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION
+                and schema_name == get_public_schema_name()
+            ):
+                raise SeederException(
+                    seeder_name=self.__class__.__name__,
+                    message="Seeder for organization tenant type cannot run on public schema",
+                )
+            return schema_name
+
+        if (
+            is_multi_tenant()
+            and self._meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION
+        ):
+            return self.ALL_SCHEMAS
+
+        return get_public_schema_name()
 
     @classmethod
     def get_dependencies(cls) -> list:
@@ -194,6 +269,7 @@ class BaseSeeder:
         """
         if not isinstance(data, dict):
             raise InvalidTypeError(type=type(data), expected=dict)
+        return data
 
     def to_internal_value(self, field_name: str, field_val, model_instance):
         """
@@ -212,6 +288,7 @@ class BaseSeeder:
             self._nonconcrete_relations.append(
                 {"accessor_name": field.name, "instance": related_instance}
             )
+            return empty
         elif (
             field.one_to_many
             or (
@@ -225,6 +302,7 @@ class BaseSeeder:
                     "instance": related_instance,
                 }
             )
+            return empty
         else:
             return model_instance
 
@@ -270,6 +348,16 @@ class BaseSeeder:
         """
         Seed the data
         """
+        if (
+            is_multi_tenant()
+            and self._meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION
+            and getattr(connection, "schema_name", None) == get_public_schema_name()
+        ):
+            raise SeederException(
+                seeder_name=self.__class__.__name__,
+                message="Seeder for organization tenant type cannot run on public schema",
+            )
+
         instance = None
         try:
             validated_data: dict = self.validate(data)
@@ -278,7 +366,7 @@ class BaseSeeder:
                 instance = self._model()
                 for field, val in validated_data.items():
                     field_value = self.to_internal_value(field, val, instance)
-                    if not field_value:
+                    if field_value is empty:
                         continue
 
                     self.set_field_value(field, val, instance)

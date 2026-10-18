@@ -8,7 +8,6 @@ from django.apps import apps
 from django.conf import settings
 from django.utils.module_loading import import_string
 
-from core.apps.configurations import get_configuration_model
 from core.utils.app_settings.base import (
     AppSettingException,
     BaseDescriptor,
@@ -77,7 +76,7 @@ class Constance(BaseDescriptor):
 
         if fieldset_val is None:
             fieldsets[fieldset_key] = {
-                "fields": tuple(self.constance_key),
+                "fields": (self.constance_key,),
                 "collapse": False,
             }
 
@@ -85,15 +84,17 @@ class Constance(BaseDescriptor):
             isinstance(fieldset_val, (list, tuple))
             and self.constance_key not in fieldset_val
         ):
-            fieldset_val = list(fieldset_val).append(self.constance_key)
-            fieldsets[fieldset_key] = tuple(fieldset_val)
+            new_val = list(fieldset_val)
+            new_val.append(self.constance_key)
+            fieldsets[fieldset_key] = tuple(new_val)
 
         elif isinstance(fieldset_val, dict) and "fields" in fieldset_val:
             fields = fieldset_val["fields"]
             fieldset_val["collapse"] = True
             if isinstance(fields, (list, tuple)) and self.constance_key not in fields:
-                fields = list(fields).append(self.constance_key)
-                fieldset_val["fields"] = tuple(fields)
+                fields_list = list(fields)
+                fields_list.append(self.constance_key)
+                fieldset_val["fields"] = tuple(fields_list)
 
         setattr(settings, "CONSTANCE_CONFIG_FIELDSETS", fieldsets)
 
@@ -171,24 +172,57 @@ class Settings(BaseDescriptor):
 
     def validate(self, value=None):
         """
-        Validate and check if import is valid.
+        Validate and check if setting or import is valid.
         """
-        super().validate(value)
-
         if value is None:
             value = self.default
+
+        # If value is already resolved into a class/callable/model/primitive, it is valid
+        if not isinstance(value, str):
+            if isinstance(self.data_type, (type, tuple)):
+                from core.exceptions import InvalidTypeError
+
+                if not isinstance(value, self.data_type):
+                    raise InvalidTypeError(type=type(value), expected=self.data_type)
+            return
 
         if self.data_type == SettingsType.MODEL_IMPORT.value:
             try:
                 apps.get_model(value, require_ready=False)
             except Exception as e:
-                raise AppSettingException(str(e), self.app_settings_key) from e
+                raise AppSettingException(
+                    str(e), getattr(self, "app_settings_key", None)
+                ) from e
+            return
 
-        if self.data_type == SettingsType.DEFFERED_IMPORT.value:
-            try:
-                import_string(value)
-            except Exception as e:
-                raise AppSettingException(str(e), self.app_settings_key) from e
+        if self.data_type in (
+            SettingsType.IMPORT.value,
+            SettingsType.DEFFERED_IMPORT.value,
+        ):
+            if self.data_type == SettingsType.DEFFERED_IMPORT.value:
+                try:
+                    import_string(value)
+                except Exception as e:
+                    # During app population, importing models can trigger AppRegistryNotReady.
+                    # This is expected before apps.ready is True, so do not fail initialization.
+                    if "AppRegistryNotReady" in type(e).__name__:
+                        return
+                    raise AppSettingException(
+                        str(e), getattr(self, "app_settings_key", None)
+                    ) from e
+            return
+
+        if isinstance(self.data_type, (type, tuple)):
+            from core.exceptions import InvalidTypeError
+
+            if not isinstance(value, self.data_type):
+                raise InvalidTypeError(type=type(value), expected=self.data_type)
+            return
+
+        raise AppSettingException(
+            f"Invalid Settings type: {self.data_type}",
+            getattr(self, "app_settings_key", None),
+        )
 
     def resolve(self, raw_value):
         """
@@ -197,7 +231,15 @@ class Settings(BaseDescriptor):
         if self.data_type == SettingsType.MODEL_IMPORT.value:
             return apps.get_model(raw_value, require_ready=True)
 
-        return import_string(raw_value)
+        if self.data_type in (
+            SettingsType.IMPORT.value,
+            SettingsType.DEFFERED_IMPORT.value,
+        ):
+            if isinstance(raw_value, str):
+                return import_string(raw_value)
+            return raw_value
+
+        return raw_value
 
 
 class Configuration(BaseDescriptor):
@@ -220,6 +262,8 @@ class Configuration(BaseDescriptor):
         If config object exists, appends that key to details dict if not present.
         Uses get_raw_value to account for project overrides.
         """
+        from core.apps.configurations import get_configuration_model
+
         raw_value = self.get_raw_value(instance)
         key = self.name.lower()
 
@@ -228,7 +272,6 @@ class Configuration(BaseDescriptor):
             Configuration.set_config(
                 interface_type=self.interface_type,
                 details={key: raw_value},
-                create_config=True,
                 set_cache=False,  # NOTE: This Can cause cache stempede, config will be cached when retrieved
             )
         except Exception as e:
@@ -241,6 +284,8 @@ class Configuration(BaseDescriptor):
         """
         Get Configuration from cache or databse
         """
+        from core.apps.configurations import get_configuration_model
+
         Configuration = get_configuration_model()
 
         try:

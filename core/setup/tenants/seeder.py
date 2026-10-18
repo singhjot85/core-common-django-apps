@@ -1,7 +1,15 @@
+"""
+Development mock seeders for Tenants and Users setup.
+"""
+
+import os
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from core.apps.tenants import get_tenant_model
 from core.seeder.base import BaseMeta, BaseSeeder
+from core.seeder.datasource import FileDataSource
 
 
 class DevTenantSeeder(BaseSeeder):
@@ -9,10 +17,17 @@ class DevTenantSeeder(BaseSeeder):
 
     class Meta(BaseMeta):
         model = get_tenant_model()
-        fields = ["schema_name", "label", "is_active"]
+        fields = ["schema_name", "label", "is_active", "status"]
+        tenant_type = settings.TENANT_TYPE_PUBLIC
+        schema_name = "public"
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR, "setup/tenants/dev_tenant/tenants.json"
+            )
+        )
         depends_on = []
         is_fixture = False
-        relation_map = {}
+        related_seeders = {}
 
 
 class DevUserSeeder(BaseSeeder):
@@ -21,6 +36,11 @@ class DevUserSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_user_model()
         fields = ["email", "first_name", "last_name", "is_staff", "is_superuser"]
+        tenant_type = settings.TENANT_TYPE_PUBLIC
+        schema_name = "public"
+        data_source = FileDataSource(
+            os.path.join(settings.CORE_BASE_DIR, "setup/tenants/dev_user/users.json")
+        )
         depends_on = []
         is_fixture = False
-        relation_map = {}
+        related_seeders = {}

@@ -55,11 +55,12 @@ CELERY_BROKER_URL = get_broker_url()
 # Simply using LocMemCache, no external dependency and cache setup required.
 # -----------------------------------------
 CACHES = {
-    "default": {
+    DEFAULT_CACHE_DATABASE: {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         "LOCATION": "test-cache",
     }
 }
+CONSTANCE_BACKEND = "constance.backends.memory.MemoryBackend"
 
 # -----------------------------------------
 # PERFORMANCE OPTIMIZATIONS

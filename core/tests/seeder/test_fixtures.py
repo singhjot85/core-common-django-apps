@@ -100,6 +100,77 @@ class TestFixtureJSONFiles:
             assert "schema" in entry
             assert isinstance(entry["schema"], dict)
 
+    PUBLIC_FIXTURE_PATHS = [
+        APPS_DIR
+        / "configurations"
+        / "fixtures"
+        / "configuration"
+        / "configurations.json",
+        APPS_DIR
+        / "configurations"
+        / "fixtures"
+        / "configuration_schema"
+        / "schemas.json",
+        APPS_DIR
+        / "configurations"
+        / "fixtures"
+        / "tenant_configuration"
+        / "tenant_configs.json",
+        APPS_DIR
+        / "tenants"
+        / "fixtures"
+        / "tenant_configuration"
+        / "tenant_config.json",
+    ]
+
+    @pytest.mark.parametrize("fixture_path", PUBLIC_FIXTURE_PATHS, ids=lambda p: p.name)
+    def test_public_fixture_entries_have_schema_name(self, fixture_path):
+        """Public fixture JSON objects must declare _schema_name: public."""
+        if not fixture_path.exists():
+            pytest.skip(f"File missing: {fixture_path}")
+        data = json.loads(fixture_path.read_text())
+        for entry in data:
+            assert (
+                "_schema_name" in entry
+            ), f"Missing '_schema_name' in {entry} ({fixture_path.name})"
+            assert entry["_schema_name"] == "public", f"Unexpected schema in {entry}"
+
+
+class TestFixtureSeedersSchemaConfiguration:
+    """Validate that production fixture seeder classes have correct tenant_type and schema_name."""
+
+    def test_configuration_seeders_are_public_tenant_type(self):
+        """Configuration seeders must be public tenant_type and public schema."""
+        from django.conf import settings
+
+        from core.apps.configurations.fixtures.seeder import (
+            ConfigurationSchemaSeeder,
+            ConfigurationSeeder,
+            TenantConfigurationSeeder,
+        )
+
+        for seeder_cls in [
+            ConfigurationSeeder,
+            ConfigurationSchemaSeeder,
+            TenantConfigurationSeeder,
+        ]:
+            meta = getattr(seeder_cls, "Meta", None)
+            assert meta is not None
+            assert meta.tenant_type == settings.TENANT_TYPE_PUBLIC
+            assert meta.schema_name == "public"
+
+    def test_customer_preference_type_seeder_is_organization_tenant_type(self):
+        """CustomerPreferenceTypeSeeder without explicit schema_name resolves to ALL_SCHEMAS."""
+        from django.conf import settings
+
+        from core.apps.crm.fixtures.seeder import CustomerPreferenceTypeSeeder
+
+        meta = getattr(CustomerPreferenceTypeSeeder, "Meta", None)
+        assert meta is not None
+        assert meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION
+        instance = CustomerPreferenceTypeSeeder()
+        assert instance.schema_name == CustomerPreferenceTypeSeeder.ALL_SCHEMAS
+
 
 class TestDevSetupJSONFiles:
     """Validate that all dev setup JSON files exist and are valid."""

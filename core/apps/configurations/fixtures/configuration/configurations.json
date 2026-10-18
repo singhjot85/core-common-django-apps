@@ -1,7 +1,8 @@
 [
     {
+        "_schema_name": "public",
         "name": "Default Site Configuration",
-        "interface_type": "site",
+        "interface_type": "ui_configuration",
         "details": {
             "site_name": "My SaaS Platform",
             "maintenance_mode": false

@@ -47,6 +47,13 @@ INVOICES_INVOICE_ITEM_MODEL = "invoices.InvoiceItem"
 INVOICES_INVOICE_ITEM_ENTRY_MODEL = "invoices.InvoiceItemEntry"
 INVOICES_INVOICE_ITEM_FEE_MODEL = "invoices.InvoiceItemFee"
 
+# Users App
+USERS_APP = "core.apps.users"
+AUTH_USER_MODEL = "users.User"
+USERS_USER_MODEL = "users.User"
+USERS_SOCIAL_ACCOUNT_MODEL = "users.SocialAccount"
+USERS_OTP_LOG_MODEL = "users.OTPLog"
+
 
 # ----------------------------
 #   Runtime App Classification
@@ -66,8 +73,9 @@ TENANT_ONLY_DJANGO_APPS = []
 SHARED_EXTRA_DEPENDENCIES = [
     "django_tenants",
     "rest_framework",
-    # "rest_framework.authtoken",
-    # "dj_rest_auth",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
+    "dj_rest_auth",
     "constance",
 ]
 
@@ -82,6 +90,7 @@ PROJECT_APPS = [
     CONFIGURATION_APP,
     CRM_APP,
     INVOICES_APP,
+    USERS_APP,
     # "apps.setup",
     # "apps.notifications",
 ]
@@ -96,6 +105,7 @@ DJANGO_TENANT_PUBLIC_APPS = [
     *SHARED_EXTRA_DEPENDENCIES,
     *PUBLIC_ONLY_EXTRA_DEPENDENCIES,
     TENANTS_APP,
+    USERS_APP,
     # "apps.setup",
 ]
 

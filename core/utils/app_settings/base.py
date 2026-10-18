@@ -50,6 +50,8 @@ class BaseDescriptor:
                 TODO: later will be used in django-admin
             data_type(type): Default class/protocol to type cast the setting
         """
+        self.name: typing.Optional[str] = None
+        self.app_settings_key: typing.Optional[str] = None
         self.default = default
         self.data_type = data_type
         self.help_text = help_text
@@ -204,7 +206,6 @@ class SettingsMeta(type):
         settings_key = getattr(cls, "SETTINGS_KEY", None)
         if not isinstance(settings_key, str):
             raise InvalidTypeError(type=type(settings_key), expected=str)
-        # TODO: We should add validation to check if the settings key is already used
 
         cls._descriptors = SettingsMeta.build_descriptor_map(attrs)
         return cls

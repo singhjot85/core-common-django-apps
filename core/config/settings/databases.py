@@ -6,7 +6,7 @@ from django.core.exceptions import ImproperlyConfigured
 #   Application-wide db configuration
 # -----------------------------
 DEAFULT_DATABASE = "default"
-DEFAULT_CACHE_DATABASE = "deafault"
+DEFAULT_CACHE_DATABASE = "default"
 
 # -----------------------------
 #   POSTGRESQL Database Settings

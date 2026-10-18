@@ -3,12 +3,16 @@ import typing
 from django.apps import apps as django_apps
 from django.conf import settings
 
+from core.apps.configurations.app_settings import ConfigurationsSettings
+
 if typing.TYPE_CHECKING:
     from .models_abstract import (
         AbstractConfiguration,
         AbstractConfigurationSchema,
         AbstractTenantConfiguration,
     )
+
+app_settings: ConfigurationsSettings = ConfigurationsSettings()
 
 
 def get_configuration_model():

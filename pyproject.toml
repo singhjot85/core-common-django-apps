@@ -22,6 +22,8 @@ dependencies = [
     "django-constance (>= 4.3.5,<5.0.0)",
     "django-redis (>= 7.0.0,<8.0.0)",
     "debugpy (>= 1.8.21,<2.0.0)",
+    "djangorestframework-simplejwt (>=5.5.1,<6.0.0)",
+    "google-auth (>=2.62.0,<3.0.0)",
 ]
 
 
@@ -42,7 +44,7 @@ dev = ["pre-commit (>=4.6.2,<5.0.0)", "black (>=26.5.1,<27.0.0)"]
 [tool.isort]
 profile = "black"
 atomic = true
-skip_glob = ["*/migrations/*"]
+skip_glob = ["*/migrations/*", "*/db_migrations/*"]
 
 
 [tool.pytest.ini_options]

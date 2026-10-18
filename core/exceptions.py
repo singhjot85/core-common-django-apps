@@ -65,9 +65,12 @@ class SeederException(Exception):
     """General Exception raised when from seeder."""
 
     def __init__(self, seeder_name=None, message=None, *args):
-        if seeder_name:
-            seeder_name = args[0]
-            message = f"[{seeder_name}] Exception in seeding: {message}"
+        if seeder_name and message:
+            formatted_message = f"[{seeder_name}] Exception in seeding: {message}"
+            super().__init__(formatted_message, *args)
+        elif seeder_name:
+            super().__init__(seeder_name, *args)
+        elif message:
             super().__init__(message, *args)
         else:
             super().__init__(*args)
