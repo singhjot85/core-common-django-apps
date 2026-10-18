@@ -1,13 +1,23 @@
+from unittest.mock import MagicMock, patch
+
+from django.apps import apps
 from django.contrib.auth.models import AbstractUser as DjangoAbstractUser
 
-from core.apps.users import get_otp_log_model, get_social_account_model, get_user_model
+from core.apps.users import (
+    get_otp_log_model,
+    get_social_account_model,
+    get_system_user,
+    get_user_model,
+)
 from core.apps.users.constants import (
     OTPChannelChoices,
     OTPDeliveryStatusChoices,
     OTPPurposeChoices,
     SocialProviderChoices,
 )
+from core.apps.users.signals import create_system_user_callback
 from core.utils.models import BaseModel, BaseUserModel
+from core.utils.models.soft_delete import DeletionTrackingModel
 
 User = get_user_model()
 SocialAccount = get_social_account_model()
@@ -117,3 +127,115 @@ class TestOTPLogModelUnits:
         assert "+1234567890" in str(log)
         assert "phone" in str(log)
         assert "sent" in str(log)
+
+
+class TestSystemUserAndSoftDelete:
+    """Tests verifying get_system_user, post_migrate receiver, and soft_delete fallback."""
+
+    @patch.object(User.objects, "filter")
+    def test_get_system_user_existing(self, mock_filter):
+        mock_user = MagicMock()
+        mock_user.username = "system"
+        mock_filter.return_value.first.return_value = mock_user
+
+        user = User.get_system_user()
+        assert user is mock_user
+        mock_filter.assert_called_once_with(username="system")
+
+    @patch.object(User.objects, "filter")
+    def test_get_system_user_missing_no_create(self, mock_filter):
+        mock_filter.return_value.first.return_value = None
+
+        user = User.get_system_user(create=False)
+        assert user is None
+
+    @patch.object(User, "create_system_user")
+    @patch.object(User.objects, "filter")
+    def test_get_system_user_missing_with_create(self, mock_filter, mock_create):
+        mock_filter.return_value.first.return_value = None
+        mock_created_user = MagicMock()
+        mock_create.return_value = mock_created_user
+
+        user = User.get_system_user(create=True)
+        assert user is mock_created_user
+        mock_create.assert_called_once()
+
+    @patch.object(User, "get_system_user")
+    def test_system_user_alias(self, mock_get_system):
+        mock_user = MagicMock()
+        mock_get_system.return_value = mock_user
+
+        assert User.system_user() is mock_user
+        mock_get_system.assert_called_once()
+
+    @patch.object(User, "get_system_user")
+    def test_module_convenience_get_system_user(self, mock_get_system):
+        mock_user = MagicMock()
+        mock_get_system.return_value = mock_user
+
+        assert get_system_user() is mock_user
+        mock_get_system.assert_called_once_with(create=False)
+
+    @patch.object(User.objects, "create")
+    @patch.object(User.objects, "all_objects")
+    def test_create_system_user_new(self, mock_all_objects, mock_create):
+        mock_all_objects.return_value.filter.return_value.first.return_value = None
+        mock_instance = MagicMock()
+        mock_instance.has_usable_password.return_value = True
+        mock_create.return_value = mock_instance
+
+        user = User.create_system_user()
+        assert user is mock_instance
+        mock_create.assert_called_once_with(
+            username="system",
+            first_name="System",
+            last_name="User",
+            is_active=True,
+            is_staff=False,
+            is_superuser=False,
+        )
+        mock_instance.set_unusable_password.assert_called_once()
+        mock_instance.save.assert_called_once_with(update_fields=["password"])
+
+    @patch.object(User.objects, "all_objects")
+    def test_create_system_user_restores_soft_deleted(self, mock_all_objects):
+        mock_instance = MagicMock()
+        mock_instance.is_removed = True
+        mock_instance.has_usable_password.return_value = False
+        mock_all_objects.return_value.filter.return_value.first.return_value = (
+            mock_instance
+        )
+
+        user = User.create_system_user()
+        assert user is mock_instance
+        assert mock_instance.is_removed is False
+        mock_instance.save.assert_called_once_with(update_fields=["is_removed"])
+
+    @patch.object(User, "create_system_user")
+    def test_create_system_user_post_migrate_signal(self, mock_create):
+        mock_system_user = MagicMock()
+        mock_system_user.username = "system"
+        mock_create.return_value = mock_system_user
+
+        users_app_config = apps.get_app_config("users")
+        result = create_system_user_callback(sender=users_app_config)
+
+        assert result is mock_system_user
+        mock_create.assert_called_once()
+
+    @patch.object(User, "create_system_user", side_effect=Exception("DB Error"))
+    def test_create_system_user_post_migrate_signal_error_handling(self, mock_create):
+        users_app_config = apps.get_app_config("users")
+        result = create_system_user_callback(sender=users_app_config)
+        assert result is None
+
+    @patch.object(User, "get_system_user")
+    def test_soft_delete_fallback_resolves_system_user(self, mock_get_system):
+        mock_sys_user = MagicMock(spec=User)
+        mock_get_system.return_value = mock_sys_user
+
+        dummy = MagicMock(spec=DeletionTrackingModel)
+        dummy.removed_by = None
+        fallback_user = DeletionTrackingModel._get_fallback_user(dummy)
+        assert fallback_user is mock_sys_user
+        mock_get_system.assert_called_once()

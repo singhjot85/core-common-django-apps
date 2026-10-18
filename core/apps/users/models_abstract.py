@@ -1,3 +1,4 @@
+import logging
 import typing
 
 from django.conf import settings
@@ -17,6 +18,8 @@ from core.utils.models import BaseLogModel, BaseModel
 
 if typing.TYPE_CHECKING:
     from core.utils.models import BaseUserModel as AbstractUserModel
+
+LOGGER = logging.getLogger(__name__)
 
 # Dynamically resolve BaseUserModel from app_settings
 BaseUserModel: type["AbstractUserModel"] = app_settings.BASE_USER_MODEL
@@ -60,6 +63,59 @@ class AbstractUser(DjangoAbstractUser, BaseUserModel):
     def has_password(self) -> bool:
         """Check if user has an active, usable password set."""
         return self.has_usable_password()
+
+    @classmethod
+    def create_system_user(cls) -> "AbstractUser":
+        """
+        Create or retrieve the system user without a usable password.
+        This account is reserved for internal auditing and system actions.
+        """
+        username = app_settings.SYSTEM_USER_USERNAME
+        user = cls.objects.all_objects().filter(username=username).first()
+        if not user:
+            user = cls.objects.create(
+                username=username,
+                first_name="System",
+                last_name="User",
+                is_active=True,
+                is_staff=False,
+                is_superuser=False,
+            )
+        elif user.is_removed:
+            user.is_removed = False
+            user.save(update_fields=["is_removed"])
+
+        if user.has_usable_password():
+            user.set_unusable_password()
+            user.save(update_fields=["password"])
+
+        return user
+
+    @classmethod
+    def get_system_user(cls, create: bool = False) -> typing.Optional["AbstractUser"]:
+        """
+        Retrieve the internal system user used for auditing and system operations.
+
+        Args:
+            create (bool): If True and system user doesn't exist, create it. Defaults to False.
+
+        Returns:
+            AbstractUser | None: The system user instance, or None if not found and create is False.
+        """
+        username = app_settings.SYSTEM_USER_USERNAME
+        try:
+            user = cls.objects.filter(username=username).first()
+            if not user and create:
+                return cls.create_system_user()
+            return user
+        except Exception as e:
+            LOGGER.warning(f"Failed to retrieve system user: {e}")
+            return None
+
+    @classmethod
+    def system_user(cls) -> typing.Optional["AbstractUser"]:
+        """Alias for get_system_user()."""
+        return cls.get_system_user()
 
 
 class AbstractSocialAccount(BaseModel):

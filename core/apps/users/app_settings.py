@@ -78,3 +78,8 @@ class UsersSettings(BaseSettings):
         data_type=int,
         help_text="Number of digits for generated numeric OTP codes.",
     )
+    SYSTEM_USER_USERNAME = Settings(
+        default="system",
+        data_type=str,
+        help_text="Username for the internal system user used for auditing and system operations.",
+    )

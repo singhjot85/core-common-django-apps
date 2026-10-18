@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.db.models.signals import post_migrate
 
 
 class UsersConfig(AppConfig):
@@ -6,3 +7,8 @@ class UsersConfig(AppConfig):
     name = "core.apps.users"
     label = "users"
     verbose_name = "User Management & Authentication"
+
+    def ready(self):
+        from core.apps.users.signals import create_system_user_callback
+
+        post_migrate.connect(create_system_user_callback, sender=self)

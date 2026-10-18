@@ -40,3 +40,13 @@ def get_otp_log_model():
         type["AbstractOTPLog"],
         django_apps.get_model(settings.USERS_OTP_LOG_MODEL, require_ready=False),
     )
+
+
+def get_system_user(create: bool = False):
+    """
+    Get the configured system user dynamically.
+    """
+    User = get_user_model()
+    if hasattr(User, "get_system_user"):
+        return User.get_system_user(create=create)
+    return None

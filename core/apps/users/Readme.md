@@ -42,11 +42,13 @@ from core.apps.users import (
     get_user_model,
     get_social_account_model,
     get_otp_log_model,
+    get_system_user,
 )
 
 User = get_user_model()
 SocialAccount = get_social_account_model()
 OTPLog = get_otp_log_model()
+system_user = get_system_user()  # Or User.get_system_user()
 ```
 
 ---
@@ -62,6 +64,7 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 - **`USER_DETAILS_SERIALIZER`** (`SettingsType.IMPORT`): Serializer used for user profile retrieval and updates (default: `"core.apps.users.api.serializers.UserDetailsSerializer"`).
 - **`SMS_BACKEND`** (`SettingsType.IMPORT`): Adapter class responsible for SMS dispatch (default: `"core.utils.backends.sms.console.ConsoleSMSBackend"`).
 - **`USERNAME_GENERATOR`** (`SettingsType.IMPORT`): Strategy callable for generating unique usernames when omitted during signup (default: `"core.utils.generators.username.generate_unique_username"` backed by `core.utils.generators.UsernameGenerator`).
+- **`SYSTEM_USER_USERNAME`** (`str`, default: `"system"`): Username used for the internal audit system user provisioned via `post_migrate`.
 
 ### Constance Runtime Flags
 

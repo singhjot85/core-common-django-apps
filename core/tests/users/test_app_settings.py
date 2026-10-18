@@ -41,3 +41,4 @@ class TestUsersAppSettings:
         assert UsersSettings.OTP_EXPIRY_SECONDS.default == 300
         assert UsersSettings.OTP_MAX_ATTEMPTS.default == 5
         assert UsersSettings.OTP_LENGTH.default == 6
+        assert UsersSettings.SYSTEM_USER_USERNAME.default == "system"
