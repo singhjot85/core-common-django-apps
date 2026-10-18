@@ -7,7 +7,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from core.utils.models import AbstractAddress, BaseModel, BaseVersioningModel
+from core.utils.models import AbstractAddress, BaseModel, BaseTemplateModel
 
 if typing.TYPE_CHECKING:
     from .items import AbstractInvoiceItemEntry
@@ -29,7 +29,7 @@ class AbstractInvoiceAddress(BaseModel, AbstractAddress):
         return self.full_address or str(self.pk)
 
 
-class AbstractInvoiceTemplate(BaseVersioningModel):
+class AbstractInvoiceTemplate(BaseTemplateModel):
     """
     Abstract model snapshot for templates used to render invoices.
     """

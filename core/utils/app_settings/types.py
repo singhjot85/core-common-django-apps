@@ -272,7 +272,6 @@ class Configuration(BaseDescriptor):
             Configuration.set_config(
                 interface_type=self.interface_type,
                 details={key: raw_value},
-                create_config=True,
                 set_cache=False,  # NOTE: This Can cause cache stempede, config will be cached when retrieved
             )
         except Exception as e:

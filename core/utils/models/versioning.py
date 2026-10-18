@@ -1,3 +1,7 @@
+"""
+This model is deperecated, refer core/utils/models/version.py
+"""
+
 from django.db import models
 
 

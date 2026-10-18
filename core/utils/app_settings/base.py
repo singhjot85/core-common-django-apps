@@ -206,7 +206,6 @@ class SettingsMeta(type):
         settings_key = getattr(cls, "SETTINGS_KEY", None)
         if not isinstance(settings_key, str):
             raise InvalidTypeError(type=type(settings_key), expected=str)
-        # TODO: We should add validation to check if the settings key is already used
 
         cls._descriptors = SettingsMeta.build_descriptor_map(attrs)
         return cls

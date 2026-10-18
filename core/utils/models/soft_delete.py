@@ -71,9 +71,13 @@ class DeletionTrackingModel(SoftDeletableModel):
         if hasattr(self, "removed_by") and self.removed_by is not None:
             return self.removed_by
 
-        # TODO: Once we build an overriden auth package,
-        # It'll have a get_system_user() and we'll use that
-        # return User.system_user()
+        try:
+            User = get_user_model()
+            if hasattr(User, "get_system_user"):
+                return User.get_system_user()
+        except Exception as e:
+            LOGGER.warning(f"Failed to resolve fallback system user: {e}")
+
         return None
 
     def get_user_that_deleted(self, *args, **kwargs):
