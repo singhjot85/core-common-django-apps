@@ -39,9 +39,14 @@ docker-start-new-app:
 	$(TEMP_DJANGO_CONTAINER) python sample_project/manage.py startapp $(APP_LABEL) core/apps/$(APP_LABEL)
 start-app: docker-start-new-app
 
+docker-seed-tenants:
+	@echo "⌛ Seeding development tenants in current env...\n"
+	$(TEMP_DJANGO_CONTAINER) python sample_project/manage.py add_dev_tenants
+seed-tenants: docker-seed-tenants
+
 docker-dev-setup:
 	@echo "⌛ Running development setup and seeders...\n"
-	$(TEMP_DJANGO_CONTAINER) python sample_project/manage.py dev_setup
+	$(TEMP_DJANGO_CONTAINER) python sample_project/manage.py run_dev_seeders
 dev-setup: docker-dev-setup
 
 

@@ -106,7 +106,6 @@ DJANGO_TENANT_PUBLIC_APPS = [
     *PUBLIC_ONLY_EXTRA_DEPENDENCIES,
     TENANTS_APP,
     USERS_APP,
-    # "apps.setup",
 ]
 
 DJANGO_TENANT_PRIVATE_APPS = [
@@ -116,6 +115,7 @@ DJANGO_TENANT_PRIVATE_APPS = [
     *TENANT_ONLY_EXTRA_DEPENDENCIES,
     CRM_APP,
     INVOICES_APP,
+    USERS_APP,
     # "apps.payments_management",
     # "apps.setup",
     # "apps.notifications",

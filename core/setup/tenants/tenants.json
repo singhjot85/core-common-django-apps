@@ -1,0 +1,7 @@
+[
+    {
+        "schema_name": "private",
+        "label": "Private Tenant",
+        "domain": "public.localhost"
+    }
+]
