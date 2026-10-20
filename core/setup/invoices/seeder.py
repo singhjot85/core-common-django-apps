@@ -9,7 +9,6 @@ from django.conf import settings
 from core.apps.invoices import (
     get_billing_organization_model,
     get_invoice_item_model,
-    get_invoice_model,
     get_invoice_party_email_model,
     get_invoice_party_model,
     get_invoice_party_phone_model,
@@ -153,24 +152,3 @@ class DevInvoiceItemSeeder(BaseSeeder):
         depends_on = []
         is_fixture = False
         related_seeders = {}
-
-
-class DevInvoiceSeeder(BaseSeeder):
-    """Dev seeder for mock invoices."""
-
-    class Meta(BaseMeta):
-        model = get_invoice_model()
-        fields = [
-            "invoice_number",
-            "invoice_date",
-            "party",
-            "biller",
-            "billing_address",
-        ]
-        tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        depends_on = []
-        is_fixture = False
-        related_seeders = {
-            "party": DevInvoicePartySeeder,
-            "biller": DevBillingOrganizationSeeder,
-        }

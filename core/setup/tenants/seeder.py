@@ -41,6 +41,7 @@ class DevUserSeeder(BaseSeeder):
         data_source = FileDataSource(
             os.path.join(settings.CORE_BASE_DIR, "setup/tenants/dev_user/users.json")
         )
+        object_create_method = get_user_model().objects.create_user
         depends_on = []
         is_fixture = False
         related_seeders = {}

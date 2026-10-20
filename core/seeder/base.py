@@ -22,8 +22,6 @@ from core.utils.strings import camel_to_snake_case
 if typing.TYPE_CHECKING:
     from core.seeder.datasource import AbstractDataSource
 
-empty = object()
-
 
 class BaseMeta:
     """
@@ -43,6 +41,7 @@ class BaseMeta:
     fields: list
     data_source: AbstractDataSource
     tenant_type: str = settings.TENANT_TYPE_ORGANIZATION
+    object_create_method: typing.Callable
 
     schema_name: typing.Optional[str] = None
     depends_on: typing.Optional[list]
@@ -58,7 +57,7 @@ class BaseMeta:
         cls._validate_model(seeder_name)
         cls._validate_fields(seeder_name)
         cls._validate_depends_on(seeder_name)
-        cls._validate_relation_map()
+        cls._validate_related_seeder_map()
 
     @classmethod
     def _validate_depends_on(cls, seeder_name):
@@ -104,7 +103,7 @@ class BaseMeta:
             raise SeederException(seeder_name, "Fields not defined for seeder")
 
     @classmethod
-    def _validate_relation_map(cls):
+    def _validate_related_seeder_map(cls):
         """
         Validate related_seeders
         """
@@ -133,7 +132,7 @@ class BaseSeeder:
     # Only for type convention, do not override
     _model: models.Model
     _fields: list[str]
-    _relation_map: dict[str, type[BaseSeeder]]
+    _related_seeder_map: dict[str, type[BaseSeeder]]
     _nonconcrete_relations: list[dict]
 
     def __init_subclass__(cls, **kwargs):
@@ -156,7 +155,7 @@ class BaseSeeder:
         except Exception as e:
             raise SeederException(cls.__name__, str(e)) from e
 
-    def __init__(self, find_seeder: bool = False):
+    def __init__(self):
         """
         Initialize variable's for given seeder instance.
 
@@ -173,14 +172,12 @@ class BaseSeeder:
         self._fields = getattr(self._meta, "fields", None)
 
         self.execution_order = getattr(self._meta, "execution_order", None)
-        self._relation_map = getattr(self._meta, "related_seeders", {})
-
-        self.pick_from_global_registry = find_seeder
-        self._nonconcrete_relations = []
-
+        self._related_seeder_map = getattr(self._meta, "related_seeders", {})
         self._data_source: typing.Optional[AbstractDataSource] = getattr(
             self._meta, "data_source", None
         )
+
+        self._nonconcrete_relations = []
 
     @property
     def seedable_fields(self):
@@ -263,50 +260,41 @@ class BaseSeeder:
         """
         return seeder_registry.get(model_name)
 
-    def validate(self, data: dict):
-        """
-        Pre Seeding Validation hook, this executes before any object intitation takes place.
-        """
-        if not isinstance(data, dict):
-            raise InvalidTypeError(type=type(data), expected=dict)
-        return data
-
-    def to_internal_value(self, field_name: str, field_val, model_instance):
+    def to_internal_values(self, data: dict):
         """
         Convert the json field to python internal value
         """
-        if field_name not in self.seedable_fields:
-            return empty
+        self._validated_data = {}
+        for field_name, field_val in data.items():
+            if field_name not in self.seedable_fields:
+                continue
 
-        field: models.Field = self._model._meta.get_field(field_name)
+            field: models.Field = self._model._meta.get_field(field_name)
 
-        if field.concrete and not field.is_relation:
-            return field.clean(field_val, model_instance)
+            if field.concrete and not field.is_relation:
+                self._validated_data.update({field_name: field.clean(field_val, None)})
 
-        related_instance = self.seed_related_instance(field, field_val)
-        if field.many_to_many and not field.auto_created:
-            self._nonconcrete_relations.append(
-                {"accessor_name": field.name, "instance": related_instance}
-            )
-            return empty
-        elif (
-            field.one_to_many
-            or (
-                field.one_to_one and field.auto_created
-            )  # I think this needs to be handeled differently
-            or (field.many_to_many and field.auto_created)
-        ):
-            self._nonconcrete_relations.append(
-                {
-                    "accessor_name": field.get_accessor_name(),
-                    "instance": related_instance,
-                }
-            )
-            return empty
-        else:
-            return model_instance
+            related_instance = self.seed_related_instance(field, field_val)
+            if field.many_to_many and not field.auto_created:
+                self._nonconcrete_relations.append(
+                    {"accessor_name": field.name, "instance": related_instance}
+                )
+            elif (
+                field.one_to_many
+                or (
+                    field.one_to_one and field.auto_created
+                )  # I think this needs to be handeled differently
+                or (field.many_to_many and field.auto_created)
+            ):
+                field: models.ForeignObjectRel
+                self._nonconcrete_relations.append(
+                    {
+                        "accessor_name": field.get_accessor_name(),
+                        "instance": related_instance,
+                    }
+                )
 
-        return None
+        return self._validated_data
 
     def get_related_model_name(self, field: models.ForeignObjectRel):
         """
@@ -322,15 +310,9 @@ class BaseSeeder:
             return None
 
         field_name = field.name
-        if field_name in self._relation_map:
-            CustomSeeder = self._relation_map[field_name]
+        if field_name in self._related_seeder_map:
+            CustomSeeder = self._related_seeder_map[field_name]
             return CustomSeeder().seed(data)
-
-        if self.pick_from_global_registry:
-            model_name = self.get_related_model_name(field)
-            RegisteredSeeder = self.get_seeder_from_registry(model_name)
-            if RegisteredSeeder:
-                return RegisteredSeeder.seed(data)
 
         return None
 
@@ -343,6 +325,22 @@ class BaseSeeder:
             return getattr(self, method_name)(model_instance, field_value)
 
         return setattr(model_instance, field_name, field_value)
+
+    def _filter_seedable_fields(self, data: dict):
+        """ """
+        seedable_data = {}
+        # Filter out fields that are not declared seedable
+        for key, val in data.items():
+            if key not in self.seedable_fields:
+                seedable_data.update({key: val})
+
+        return data
+
+    def validate(self, data: dict):
+        """
+        Hook to implement validations
+        """
+        return data
 
     def seed(self, data: dict) -> models.Model:
         """
@@ -358,31 +356,32 @@ class BaseSeeder:
                 message="Seeder for organization tenant type cannot run on public schema",
             )
 
-        instance = None
         try:
-            validated_data: dict = self.validate(data)
-
+            filtered_data = self._filter_seedable_fields(data)
+            validated_data = self.validate(filtered_data)
             with transaction.atomic(using=DEFAULT_DB_ALIAS):
-                instance = self._model()
-                for field, val in validated_data.items():
-                    field_value = self.to_internal_value(field, val, instance)
-                    if field_value is empty:
-                        continue
-
-                    self.set_field_value(field, val, instance)
-
-                # Set all the fields that are not directly on model
-                for nonconcrete_map in self._nonconcrete_relations:
-                    accessor_name = nonconcrete_map["accessor_name"]
-                    obj = nonconcrete_map["instance"]
-                    Manager = getattr(instance, accessor_name)
-                    Manager.add(obj)
-
-                # Make sure everythin persist in db
-                instance.save()
+                internal_values = self.to_internal_values(validated_data)
+                return self.create(internal_values)
         except Exception as e:
             raise SeederException(
                 seeder_name=self.__class__.__name__, message=str(e)
             ) from e
+
+    def create(self, data: dict) -> models.Model:
+        """ """
+        creation_method = getattr(
+            self._meta,
+            "object_create_method",
+            self._model._default_manager.get_or_create,
+        )
+
+        instance = creation_method(**data)
+
+        # Set all the fields that are not directly on model
+        for nonconcrete_map in self._nonconcrete_relations:
+            accessor_name = nonconcrete_map["accessor_name"]
+            obj = nonconcrete_map["instance"]
+            Manager = getattr(instance, accessor_name)
+            Manager.add(obj)
 
         return instance
