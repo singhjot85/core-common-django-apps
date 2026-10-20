@@ -2,15 +2,14 @@
 PROJECT_NAME ?=
 DEV_YAML_PATH ?= compose/local/compose.local.yaml
 DEBUGPY_YAML_PATH ?= $(dir $(DEV_YAML_PATH))compose.debugpy.yaml
-PATH_TO_MANAGE ?= sample_project/manage.py
+PATH_TO_MANAGE ?=
 
 # Common Variables
 COMPOSE_YAML ?= $(DEV_YAML_PATH)
 DJANGO_SERVICE ?= django
 CACHE_SERVICE ?= cache
 BROKER_SERVICE ?= broker
-TEST_DIR ?= core/tests
-TEST_DIR ?= $(or $(DIR),core/tests)
+TEST_DIR ?=
 TEST_FILTER ?=
 CMD ?= 		# Generic Variable to be used as override for commands
 POETRY_COMMAND ?= install --no-root
