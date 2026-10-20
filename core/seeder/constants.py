@@ -12,6 +12,7 @@ class BaseModelRelation:
     """Base class for deferred relation linking."""
 
     related_instance: "Model"  # Instance retrieved/created for the realted reference
+    allow_null: bool  # To prevent not-null constaint
 
     def link_relation(self, instance: "Model") -> None:
         """
@@ -40,6 +41,9 @@ class ReverseSingularRelation(BaseModelRelation):
     """
     Reverse ``OneToOne`` set FK on the *related* instance and save it.
     Only special handling that is different from all.
+
+    TODO: allow_null here needs better handling, we might need to delay creation
+    of related_instance (till we have instance) for this to work
     """
 
     fk_field_name: str

@@ -1,19 +1,5 @@
 [
     {
-        "_schema": "public",
-        "customer__first_name": "Alice",
-        "phone": "+911234567890",
-        "phone_type": "primary",
-        "is_primary": true
-    },
-    {
-        "_schema": "public",
-        "customer__first_name": "Bob",
-        "phone": "+911234567891",
-        "phone_type": "primary",
-        "is_primary": true
-    },
-    {
         "customer__first_name": "Charlie",
         "phone": "+911234567892",
         "phone_type": "primary",

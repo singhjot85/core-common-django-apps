@@ -95,6 +95,10 @@ class InstanceDAGBuilder(BaseDAGBuilder):
             if self.is_initial_attribute(instance):
                 self._first_instance = instance
 
+        # To be safe, when no instance is found assign any random as first
+        if not self._first_instance:
+            self._first_instance = self.adjacency_list[1][0]
+
     def resolve_dependencies(self):
         """
         Overridable resolve dependency module.

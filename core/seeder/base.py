@@ -191,6 +191,22 @@ class BaseSeeder:
             self._model._default_manager.get_or_create,
         )
 
+    @classmethod
+    def get_seeder_model(cls) -> type["models.Model"]:
+        """
+        Get model from seeder
+        """
+        Meta: type[BaseMeta] = getattr(cls, "Meta", None)
+        return getattr(Meta, "model", None)
+
+    @classmethod
+    def execution_order(cls):
+        """
+        Get execution order of this seeder
+        """
+        Meta: type[BaseMeta] = getattr(cls, "Meta", None)
+        return getattr(Meta, "execution_order", None)
+
     @property
     def seedable_fields(self):
         """
@@ -255,7 +271,7 @@ class BaseSeeder:
         return get_public_schema_name()
 
     @classmethod
-    def get_dependencies(cls) -> list:
+    def get_model_dependencies(cls) -> list:
         """
         Get all the dependencies for given seeder.
         """
@@ -335,7 +351,7 @@ class BaseSeeder:
                 if field.one_to_one and field.auto_created
                 else field.related_model
             )
-            return RelatedModel._default_manager.get(related_unique_attr=field_val)
+            return RelatedModel._default_manager.get(**{related_unique_attr: field_val})
 
         related_instance = None
         if related_unique_attr is not None:
@@ -346,15 +362,27 @@ class BaseSeeder:
         if related_instance:
             # Handle both ForeignKey and OneToOne
             if field.many_to_one or (field.one_to_one and not field.auto_created):
-                return ForwardSingularRelation(related_instance, field_name)
+                return ForwardSingularRelation(
+                    related_instance=related_instance,
+                    allow_null=field.null,
+                    fk_field_name=field_name,
+                )
 
             # Handle reverse OneToOne
             elif field.one_to_one and field.auto_created:
-                return ReverseSingularRelation(related_instance, field_name)
+                return ReverseSingularRelation(
+                    related_instance=related_instance,
+                    allow_null=field.null,
+                    fk_field_name=field_name,
+                )
 
             # Handle ManyToMany, reverse ForeignKey and reverse ManyToMany
             elif field.many_to_many or field.one_to_many:
-                return ManagerRelation(related_instance, field_name)
+                return ManagerRelation(
+                    related_instance=related_instance,
+                    allow_null=True,
+                    field_name=field_name,
+                )
 
     def _filter_seedable_fields(self, data: dict):
         """ """
@@ -391,7 +419,25 @@ class BaseSeeder:
 
     def create(self, data: dict) -> models.Model:
         """ """
+
+        required_relations = []  # These are needed to prevent not-null constaints
+        for related_data in self._related_data:
+            if (
+                isinstance(related_data, ForwardSingularRelation)
+                and related_data.allow_null is False
+            ):
+                data.update(
+                    **{related_data.fk_field_name: related_data.related_instance}
+                )
+
+        if required_relations:
+            data.update(*required_relations)
+
         instance = self.creation_method(**data)
+
+        # Methods like get_or_create, update_or_create can return a tuple
+        if isinstance(instance, tuple):
+            instance = instance[0]
 
         # All the FK, 1-1, 1-M, M-1, M-M linkage happend after the object is created
         for related_data in self._related_data:

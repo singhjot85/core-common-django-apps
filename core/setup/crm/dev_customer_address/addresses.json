@@ -1,27 +1,5 @@
 [
     {
-        "_schema": "public",
-        "customer__first_name": "Alice",
-        "address_line_1": "101 Main Street",
-        "city": "Bengaluru",
-        "state": "Karnataka",
-        "postal_code": "560001",
-        "country": "IN",
-        "address_type": "permanent",
-        "is_primary": true
-    },
-    {
-        "_schema": "public",
-        "customer__first_name": "Bob",
-        "address_line_1": "202 Park Avenue",
-        "city": "Mumbai",
-        "state": "Maharashtra",
-        "postal_code": "400001",
-        "country": "IN",
-        "address_type": "permanent",
-        "is_primary": true
-    },
-    {
         "customer__first_name": "Charlie",
         "address_line_1": "303 Tech Park",
         "city": "Hyderabad",

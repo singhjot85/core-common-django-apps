@@ -44,7 +44,7 @@ class DevCustomerPhoneSeeder(BaseSeeder):
 
     class Meta(BaseMeta):
         model = get_customer_phone_model()
-        fields = ["customer", "phone", "phone_type", "is_primary"]
+        fields = ["customer__first_name", "phone", "phone_type", "is_primary"]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
             os.path.join(
@@ -59,7 +59,7 @@ class DevCustomerEmailSeeder(BaseSeeder):
 
     class Meta(BaseMeta):
         model = get_customer_email_model()
-        fields = ["customer", "email", "email_type", "is_primary"]
+        fields = ["customer__first_name", "email", "email_type", "is_primary"]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
             os.path.join(
@@ -75,7 +75,7 @@ class DevCustomerAddressSeeder(BaseSeeder):
     class Meta(BaseMeta):
         model = get_customer_address_model()
         fields = [
-            "customer",
+            "customer__first_name",
             "address_line_1",
             "city",
             "state",

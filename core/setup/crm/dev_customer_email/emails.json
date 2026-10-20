@@ -1,19 +1,5 @@
 [
     {
-        "_schema": "public",
-        "customer__first_name": "Alice",
-        "email": "alice@public.localhost",
-        "email_type": "primary",
-        "is_primary": true
-    },
-    {
-        "_schema": "public",
-        "customer__first_name": "Bob",
-        "email": "bob@public.localhost",
-        "email_type": "primary",
-        "is_primary": true
-    },
-    {
         "customer__first_name": "Charlie",
         "email": "charlie@private.localhost",
         "email_type": "primary",
