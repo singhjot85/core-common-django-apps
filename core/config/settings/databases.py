@@ -8,6 +8,11 @@ from django.core.exceptions import ImproperlyConfigured
 DEAFULT_DATABASE = "default"
 DEFAULT_CACHE_DATABASE = "default"
 
+CACHE_SMALL_SMALL_TIMEOUT = os.getenv("CACHE_SMALL_SMALL_TIMEOUT", 30)  # 30 seconds
+CACHE_SMALL_TIMEOUT = os.getenv("CACHE_SMALL_TIMEOUT", 30 * 2)  # 2 mins
+CACHE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_TIMEOUT", 60 * 20)  # 20 mins
+CACHE_LARGE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_LARGE_TIMEOUT", 60 * 60)  # 1 hour
+
 # -----------------------------
 #   POSTGRESQL Database Settings
 # -----------------------------

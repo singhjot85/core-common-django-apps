@@ -110,11 +110,6 @@ DATABASES = {
 CACHE_URL = get_cache_url()
 CACHE_BACKEND, RESOLVED_CACHE_OPTIONS = get_cache_ops()
 
-CACHE_SMALL_SMALL_TIMEOUT = os.getenv("CACHE_SMALL_SMALL_TIMEOUT", 30)  # 30 seconds
-CACHE_SMALL_TIMEOUT = os.getenv("CACHE_SMALL_TIMEOUT", 30 * 2)  # 2 mins
-CACHE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_TIMEOUT", 60 * 20)  # 20 mins
-CACHE_LARGE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_LARGE_TIMEOUT", 60 * 60)  # 1 hour
-
 CACHES = {
     DEFAULT_CACHE_DATABASE: {
         "BACKEND": CACHE_BACKEND,
@@ -173,6 +168,7 @@ TEMPLATES = [
         ],
         "APP_DIRS": True,
         "OPTIONS": {
+            "loader": "core.utils.jinja2.loaders.SafeDatabaseLoader",
             "environment": "core.utils.jinja2.environment.jinja2_environment",
         },
     },

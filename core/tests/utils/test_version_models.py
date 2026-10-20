@@ -4,16 +4,10 @@ import pytest
 
 from core.apps.configurations import get_configuration_model
 from core.apps.invoices import get_invoice_template_model
-from core.utils.models import (
-    BaseSemanaticVersionModel,
-    BaseSemanticVersionModel,
-    BaseTemplateModel,
-)
+from core.utils.models import BaseSemanticVersionModel, BaseTemplateModel
 from core.utils.models.version import (
     InvalidVersionException,
     SemanticVersioningModel,
-    SemanticVersionManager,
-    SemanticVersionManger,
     validate_version,
 )
 
@@ -382,10 +376,6 @@ class TestSemanticVersionQuerySetUnits:
                     )
                 assert "Invalid bump_type" in str(exc_info.value)
 
-    def test_manager_alias_backward_compatibility(self):
-        """Test that SemanticVersionManger alias is preserved."""
-        assert SemanticVersionManger is SemanticVersionManager
-
 
 class TestBaseSemanticVersionModel:
     """Unit tests for BaseSemanticVersionModel abstract class and constants."""
@@ -393,10 +383,6 @@ class TestBaseSemanticVersionModel:
     def test_meta_abstract(self):
         """Ensure BaseSemanticVersionModel is marked abstract."""
         assert BaseSemanticVersionModel._meta.abstract is True
-
-    def test_backward_compatibility_alias(self):
-        """Ensure BaseSemanaticVersionModel alias points to BaseSemanticVersionModel."""
-        assert BaseSemanaticVersionModel is BaseSemanticVersionModel
 
     def test_bump_types_constant(self):
         """Ensure bump types tuple is correctly declared."""

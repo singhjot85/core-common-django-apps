@@ -1,5 +1,7 @@
+from django.conf import settings
+from django.core.cache import cache
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import models
+from django.db import connection, models
 from django.template import Context, Template
 from django.utils.translation import gettext_lazy as _
 
@@ -27,7 +29,9 @@ class BaseTemplateModel(BaseSemanticVersionModel):
     """
 
     INTERFACE_TYPE = DefaultTemplateTypeChoices.choices
+    TEMPLATE_FIELD_PRIORITY = ("html_content", "plain_content")
 
+    is_active = models.BooleanField(default=True, null=False, blank=False)
     interface_type = models.CharField(
         max_length=255, null=False, blank=False, choices=INTERFACE_TYPE
     )
@@ -47,6 +51,58 @@ class BaseTemplateModel(BaseSemanticVersionModel):
 
     class Meta:
         abstract = True
+
+    @property
+    def cache_key(self):
+        return self.get_cache_key(self.interface_type)
+
+    @classmethod
+    def get_cache_key(cls, interface_type):
+        return f"{connection.schema_name}:{cls._meta.app_label}:{cls._meta.model_name}:{interface_type}"
+
+    def save(self, *args, **kwargs):
+        cache.delete(self.cache_key)
+        return super().save(*args, **kwargs)
+
+    @classmethod
+    def get_template_source(cls, interface_type: str, field: str):
+        """
+        Get a single source field for multipart templates
+        """
+        serialized_template = cls.get_template(interface_type, field)
+        for field in cls.TEMPLATE_FIELD_PRIORITY:
+            if not serialized_template.get(field, False):
+                continue
+            return serialized_template.get(field)
+
+        return None
+
+    @classmethod
+    def get_template(cls, interface_type: str):
+        cache_key = cls.get_cache_key(interface_type)
+        if serialized_template := cache.get(cache_key, None):
+            return serialized_template
+
+        template_obj = (
+            cls.objects.latest_qs(
+                ("interface_type",), interface_type=interface_type, is_active=True
+            )
+            .distinct("interface_type")
+            .first()
+        )
+
+        serialized_template = cls.serialize_for_cache(template_obj)
+        cache.set(
+            cache_key,
+            serialized_template,
+            timeout=settings.CACHE_SMALL_TIMEOUT,
+        )
+
+        return serialized_template
+
+    @classmethod
+    def serialize_for_cache(self, obj: "BaseTemplateModel"):
+        return {"plain_content": obj.plain_content, "html_content": obj.html_content}
 
     def render_using_django_engine(
         self, context: dict
