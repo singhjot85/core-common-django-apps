@@ -1,6 +1,6 @@
 # Default Values (use ?= so root Makefile overrides take effect)
 PROJECT_NAME ?=
-DEV_YAML_PATH ?= compose/local/compose.local.yaml
+DEV_YAML_PATH ?=
 DEBUGPY_YAML_PATH ?= $(dir $(DEV_YAML_PATH))compose.debugpy.yaml
 PATH_TO_MANAGE ?=
 
