@@ -71,61 +71,61 @@ class DevOrganizationPhoneSeeder(BaseSeeder):
         depends_on = [get_billing_organization_model()]
 
 
-# class DevInvoicePartySeeder(BaseSeeder):
-#     """Dev seeder for mock invoice parties."""
+class DevInvoicePartySeeder(BaseSeeder):
+    """Dev seeder for mock invoice parties."""
 
-#     class Meta(BaseMeta):
-#         model = get_invoice_party_model()
-#         fields = [
-#             "first_name",
-#             "last_name",
-#             "party_type",
-#             "customer__first_name",
-#         ]
-#         tenant_type = settings.TENANT_TYPE_ORGANIZATION
-#         data_source = FileDataSource(
-#             os.path.join(
-#                 settings.CORE_BASE_DIR,
-#                 "setup/invoices/dev_invoice_party/parties.json",
-#             )
-#         )
-#         depends_on = [get_customer_model()]
-#         execution_order = 3
+    class Meta(BaseMeta):
+        model = get_invoice_party_model()
+        fields = [
+            "first_name",
+            "last_name",
+            "party_type",
+            "customer__first_name",
+        ]
+        tenant_type = settings.TENANT_TYPE_ORGANIZATION
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR,
+                "setup/invoices/dev_invoice_party/parties.json",
+            )
+        )
+        depends_on = [get_customer_model()]
+        execution_order = 3
 
-#     def seed(self, data):
-#         return super().seed(data)
-
-
-# class DevInvoicePartyEmailSeeder(BaseSeeder):
-#     """Dev seeder for mock invoice party emails."""
-
-#     class Meta(BaseMeta):
-#         model = get_invoice_party_email_model()
-#         fields = ["invoice_party__first_name", "email", "email_type"]
-#         tenant_type = settings.TENANT_TYPE_ORGANIZATION
-#         data_source = FileDataSource(
-#             os.path.join(
-#                 settings.CORE_BASE_DIR,
-#                 "setup/invoices/dev_invoice_party_email/emails.json",
-#             )
-#         )
-#         depends_on = [get_invoice_party_model()]
+    def seed(self, data):
+        return super().seed(data)
 
 
-# class DevInvoicePartyPhoneSeeder(BaseSeeder):
-#     """Dev seeder for mock invoice party phones."""
+class DevInvoicePartyEmailSeeder(BaseSeeder):
+    """Dev seeder for mock invoice party emails."""
 
-#     class Meta(BaseMeta):
-#         model = get_invoice_party_phone_model()
-#         fields = ["invoice_party__first_name", "phone", "phone_type"]
-#         tenant_type = settings.TENANT_TYPE_ORGANIZATION
-#         data_source = FileDataSource(
-#             os.path.join(
-#                 settings.CORE_BASE_DIR,
-#                 "setup/invoices/dev_invoice_party_phone/phones.json",
-#             )
-#         )
-#         depends_on = [get_invoice_party_model()]
+    class Meta(BaseMeta):
+        model = get_invoice_party_email_model()
+        fields = ["invoice_party__first_name", "email", "email_type"]
+        tenant_type = settings.TENANT_TYPE_ORGANIZATION
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR,
+                "setup/invoices/dev_invoice_party_email/emails.json",
+            )
+        )
+        depends_on = [get_invoice_party_model()]
+
+
+class DevInvoicePartyPhoneSeeder(BaseSeeder):
+    """Dev seeder for mock invoice party phones."""
+
+    class Meta(BaseMeta):
+        model = get_invoice_party_phone_model()
+        fields = ["invoice_party__first_name", "phone", "phone_type"]
+        tenant_type = settings.TENANT_TYPE_ORGANIZATION
+        data_source = FileDataSource(
+            os.path.join(
+                settings.CORE_BASE_DIR,
+                "setup/invoices/dev_invoice_party_phone/phones.json",
+            )
+        )
+        depends_on = [get_invoice_party_model()]
 
 
 class DevInvoiceItemSeeder(BaseSeeder):

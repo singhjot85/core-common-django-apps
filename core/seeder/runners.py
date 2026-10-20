@@ -122,7 +122,7 @@ class SeederRunner(InstanceDAGBuilder):
             return True
 
         # If current seeder has no execution order don't make it first
-        if order := seeder.execution_order() is None:
+        if (order := seeder.execution_order()) is None:
             return False
 
         return order <= self._min_execution_order
@@ -152,7 +152,7 @@ class SeederRunner(InstanceDAGBuilder):
                     and Model._meta.model_name == SeederModel._meta.model_name
                     and Model._meta.db_table == SeederModel._meta.db_table
                 ):
-                    dependent_seeders
+                    dependent_seeders.append(seeder)
 
         return dependent_seeders
 
