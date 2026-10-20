@@ -36,10 +36,10 @@ def validate_version(value: str) -> None:
     def int_cast(val, part_type):
         try:
             return int(val)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as e:
             raise InvalidVersionException(
                 f"Invalid Version part, {part_type} should be a valid int"
-            )
+            ) from e
 
     int_cast(parts[0], "Version Major")
     int_cast(parts[1], "Version Minor")
@@ -307,7 +307,7 @@ class SemanticVersioningModel(DirtyFieldsMixin, models.Model):
         ):
             raise InvalidVersionException("Version cannot be less than 1.0.0")
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs):  # noqa: DJ012
         """
         Sync version string and integer parts before saving.
         """

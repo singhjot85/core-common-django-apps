@@ -15,21 +15,18 @@ TenantBranding = get_tenant_branding_model()
 
 
 class TenantContactInfoSerializer(ReadOnlyModelSerializer):
-
     class Meta:
         model = TenantContactInfo
         fields = ["order", "contact_type", "tenant", "contact_info"]
 
 
 class TenantDomainSerializer(ReadOnlyModelSerializer):
-
     class Meta:
         model = Domain
         fields = ("label", "domain", "is_primary")
 
 
 class TenantSerializer(ReadOnlyModelSerializer):
-
     tenant_contact = TenantContactInfoSerializer(
         many=True, read_only=True, required=False, source="contact_info"
     )
@@ -50,7 +47,6 @@ class TenantSerializer(ReadOnlyModelSerializer):
 
 
 class TenantBrandingSerializer(ReadOnlyModelSerializer):
-
     tenant = TenantSerializer(read_only=True, required=False)
 
     class Meta:

@@ -75,3 +75,41 @@ markers = [
 packages = [
     { include = "core" }
 ]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",       # pycodestyle errors
+    "W",       # pycodestyle warnings
+    "F",       # pyflakes (unused imports, undefined variables)
+    "I",       # isort (import organization and sorting)
+    "B",       # flake8-bugbear (common design traps and bug patterns)
+    "DJ",      # flake8-django (Django anti-patterns, string null=True, etc.)
+    "T20",     # flake8-print (disallows print / pprint in production)
+    "T10",     # flake8-debugger (disallows breakpoint, pdb, ipdb)
+    "PLC0415", # pylint: import-outside-top-level (strictly no local/nested imports)
+    "TC",      # flake8-type-checking (enforces if TYPE_CHECKING for typing imports)
+    "PT",      # flake8-pytest-style (pytest best practices)
+]
+ignore = [
+    "E501",    # line length (handled by ruff format)
+    "E203",    # whitespace before ':'
+    "B009",    # getattr-with-constant: Allow getattr(obj, "field")
+    "B010",    # setattr-with-constant: Allow setattr(obj, "field", value)
+    "DJ001",   # Avoid using `null=True` on string-based fields such as `TextField`
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore undefined-from-star-import (F405) and star-imports (F403) in settings
+"**/settings/*.py" = ["F403", "F405"]
+"**/core/utils/dirtyfields/*.py" = ["B007", "B028"]

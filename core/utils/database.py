@@ -12,7 +12,6 @@ def get_public_schema_name() -> str:
 
 
 class core_schema_context(ContextDecorator):
-
     def __init__(self, *args, **kwargs):
         self.schema_name = args[0] or get_public_schema_name()
         self.database = kwargs.get(

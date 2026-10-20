@@ -1,4 +1,7 @@
-from django.db import models
+import typing
+
+if typing.TYPE_CHECKING:
+    from django.db import models
 
 
 class InvalidTypeError(TypeError):
@@ -29,7 +32,6 @@ class ObjectNotFound(Exception):
         super().__init__(message)
 
     def _get_model_name(self):
-
         if not self.model:
             return self.DEFAULT_MODEL_NAME
 

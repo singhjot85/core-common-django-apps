@@ -33,7 +33,6 @@ def raw_compare(new_value, old_value):
 
 
 def timezone_support_compare(new_value, old_value, timezone_to_set=timezone.utc):
-
     if not (isinstance(new_value, datetime) and isinstance(old_value, datetime)):
         return raw_compare(new_value, old_value)
 

@@ -12,7 +12,6 @@ from core.seeder.datasource import FileDataSource
 
 
 class DevUserSeeder(BaseSeeder):
-
     class Meta(BaseMeta):
         model = get_user_model()
         object_create_method = get_user_model().objects.get_or_create_user

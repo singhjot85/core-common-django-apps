@@ -369,7 +369,7 @@ class TestSemanticVersionQuerySetUnits:
 
         with patch.object(qs, "select_for_update", return_value=mock_locked_qs):
             with patch("core.utils.models.version.transaction.atomic"):
-                with pytest.raises(ValueError) as exc_info:
+                with pytest.raises(ValueError) as exc_info:  # noqa: PT011
                     qs.versioned_update_or_create(
                         interface_type="app",
                         bump_type="unsupported",

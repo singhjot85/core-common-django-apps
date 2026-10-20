@@ -1,4 +1,6 @@
-from core.config.settings.test import *  # noqa: F401
+import os
+
+from core.config.settings.test import *
 
 TENANT_SCHEMA_NAME = "test_core"
 PROJECT_NAME = "sample_project"
@@ -13,6 +15,6 @@ TEMPLATES[0]["DIRS"] = [
 ]
 
 MIGRATION_MODULES = {
-    app.rsplit(".", 1)[-1]: f'{PROJECT_MIGRATION_PATH}.{app.rsplit(".", 1)[-1]}'
+    app.rsplit(".", 1)[-1]: f"{PROJECT_MIGRATION_PATH}.{app.rsplit('.', 1)[-1]}"
     for app in PROJECT_APPS
 }

@@ -104,12 +104,12 @@ class TestSeederRunnerDependenciesAndOrdering:
         customer_idx = sorted_seeders.index(MockCustomerSeeder)
         party_idx = sorted_seeders.index(MockInvoicePartySeeder)
 
-        assert (
-            user_idx < customer_idx
-        ), f"User ({user_idx}) must precede Customer ({customer_idx})"
-        assert (
-            customer_idx < party_idx
-        ), f"Customer ({customer_idx}) must precede InvoiceParty ({party_idx})"
+        assert user_idx < customer_idx, (
+            f"User ({user_idx}) must precede Customer ({customer_idx})"
+        )
+        assert customer_idx < party_idx, (
+            f"Customer ({customer_idx}) must precede InvoiceParty ({party_idx})"
+        )
 
     def test_min_execution_order_computation(self):
         registry = ClassRegistry()

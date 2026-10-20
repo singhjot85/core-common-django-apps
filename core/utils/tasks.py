@@ -90,8 +90,8 @@ def queue_task(
         )
 
     if on_commit:
-        task.apply_async_on_commit(args=task_args, kwargs=task_kwargs, *args, **kwargs)
+        task.apply_async_on_commit(args=task_args, kwargs=task_kwargs, *args, **kwargs)  # noqa: B026
     else:
-        return task.apply_async(args=task_args, kwargs=task_kwargs, *args, **kwargs)
+        return task.apply_async(args=task_args, kwargs=task_kwargs, *args, **kwargs)  # noqa: B026
 
     return None

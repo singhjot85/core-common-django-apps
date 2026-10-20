@@ -1,9 +1,12 @@
 import logging
+import typing
 
 from core.apps.users import app_settings, get_user_model
 from core.apps.users.constants import OTPChannelChoices
 from core.apps.users.services.otp.base import BaseOTPService
-from core.utils.backends.sms import BaseSMSBackend
+
+if typing.TYPE_CHECKING:
+    from core.utils.backends.sms import BaseSMSBackend
 
 LOGGER = logging.getLogger(__name__)
 User = get_user_model()
