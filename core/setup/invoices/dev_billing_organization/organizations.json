@@ -1,12 +1,5 @@
 [
     {
-        "tenant_schema": "public",
-        "organization_name": "Public Corp",
-        "billing_suffix": "/2026-27",
-        "billing_start_sequence": 1
-    },
-    {
-        "tenant_schema": "private",
         "organization_name": "PrivateCo Ltd",
         "billing_suffix": "-INV",
         "billing_start_sequence": 1000

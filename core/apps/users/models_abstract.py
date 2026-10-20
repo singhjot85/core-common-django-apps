@@ -49,7 +49,7 @@ class AbstractUser(DjangoAbstractUser, BaseUserModel):
         null=True,
     )
 
-    objects = UserManager()
+    objects: UserManager = UserManager()
 
     class Meta(DjangoAbstractUser.Meta):
         abstract = True

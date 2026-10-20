@@ -1,14 +1,6 @@
 [
     {
-        "tenant_schema": "public",
-        "linked_organization": "Public Corp",
-        "phone": "+911800100200",
-        "type": "primary",
-        "is_primary": true
-    },
-    {
-        "tenant_schema": "private",
-        "linked_organization": "PrivateCo Ltd",
+        "organization__organization_name": "PrivateCo Ltd",
         "phone": "+911800300400",
         "type": "primary",
         "is_primary": true

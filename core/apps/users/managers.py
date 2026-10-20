@@ -1,6 +1,7 @@
 import typing
 
 from django.contrib.auth.models import UserManager as DjangoUserManager
+from django.db import IntegrityError, models, transaction
 from django.utils.translation import gettext_lazy as _
 
 from core.apps.users import app_settings
@@ -24,6 +25,57 @@ class UserManager(DjangoUserManager):
     def all_objects(self):
         """Include soft-deleted records."""
         return super().get_queryset()
+
+    def get_or_create_user(
+        self,
+        username: typing.Optional[str] = None,
+        email: typing.Optional[str] = None,
+        phone_number: typing.Optional[str] = None,
+        password: typing.Optional[str] = None,
+        **extra_fields,
+    ) -> tuple[models.Model, bool]:
+        """
+        Wrapper to get_or_create and return a regular User.
+        """
+        try:
+            return self.get(username=username), False
+        except self.model.DoesNotExist:
+            pass
+
+        try:
+            with transaction.atomic(using=self.db):
+                user = self.create_user(
+                    username=username, email=email, password=password, **extra_fields
+                )
+            return user, True
+        except IntegrityError:
+            # Concurrent create won the race — fetch the existing row.
+            return self.get(username=username), False
+
+    def get_or_create_superuser(
+        self,
+        username: str,
+        email: typing.Optional[str] = None,
+        password: typing.Optional[str] = None,
+        **extra_fields,
+    ) -> tuple[models.Model, bool]:
+        """
+        Wrapper to get_or_create and return a regular User.
+        """
+        try:
+            return self.get(username=username), False
+        except self.model.DoesNotExist:
+            pass
+
+        try:
+            with transaction.atomic(using=self.db):
+                user = self.create_superuser(
+                    username=username, email=email, password=password, **extra_fields
+                )
+            return user, True
+        except IntegrityError:
+            # Concurrent create won the race — fetch the existing row.
+            return self.get(username=username), False
 
     def create_user(
         self,

@@ -15,7 +15,7 @@ class DevUserSeeder(BaseSeeder):
 
     class Meta(BaseMeta):
         model = get_user_model()
-        object_create_method = get_user_model().objects.create_user
+        object_create_method = get_user_model().objects.get_or_create_user
         fields = [
             "username",
             "password",
@@ -25,6 +25,7 @@ class DevUserSeeder(BaseSeeder):
             "phone_number",
             "create_superuser",  # custom field
         ]
+        execution_order = 1
         data_source = FileDataSource(
             os.path.join(settings.CORE_BASE_DIR, "setup/users/dev_users/users.json")
         )
@@ -36,7 +37,7 @@ class DevUserSeeder(BaseSeeder):
     def create(self, data):
         # For superusers override the original create_user
         if self.context.get("create_superuser", False):
-            self.creation_method = get_user_model().objects.create_superuser
+            self.creation_method = get_user_model().objects.get_or_create_superuser
 
         instance = super().create(data)
 

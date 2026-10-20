@@ -1,10 +1,13 @@
 from core.apps.users import models_abstract
+from core.apps.users.managers import UserManager
 
 
 class User(models_abstract.AbstractUser):
     """
     Concrete User model for core-apps-django.
     """
+
+    objects: UserManager = UserManager()
 
     class Meta(models_abstract.AbstractUser.Meta):
         swappable = "AUTH_USER_MODEL"

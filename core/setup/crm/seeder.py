@@ -37,6 +37,7 @@ class DevCustomerSeeder(BaseSeeder):
             )
         )
         depends_on = [get_user_model()]
+        execution_order = 2
 
 
 class DevCustomerPhoneSeeder(BaseSeeder):
