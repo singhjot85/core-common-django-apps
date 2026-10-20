@@ -17,12 +17,13 @@ from rest_framework.exceptions import MethodNotAllowed
 from core.apps.tenants import get_tenant_model
 from core.apps.tenants.constants import TenantStatus
 from core.exceptions import SeederException
-from core.seeder.registry import fixture_registry
-from core.seeder.registry import seeder_registry as default_seeder_registry
+from core.seeder.registry import (
+    fixture_registry,
+    seeder_registry as default_seeder_registry,
+)
 from core.utils.checks import is_multi_tenant, is_production
 from core.utils.database import core_schema_context, get_public_schema_name
 from core.utils.datatypes import InstanceDAGBuilder
-from core.utils.registry import ClassRegistry
 from core.utils.strings import camel_to_snake_case
 
 LOGGER = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ if typing.TYPE_CHECKING:
     from django.db import models
 
     from core.seeder.base import BaseSeeder
+    from core.utils.registry import ClassRegistry
 
 
 class SeederRunner(InstanceDAGBuilder):
@@ -273,7 +275,7 @@ class SeedDevelopmentData(SeederRunner):
             raise MethodNotAllowed("Seeding data not allowed in current env.")
 
         seeder_registry = kwargs.pop("seeder_registry", default_seeder_registry)
-        super().__init__(seeder_registry=seeder_registry, *args, **kwargs)
+        super().__init__(*args, seeder_registry=seeder_registry, **kwargs)
 
 
 class SeedFixtures(SeederRunner):
@@ -286,4 +288,4 @@ class SeedFixtures(SeederRunner):
         Initialize SeedFixtures with the static fixture registry.
         """
         seeder_registry = kwargs.pop("seeder_registry", fixture_registry)
-        super().__init__(seeder_registry=seeder_registry, *args, **kwargs)
+        super().__init__(*args, seeder_registry=seeder_registry, **kwargs)

@@ -36,9 +36,9 @@ class TestSeederRegistry:
         """Dev-prefixed seeders must NOT appear in fixture_registry."""
         registry = fixture_registry.registry
         dev_keys = [k for k in registry if k.startswith("dev_")]
-        assert (
-            len(dev_keys) == 0
-        ), f"Dev seeders should not be in fixture_registry: {dev_keys}"
+        assert len(dev_keys) == 0, (
+            f"Dev seeders should not be in fixture_registry: {dev_keys}"
+        )
 
     def test_dev_seeders_in_seeder_registry(self):
         """Dev-prefixed seeders must appear in seeder_registry."""

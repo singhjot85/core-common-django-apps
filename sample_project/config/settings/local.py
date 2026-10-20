@@ -17,6 +17,6 @@ TEMPLATES[0]["DIRS"] = [
 ]
 
 MIGRATION_MODULES = {
-    app.rsplit(".", 1)[-1]: f'{PROJECT_MIGRATION_PATH}.{app.rsplit(".", 1)[-1]}'
+    app.rsplit(".", 1)[-1]: f"{PROJECT_MIGRATION_PATH}.{app.rsplit('.', 1)[-1]}"
     for app in PROJECT_APPS
 }

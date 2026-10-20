@@ -35,7 +35,7 @@ def send_otp_task(
             )
     except Exception as exc:
         LOGGER.error(f"Error in send_otp_task for {identifier}: {exc}", exc_info=exc)
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
     return f"OTP sent successfully to {identifier} via {channel} ({purpose})"
 
@@ -71,6 +71,6 @@ def create_otp_log_task(
             )
     except Exception as exc:
         LOGGER.error(f"Error in create_otp_log_task for {target}: {exc}", exc_info=exc)
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
     return f"OTP log created successfully for {target} via {channel} ({purpose})"

@@ -50,9 +50,9 @@ class TestFixtureJSONFiles:
             pytest.skip(f"File missing: {fixture_path}")
 
         data = json.loads(fixture_path.read_text())
-        assert isinstance(
-            data, list
-        ), f"{fixture_path.name} should contain a JSON array"
+        assert isinstance(data, list), (
+            f"{fixture_path.name} should contain a JSON array"
+        )
         assert len(data) > 0, f"{fixture_path.name} should not be empty"
 
     def test_preference_types_have_required_fields(self):
@@ -130,9 +130,9 @@ class TestFixtureJSONFiles:
             pytest.skip(f"File missing: {fixture_path}")
         data = json.loads(fixture_path.read_text())
         for entry in data:
-            assert (
-                "_schema_name" in entry
-            ), f"Missing '_schema_name' in {entry} ({fixture_path.name})"
+            assert "_schema_name" in entry, (
+                f"Missing '_schema_name' in {entry} ({fixture_path.name})"
+            )
             assert entry["_schema_name"] == "public", f"Unexpected schema in {entry}"
 
 

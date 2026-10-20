@@ -35,7 +35,6 @@ class DynamicChoiceType:
 
 
 class TupleEnum(tuple, enum.ReprEnum):
-
     @property
     def value(self):
         return self[0]
@@ -49,7 +48,6 @@ class TupleEnum(tuple, enum.ReprEnum):
 
 
 class LazyDynamicChoiceTypes(LazyObject):
-
     def _setup(self):
         self._wrapped = DynamicChoiceType()
 
@@ -81,8 +79,8 @@ class LazyDynamicChoiceTypes(LazyObject):
 
     @property
     def choices(self):
-        self._wrapped.choices
+        return self._wrapped.choices
 
     @property
     def values(self):
-        self._wrapped.values
+        return self._wrapped.values

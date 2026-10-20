@@ -6,7 +6,6 @@ from core.utils.registry.base import BaseRegistry
 
 
 class ClassRegistry(BaseRegistry):
-
     def __init__(self):
         self._registry = {}
 
@@ -84,7 +83,6 @@ class ClassRegistry(BaseRegistry):
 
 
 class UnorderedClassRegistry(BaseRegistry):
-
     def __init__(self):
         self._registry = set()
 
@@ -157,7 +155,6 @@ def auto_register(registry: type[BaseRegistry], *args, **kwargs):
     """
 
     def decorator(cls):
-
         if not isinstance(registry, BaseRegistry):
             raise RegistryException(
                 f"{registry.__class__.__name__} is not a valid registry."

@@ -12,7 +12,6 @@ if typing.TYPE_CHECKING:
 
 
 class SafeDatabaseLoader(BaseLoader):
-
     def __init__(self, fallback_loader: BaseLoader):
         self.fallback_loader = fallback_loader
 
