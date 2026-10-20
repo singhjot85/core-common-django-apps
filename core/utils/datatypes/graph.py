@@ -1,20 +1,55 @@
+"""
+Graph data structures supporting directed and undirected graph operations.
+
+Provides in-degree computation, Kahn's algorithm breadth-first topological sorting,
+and cycle detection for dependency resolution engines.
+"""
+
+from __future__ import annotations
+
+import typing
+
 from core.exceptions import CycleError
 from core.utils.datatypes.queue import Queue
 
 
 class Graph:
-    _directed: bool
-    _adjanceny_list: dict[int, list]
+    """
+    General-purpose Graph implementation supporting directed and undirected topologies.
+
+    Attributes:
+        _directed (bool): Flag indicating whether edges are unidirectional.
+        _adjanceny_list (dict[int, list[int]]): Adjacency list mapping node index to targets.
+    """
 
     def __init__(self, directed: bool = True):
-        self._directed = directed
-        self._adjanceny_list = {}
+        """
+        Initialize an empty graph.
+
+        Args:
+            directed (bool): True for directed graph (Node A -> Node B),
+                             False for undirected (Node A <-> Node B). Defaults to True.
+        """
+        self._directed: bool = directed
+        self._adjanceny_list: dict[int, list[int]] = {}
 
     @property
     def total_nodes(self) -> int:
+        """
+        Get the total count of unique nodes in the graph.
+
+        Returns:
+            int: Number of vertices.
+        """
         return len(self.get_all_nodes())
 
-    def get_all_nodes(self) -> set:
+    def get_all_nodes(self) -> set[int]:
+        """
+        Retrieve all distinct node indices present in the graph.
+
+        Returns:
+            set[int]: Set of unique node identifiers.
+        """
         nodes = set(self.adjacency_list.keys())
         for targets in self.adjacency_list.values():
             nodes.update(targets)
@@ -22,7 +57,13 @@ class Graph:
         return nodes
 
     @property
-    def adjacency_list(self):
+    def adjacency_list(self) -> dict[int, list[int]]:
+        """
+        Retrieve the graph's internal adjacency list representation.
+
+        Returns:
+            dict[int, list[int]]: Mapping of source node to list of destination nodes.
+        """
         if not self._adjanceny_list:
             return {}
 
@@ -30,14 +71,16 @@ class Graph:
 
     def add_node(self, from_index: int, to_index: int) -> None:
         """
-        Add a node to the graph, internally adds a
-            ``adjaceny_list[from_index] = to_index`` entry for directed
-            and vice-versa also for a non-directed graph
+        Add a directed or undirected edge between two nodes.
 
         Directed Graph:
-            ``(Node A) ---> (Node B)``
-        Non-Directional/Bi-directional Graph:
-            ``(Node A) <---> (Node B)``
+            ``(from_index) ---> (to_index)``
+        Undirected Graph:
+            ``(from_index) <---> (to_index)``
+
+        Args:
+            from_index (int): Source node index.
+            to_index (int): Destination node index.
         """
         if from_index not in self._adjanceny_list:
             self._adjanceny_list[from_index] = []
@@ -51,7 +94,10 @@ class Graph:
 
     def remove_node(self, node_index: int) -> None:
         """
-        Remove a node from graph,
+        Remove a node and all incoming and outgoing edges associated with it.
+
+        Args:
+            node_index (int): Identifier of the node to remove.
         """
         self._adjanceny_list.pop(node_index, None)
 
@@ -62,16 +108,22 @@ class Graph:
 
 
 class DirectedGraph(Graph):
+    """
+    Directed Acyclic Graph (DAG) implementation with topological sorting and cycle detection.
+
+    Inherits from Graph with `directed=True` by default.
+    """
 
     def __init__(self):
+        """Initialize a directed graph."""
         super().__init__(directed=True)
 
     def get_in_degree(self) -> dict[int, int]:
         """
-        Get in-degree for each node on graph
+        Compute the in-degree (count of incoming edges) for every vertex in the graph.
 
         Returns:
-            indegree_dict (dict[int, int]): A dictionary where keys are node indices and values are node in-degree values
+            dict[int, int]: Mapping from node index to incoming edge count.
         """
         nodes = self.get_all_nodes()
 
@@ -86,18 +138,25 @@ class DirectedGraph(Graph):
 
         return indegree_dict
 
-    def bfs_topological_sort(self) -> list:
+    def bfs_topological_sort(self) -> list[int]:
         """
-        Topologically Sorted Graph, uses Kahn's Algorithm
+        Topologically sort the graph using Kahn's algorithm (Breadth-First Search).
+
+        Time Complexity: O(V + E) where V is vertices and E is edges.
+        Space Complexity: O(V).
 
         Returns:
-            topo_sort (list): Topologically sorted nodes
+            list[int]: Ordered list of node indices where every prerequisite appears
+                       before dependent nodes.
+
+        Raises:
+            CycleError: If the graph contains a directed cycle (circular dependency).
         """
-        topo_sort = []
+        topo_sort: list[int] = []
         if not self.adjacency_list:
             return topo_sort
 
-        indegree = self.get_in_degree()
+        indegree: dict[int, typing.Union[int, str]] = self.get_in_degree()
         queue = Queue()
 
         def enqueue_zero_indegree():

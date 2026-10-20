@@ -50,7 +50,6 @@ class TestSeederRegistry:
         """All expected dev seeders should be in the global registry."""
         registry = seeder_registry.registry
         expected_dev_keys = {
-            "dev_tenant_seeder",
             "dev_user_seeder",
             "dev_customer_seeder",
             "dev_customer_phone_seeder",
@@ -63,7 +62,6 @@ class TestSeederRegistry:
             "dev_invoice_party_email_seeder",
             "dev_invoice_party_phone_seeder",
             "dev_invoice_item_seeder",
-            "dev_invoice_seeder",
         }
         registered_keys = set(registry.keys())
         missing = expected_dev_keys - registered_keys

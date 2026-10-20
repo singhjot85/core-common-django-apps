@@ -3,8 +3,7 @@ Runtime checks to validate and generate runtime settings
 """
 
 from django.conf import settings
-from django.db import connection
-from django.db import models
+from django.db import connection, models
 
 
 def is_multi_tenant():
@@ -39,8 +38,9 @@ def is_model(kls):
 
     return False
 
+
 def is_public():
     """
     Check if current schema is public schema
     """
-    return connection.schema_name == getattr(settings, 'PUBLIC_SCHEMA_NAME', 'public')
+    return connection.schema_name == getattr(settings, "PUBLIC_SCHEMA_NAME", "public")

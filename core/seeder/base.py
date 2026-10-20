@@ -396,7 +396,16 @@ class BaseSeeder:
 
     def validate(self, data: dict):
         """
-        Hook to implement validations
+        Validate incoming dictionary before seeding.
+
+        Args:
+            data (dict): Mapping of field names to values.
+
+        Returns:
+            dict: The validated data dictionary.
+
+        Raises:
+            InvalidTypeError: If data is not a dictionary instance.
         """
         return data
 

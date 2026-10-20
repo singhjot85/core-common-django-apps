@@ -52,11 +52,11 @@ Pluggable infrastructure delivery adapters.
 * **[`sms/base.py`](./backends/sms/base.py)**: [`BaseSMSBackend`](./backends/sms/base.py#L4-L24) abstract contract (`send_sms(to, message)`).
 * **[`sms/console.py`](./backends/sms/console.py)**: [`ConsoleSMSBackend`](./backends/sms/console.py#L8-L31) implementation for dev/test output to console and logs.
 
-### 3. [`datatypes/`](./datatypes/)
+### 3. [`datatypes/`](./datatypes/Readme.md)
 Custom data structures, graph traversals, and dependency resolution builders.
-* **[`graph.py`](./datatypes/graph.py)**: [`Graph`](./datatypes/graph.py#L5-L62) and [`DirectedGraph`](./datatypes/graph.py#L64-L125) with in-degree calculation, Kahn's algorithm BFS topological sort, and cycle detection.
-* **[`queue.py`](./datatypes/queue.py)**: Pointer-based [`Queue`](./datatypes/queue.py#L6-L84) with `peep()`, `clean_queue()`, `enqueue()`, and `dequeue()`.
-* **[`implementations.py`](./datatypes/implementations.py)**: [`BaseDAGBuilder`](./datatypes/implementations.py#L6-L16) and [`InstanceDAGBuilder`](./datatypes/implementations.py#L18-L122) for sorting dependent classes/objects.
+* **[`graph.py`](./datatypes/graph.py)**: [`Graph`](./datatypes/graph.py) and [`DirectedGraph`](./datatypes/graph.py) with in-degree calculation, Kahn's algorithm BFS topological sort, and cycle detection.
+* **[`queue.py`](./datatypes/queue.py)**: Pointer-based [`Queue`](./datatypes/queue.py) with `peep()`, `clean_queue()`, `enqueue()`, and `dequeue()`.
+* **[`implementations.py`](./datatypes/implementations.py)**: [`BaseDAGBuilder`](./datatypes/implementations.py) and [`InstanceDAGBuilder`](./datatypes/implementations.py) for sorting dependent classes/objects.
 
 ### 4. [`dirtyfields/`](./dirtyfields/)
 Tracks field modifications on Django model instances before saving.

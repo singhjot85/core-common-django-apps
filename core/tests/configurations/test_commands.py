@@ -12,7 +12,9 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from core.apps.configurations import app_settings
-from core.apps.configurations.management.commands.dev_setup import auto_discover_seeders
+from core.apps.configurations.management.commands.run_dev_seeders import (
+    auto_discover_seeders,
+)
 from core.seeder.datasource import FileDataSource
 from core.seeder.registry import seeder_registry
 from core.utils.autodiscovery import AutoDiscovery, AutoDiscoveryError
@@ -145,34 +147,23 @@ class TestFileDataSource:
 
 
 class TestDevSetupCommand:
-    """Unit tests for dev_setup management command."""
+    """Unit tests for run_dev_seeders management command."""
 
-    def test_dev_setup_raises_in_production(self, settings):
+    def test_run_dev_seeders_raises_in_production(self, settings):
         settings.DEBUG = False
         settings.DJANGO_ENV = "production"
 
         with pytest.raises(CommandError, match="development environment"):
-            call_command("dev_setup")
+            call_command("run_dev_seeders")
 
-    def test_dev_setup_executes_in_development(self, settings):
+    def test_run_dev_seeders_executes_in_development(self, settings):
         settings.DEBUG = True
         settings.DJANGO_ENV = "dev"
 
         out = StringIO()
         with patch("core.seeder.runners.SeedDevelopmentData.run") as mock_run:
-            call_command("dev_setup", stdout=out)
-            assert mock_run.called
-
-        output = out.getvalue()
-        assert "Successfully completed development setup" in output
-
-    def test_seed_data_alias_executes_in_development(self, settings):
-        settings.DEBUG = True
-        settings.DJANGO_ENV = "dev"
-
-        out = StringIO()
-        with patch("core.seeder.runners.SeedDevelopmentData.run") as mock_run:
-            call_command("seed_data", stdout=out)
+            mock_run.return_value = ["dummy_seeded_instance"]
+            call_command("run_dev_seeders", stdout=out)
             assert mock_run.called
 
         output = out.getvalue()
@@ -182,4 +173,4 @@ class TestDevSetupCommand:
         auto_discover_seeders()
         registry = seeder_registry.registry
         assert "dev_customer_seeder" in registry
-        assert "dev_tenant_seeder" in registry
+        assert "dev_user_seeder" in registry

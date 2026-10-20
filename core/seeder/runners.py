@@ -143,16 +143,16 @@ class SeederRunner(InstanceDAGBuilder):
 
         dependent_seeders = []
         # TODO: Time Coplexity for this comaprison can be imporved by pre-builing a dict/map
-        for seeder in self.seeders:
-            seeder: type["BaseSeeder"]
-            SeederModel = seeder.get_seeder_model()
+        for CandidateSeeder in self.seeders:
+            CandidateSeeder: type["BaseSeeder"]
+            SeederModel = CandidateSeeder.get_seeder_model()
             for Model in dep_models:
                 if (
                     Model._meta.app_label == SeederModel._meta.app_label
                     and Model._meta.model_name == SeederModel._meta.model_name
                     and Model._meta.db_table == SeederModel._meta.db_table
                 ):
-                    dependent_seeders.append(seeder)
+                    dependent_seeders.append(CandidateSeeder)
 
         return dependent_seeders
 
@@ -190,7 +190,9 @@ class SeederRunner(InstanceDAGBuilder):
             # If schema for an object is defined, only run for that schema
             if item_schema := data.pop("_schema_name", False):
                 with core_schema_context(item_schema):
+                    seeder.context["_item_schema"] = item_schema
                     instance = seeder.seed(data=data)
+                    seeder.context.pop("_item_schema", None)
                     if instance:
                         instances.append(str(instance))
 
@@ -215,6 +217,7 @@ class SeederRunner(InstanceDAGBuilder):
 
             # For single-schema seeders, run in the seeder's target schema context
             with core_schema_context(seeder.schema_name):
+                instance = seeder.seed(data=data)
                 if instance:
                     instances.append(str(instance))
 
