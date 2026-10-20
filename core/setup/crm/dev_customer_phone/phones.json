@@ -1,28 +1,26 @@
 [
     {
-        "tenant_schema": "public",
-        "linked_customer": "Alice Public",
+        "_schema": "public",
+        "customer__first_name": "Alice",
         "phone": "+911234567890",
         "phone_type": "primary",
         "is_primary": true
     },
     {
-        "tenant_schema": "public",
-        "linked_customer": "Bob Public",
+        "_schema": "public",
+        "customer__first_name": "Bob",
         "phone": "+911234567891",
         "phone_type": "primary",
         "is_primary": true
     },
     {
-        "tenant_schema": "private",
-        "linked_customer": "Charlie Private",
+        "customer__first_name": "Charlie",
         "phone": "+911234567892",
         "phone_type": "primary",
         "is_primary": true
     },
     {
-        "tenant_schema": "private",
-        "linked_customer": "Diana Private",
+        "customer__first_name": "Diana",
         "phone": "+911234567893",
         "phone_type": "primary",
         "is_primary": true

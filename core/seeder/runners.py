@@ -90,7 +90,7 @@ class SeederRunner(InstanceDAGBuilder):
         """
         return self.seeders
 
-    @cached_property
+    @property
     def _min_execution_order(self) -> typing.Optional[int]:
         """
         Get the minimum execution_order among all registered seeders.
@@ -166,7 +166,7 @@ class SeederRunner(InstanceDAGBuilder):
         instances = []
         for data in seed_data:
             # If schema for an object is defined, only run for that schema
-            if item_schema := data.get("_schema_name"):
+            if item_schema := data.pop("_schema_name", False):
                 with core_schema_context(item_schema):
                     instance = seeder.seed(data=data)
                     if instance:

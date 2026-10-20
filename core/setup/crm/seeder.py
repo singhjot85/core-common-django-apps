@@ -12,6 +12,7 @@ from core.apps.crm import (
     get_customer_model,
     get_customer_phone_model,
 )
+from core.apps.users import get_user_model
 from core.seeder.base import BaseMeta, BaseSeeder
 from core.seeder.datasource import FileDataSource
 
@@ -27,6 +28,7 @@ class DevCustomerSeeder(BaseSeeder):
             "business_name",
             "customer_type",
             "status",
+            "user__email",
         ]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
@@ -34,9 +36,7 @@ class DevCustomerSeeder(BaseSeeder):
                 settings.CORE_BASE_DIR, "setup/crm/dev_customer/customers.json"
             )
         )
-        depends_on = []
-        is_fixture = False
-        related_seeders = {}
+        depends_on = [get_user_model()]
 
 
 class DevCustomerPhoneSeeder(BaseSeeder):
@@ -51,9 +51,7 @@ class DevCustomerPhoneSeeder(BaseSeeder):
                 settings.CORE_BASE_DIR, "setup/crm/dev_customer_phone/phones.json"
             )
         )
-        depends_on = []
-        is_fixture = False
-        related_seeders = {"customer": DevCustomerSeeder}
+        depends_on = [get_customer_model()]
 
 
 class DevCustomerEmailSeeder(BaseSeeder):
@@ -68,9 +66,7 @@ class DevCustomerEmailSeeder(BaseSeeder):
                 settings.CORE_BASE_DIR, "setup/crm/dev_customer_email/emails.json"
             )
         )
-        depends_on = []
-        is_fixture = False
-        related_seeders = {"customer": DevCustomerSeeder}
+        depends_on = [get_customer_model()]
 
 
 class DevCustomerAddressSeeder(BaseSeeder):
@@ -95,6 +91,4 @@ class DevCustomerAddressSeeder(BaseSeeder):
                 "setup/crm/dev_customer_address/addresses.json",
             )
         )
-        depends_on = []
-        is_fixture = False
-        related_seeders = {"customer": DevCustomerSeeder}
+        depends_on = [get_customer_model()]

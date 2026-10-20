@@ -26,8 +26,7 @@ class DevUserSeeder(BaseSeeder):
             "create_superuser",  # custom field
         ]
         data_source = FileDataSource(
-            os.path.join(settings.CORE_BASE_DIR, "setup/users/dev_users"),
-            load_method=FileDataSource.LOAD_INDIVIDUAL,
+            os.path.join(settings.CORE_BASE_DIR, "setup/users/dev_users/users.json")
         )
 
     def to_internal_values(self, data):

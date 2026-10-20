@@ -1,8 +1,0 @@
-{
-    "username": "admin1@localhost.com",
-    "password": "qwerty123",
-    "email": "admin1@localhost.com",
-    "first_name": "Admin1",
-    "last_name": "User",
-    "create_superuser": true
-}

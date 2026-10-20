@@ -128,7 +128,7 @@ class AbstractTenantBranding(BaseModel):
 
     tenant = models.OneToOneField(
         settings.TENANTS_TENANT_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         null=False,
         blank=False,
         related_name="branding",

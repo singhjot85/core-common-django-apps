@@ -1,28 +1,26 @@
 [
     {
-        "tenant_schema": "public",
-        "linked_customer": "Alice Public",
+        "_schema": "public",
+        "customer__first_name": "Alice",
         "email": "alice@public.localhost",
         "email_type": "primary",
         "is_primary": true
     },
     {
-        "tenant_schema": "public",
-        "linked_customer": "Bob Public",
+        "_schema": "public",
+        "customer__first_name": "Bob",
         "email": "bob@public.localhost",
         "email_type": "primary",
         "is_primary": true
     },
     {
-        "tenant_schema": "private",
-        "linked_customer": "Charlie Private",
+        "customer__first_name": "Charlie",
         "email": "charlie@private.localhost",
         "email_type": "primary",
         "is_primary": true
     },
     {
-        "tenant_schema": "private",
-        "linked_customer": "Diana Private",
+        "customer__first_name": "Diana",
         "email": "diana@private.localhost",
         "email_type": "primary",
         "is_primary": true

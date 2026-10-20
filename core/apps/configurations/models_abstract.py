@@ -124,7 +124,7 @@ if is_multi_tenant():
 
         tenant = models.ForeignKey(
             settings.TENANTS_TENANT_MODEL,
-            on_delete=models.CASCADE,
+            on_delete=models.PROTECT,
             null=True,
             blank=True,
             related_name="tenant_configs",

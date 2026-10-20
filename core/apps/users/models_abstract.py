@@ -125,7 +125,7 @@ class AbstractSocialAccount(BaseModel):
 
     user = models.ForeignKey(
         to=settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="social_accounts",
     )
     provider = models.CharField(
