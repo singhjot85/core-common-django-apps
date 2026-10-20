@@ -24,11 +24,16 @@ def jinja2_environment(**options) -> Environment:
 
 
 @lru_cache(maxsize=1)
-def jinja2_sandboxed_enviournment():
-    """ """
-    dirs = [str(d) for d in getattr(settings, "SANDBOX_TEMPLATES_DIRS", [])]
+def jinja2_sandboxed_environment() -> ImmutableSandboxedEnvironment:
+    """
+    Factory function for the sandboxed Jinja2 environment used for
+    dynamic, database-backed, or user-editable templates.
+    """
+    dirs = [str(d) for d in getattr(settings, "SANDBOX_TEMPLATES_DIRS", []) if d]
+    fallback_loader = FileSystemLoader(dirs) if dirs else None
+
     env = ImmutableSandboxedEnvironment(
-        loader=SafeDatabaseLoader(FileSystemLoader(dirs)),
+        loader=SafeDatabaseLoader(fallback_loader),
         autoescape=select_autoescape(
             enabled_extensions=("html", "xml", "json"),
             default_for_string=True,
@@ -42,18 +47,24 @@ def jinja2_sandboxed_enviournment():
     return env
 
 
-def render(template_name, context):
+# Backward compatibility alias for typo
+jinja2_sandboxed_enviournment = jinja2_sandboxed_environment
+
+
+def render(template_name: str, context: dict | None = None) -> str:
     """
-    render("email/welcome.html", {...}). Pass plain dicts/dataclasses, NEVER ORM objects.
-
+    Render a sandboxed template (database or file-backed).
+    Pass plain dicts/dataclasses, NEVER ORM objects.
     """
-    return jinja2_sandboxed_enviournment().get_template(template_name).render(**context)
+    return (
+        jinja2_sandboxed_environment().get_template(template_name).render(context or {})
+    )
 
 
-def render_block(template_name, block, context):
+def render_block(template_name: str, block: str, context: dict | None = None) -> str:
     """
     Render one named block, e.g. {% block subject %} of an email template.
-
     """
-    template = jinja2_sandboxed_enviournment().get_template(template_name)
-    return "".join(template.blocks[block](template.new_context(context))).strip()
+    template = jinja2_sandboxed_environment().get_template(template_name)
+    ctx = template.new_context(context or {})
+    return "".join(template.blocks[block](ctx)).strip()

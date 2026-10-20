@@ -65,20 +65,24 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         return super().save(*args, **kwargs)
 
     @classmethod
-    def get_template_source(cls, interface_type: str, field: str):
+    def get_template_source(
+        cls, interface_type: str, field: str | None = None
+    ) -> str | None:
         """
-        Get a single source field for multipart templates
+        Get a single source field for multipart templates.
         """
-        serialized_template = cls.get_template(interface_type, field)
-        for field in cls.TEMPLATE_FIELD_PRIORITY:
-            if not serialized_template.get(field, False):
-                continue
+        serialized_template = cls.get_template(interface_type)
+        if field:
             return serialized_template.get(field)
+        for f in cls.TEMPLATE_FIELD_PRIORITY:
+            if not serialized_template.get(f, False):
+                continue
+            return serialized_template.get(f)
 
         return None
 
     @classmethod
-    def get_template(cls, interface_type: str):
+    def get_template(cls, interface_type: str) -> dict:
         cache_key = cls.get_cache_key(interface_type)
         if serialized_template := cache.get(cache_key, None):
             return serialized_template
@@ -91,7 +95,9 @@ class BaseTemplateModel(BaseSemanticVersionModel):
             .first()
         )
 
-        serialized_template = cls.serialize_for_cache(template_obj)
+        serialized_template = (
+            cls.serialize_for_cache(template_obj) if template_obj else {}
+        )
         cache.set(
             cache_key,
             serialized_template,
@@ -101,7 +107,9 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         return serialized_template
 
     @classmethod
-    def serialize_for_cache(self, obj: "BaseTemplateModel"):
+    def serialize_for_cache(cls, obj: "BaseTemplateModel | None") -> dict:
+        if not obj:
+            return {}
         return {"plain_content": obj.plain_content, "html_content": obj.html_content}
 
     def render_using_django_engine(

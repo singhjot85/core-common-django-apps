@@ -1,13 +1,21 @@
 import datetime
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 
 import pytest
 from django.template import engines
 from django.template.loader import render_to_string
 from django.test import RequestFactory
+from jinja2 import DictLoader, TemplateNotFound
+from jinja2.exceptions import SecurityError
 
-from core.utils.jinja2.environment import jinja2_environment
+from core.utils.jinja2.environment import (
+    jinja2_environment,
+    jinja2_sandboxed_environment,
+)
 from core.utils.jinja2.filters import format_currency, format_date, format_datetime
+from core.utils.jinja2.loaders import SafeDatabaseLoader
+from sample_project.apps.views import BackendServerdUIView
 
 
 class TestJinja2EnvironmentAndFilters:
@@ -302,8 +310,6 @@ class TestFullPageTemplateRendering:
         assert "Pending Invoices" in rendered
 
     def test_backend_served_ui_view_mock_data(self, request_obj):
-        from sample_project.apps.views import BackendServerdUIView
-
         view = BackendServerdUIView()
         view.request = request_obj
         context = view.get_context_data()
@@ -337,3 +343,44 @@ class TestFullPageTemplateRendering:
         assert "data-theme-toggle" in rendered
         assert "core_theme" in rendered
         assert "dark_mode" in rendered
+
+
+class TestSafeDatabaseLoaderAndSandboxedEnvironment:
+    def test_safe_database_loader_delegates_to_fallback(self):
+        fallback = DictLoader({"test.jinja": "Hello {{ name }}"})
+        loader = SafeDatabaseLoader(fallback_loader=fallback)
+
+        source, filename, uptodate = loader.get_source(None, "test.jinja")
+        assert source == "Hello {{ name }}"
+        assert filename is None
+        assert uptodate() is True
+
+    def test_safe_database_loader_resolves_db_template(self):
+        loader = SafeDatabaseLoader()
+        mock_model = MagicMock()
+        mock_model.get_template_source.return_value = "<h1>Hello from DB</h1>"
+        mock_model.get_cache_key.return_value = (
+            "public:invoices:invoicetemplate:standard"
+        )
+
+        with patch.object(loader, "get_template_model", return_value=mock_model):
+            source, filename, uptodate = loader.get_source(
+                None, "invoices:invoicetemplate:standard"
+            )
+            assert source == "<h1>Hello from DB</h1>"
+            assert filename == "db://invoices/invoicetemplate/standard"
+            assert callable(uptodate)
+
+    def test_safe_database_loader_raises_template_not_found(self):
+        loader = SafeDatabaseLoader()
+        with pytest.raises(TemplateNotFound):
+            loader.get_source(None, "nonexistent_file.jinja")
+
+    def test_sandboxed_environment_security(self):
+        env = jinja2_sandboxed_environment()
+        tmpl = env.from_string("Hello {{ name }}")
+        assert tmpl.render({"name": "Alice"}) == "Hello Alice"
+
+        # Verify sandbox prevents access to dangerous internal attributes
+        with pytest.raises(SecurityError):
+            env.from_string("{{ ''.__class__.__mro__[1].__subclasses__() }}").render()
