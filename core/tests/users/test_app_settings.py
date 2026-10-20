@@ -1,5 +1,6 @@
 from core.apps.users import app_settings
 from core.apps.users.api.serializers import SignupSerializer, UserDetailsSerializer
+from core.apps.users.app_settings import UsersSettings
 from core.utils.backends.sms import ConsoleSMSBackend
 from core.utils.generators.username import generate_unique_username
 from core.utils.models import BaseUserModel
@@ -32,8 +33,6 @@ class TestUsersAppSettings:
 
     def test_default_descriptor_defaults(self):
         """Check raw default values on descriptors without hitting live cache."""
-        from core.apps.users.app_settings import UsersSettings
-
         assert UsersSettings.ENABLE_PASSWORD_LOGIN.default is True
         assert UsersSettings.ENABLE_OTP_LOGIN.default is True
         assert UsersSettings.ENABLE_SOCIAL_LOGIN.default is True

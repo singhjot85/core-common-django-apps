@@ -81,6 +81,8 @@ target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint]
+preview = true
+explicit-preview-rules = true
 select = [
     "E",       # pycodestyle errors
     "W",       # pycodestyle warnings
@@ -113,3 +115,4 @@ indent-style = "space"
 # Ignore undefined-from-star-import (F405) and star-imports (F403) in settings
 "**/settings/*.py" = ["F403", "F405"]
 "**/core/utils/dirtyfields/*.py" = ["B007", "B028"]
+"sample_project/manage.py" = ["PLC0415"]
