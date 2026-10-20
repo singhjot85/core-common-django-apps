@@ -163,12 +163,15 @@ class SeederRunner(InstanceDAGBuilder):
             else [seeder.seed_data]
         )
 
+        instances = []
         for data in seed_data:
-
             # If schema for an object is defined, only run for that schema
             if item_schema := data.get("_schema_name"):
                 with core_schema_context(item_schema):
-                    seeder.seed(data=data)
+                    instance = seeder.seed(data=data)
+                    if instance:
+                        instances.append(str(instance))
+
                 continue
 
             # If needs to run for all schemas, iterate through all tenants and run in their schema context
@@ -182,12 +185,20 @@ class SeederRunner(InstanceDAGBuilder):
                     .values_list("schema_name", flat=True)
                 ):
                     with core_schema_context(tenant_schema):
-                        seeder.seed(data=data)
+                        instance = seeder.seed(data=data)
+                        if instance:
+                            instances.append(str(instance))
+
                 continue
 
             # For single-schema seeders, run in the seeder's target schema context
             with core_schema_context(seeder.schema_name):
-                seeder.seed(data=data)
+                if instance:
+                    instances.append(str(instance))
+
+                continue
+
+        return instances
 
     def run(self):
         """
@@ -198,12 +209,13 @@ class SeederRunner(InstanceDAGBuilder):
         LOGGER.info("Seeder Execution Started...")
         seeders: list[type["BaseSeeder"]] = self.topo_sorted_instances()
 
+        instances = None
         with transaction.atomic(using=DEFAULT_DB_ALIAS):
             for Seeder in seeders:
                 label = self.seeder_label(Seeder)
                 try:
                     seeder = Seeder()
-                    self._run(seeder)
+                    instances = self._run(seeder)
 
                     LOGGER.info(
                         msg=f"[{seeder.schema_name}] Successfully Executed Seeder >>> {label}"
@@ -216,6 +228,7 @@ class SeederRunner(InstanceDAGBuilder):
                     raise e
 
         LOGGER.info("Seeder Execution Finished...")
+        return instances
 
 
 class SeedDevelopmentData(SeederRunner):

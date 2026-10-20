@@ -40,12 +40,13 @@ class BaseMeta:
     model: models.Model
     fields: list
     data_source: AbstractDataSource
-    tenant_type: str = settings.TENANT_TYPE_ORGANIZATION
     object_create_method: typing.Callable
 
+    is_fixture: bool = False
     schema_name: typing.Optional[str] = None
+    tenant_type: str = settings.TENANT_TYPE_ORGANIZATION
+
     depends_on: typing.Optional[list]
-    is_fixture: typing.Optional[bool]
     execution_order: typing.Optional[int]
     related_seeders: typing.Optional[dict[str, BaseSeeder]]
 
@@ -155,7 +156,7 @@ class BaseSeeder:
         except Exception as e:
             raise SeederException(cls.__name__, str(e)) from e
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         """
         Initialize variable's for given seeder instance.
 
@@ -178,6 +179,12 @@ class BaseSeeder:
         )
 
         self._nonconcrete_relations = []
+        self.context = kwargs
+        self.creation_method = getattr(
+            self._meta,
+            "object_create_method",
+            self._model._default_manager.get_or_create,
+        )
 
     @property
     def seedable_fields(self):
@@ -369,13 +376,7 @@ class BaseSeeder:
 
     def create(self, data: dict) -> models.Model:
         """ """
-        creation_method = getattr(
-            self._meta,
-            "object_create_method",
-            self._model._default_manager.get_or_create,
-        )
-
-        instance = creation_method(**data)
+        instance = self.creation_method(**data)
 
         # Set all the fields that are not directly on model
         for nonconcrete_map in self._nonconcrete_relations:

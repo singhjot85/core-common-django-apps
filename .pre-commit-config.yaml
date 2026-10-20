@@ -83,4 +83,4 @@ repos:
         args:
           - "--baseline"
           - ".secrets.baseline"
-        exclude: '^package-lock.json'
+        exclude: '^(package-lock\.json|core/setup/.*\.json)$'
