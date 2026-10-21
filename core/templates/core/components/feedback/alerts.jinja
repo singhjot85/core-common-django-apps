@@ -19,12 +19,11 @@
     {% if messages %}
         <div class="messages-container mb-md">
             {% for msg in messages %}
-                {% if msg and msg.message %}
-                    {% set tag = msg.tag if msg.tag else "info" %}
-                    {% if tag == "error" %}
-                        {% set tag = "danger" %}
-                    {% endif %}
-                    {{ alert(message=msg.message, variant=tag) }}
+                {% if msg %}
+                    {% set msg_text = msg.message if msg.message is defined else msg|string %}
+                    {% set raw_tag = (msg.tags if msg.tags is defined else (msg.tag if msg.tag is defined else "info"))|string %}
+                    {% set tag = "danger" if "error" in raw_tag else ("warning" if "warning" in raw_tag else ("success" if "success" in raw_tag else "info")) %}
+                    {{ alert(message=msg_text, variant=tag) }}
                 {% endif %}
             {% endfor %}
         </div>

@@ -10,8 +10,7 @@
         <div class="brand-title">
             {% block page_label %}
                 <strong>{{ page_label or PROJECT_LABEL or "Tenant View" }}</strong>
-                {# AGENT: Add a vertical saparator bar/dot/somesort of seperator here #}
-                <span class="text-muted font-size-xs">{{ page_label_secondary or "tenant-ref-id" }}</span>
+                {% if page_label_secondary %}<span class="text-muted font-size-xs">{{ page_label_secondary }}</span>{% endif %}
             {% endblock page_label %}
         </div>
     </div>

@@ -12,7 +12,7 @@
     "python-envs.defaultEnvManager": "ms-python.python:poetry",
     "python-envs.defaultPackageManager": "ms-python.python:poetry",
     // Above two should handle, if need be set this also
-    // "python.defaultInterpreterPath": "",
+    "python.defaultInterpreterPath": ".venv/bin/python",
     "python.terminal.activateEnvironment": false, // true: makes the shell opening slow
     "black-formatter.interpreter": [
         "python3"

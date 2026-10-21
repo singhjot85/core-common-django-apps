@@ -1,8 +1,10 @@
 {# Cards Macro Component #}
+{% from "core/components/common/icons.jinja" import icon as render_icon %}
+{% from "core/components/common/buttons.jinja" import button as render_button %}
 {% macro card(title=None, subtitle=None, header_actions=None, footer_content=None, extra_classes="") %}
     <div class="card{% if extra_classes %} {{ extra_classes }}{% endif %}"
          {{ kwargs|xmlattr }}>
-        {% if title or header_actions %}
+        {% if title or subtitle or header_actions %}
             <div class="card-header">
                 <div>
                     {% if title %}<h3 class="card-title">{{ title }}</h3>{% endif %}
@@ -85,13 +87,9 @@
         {% if action_label %}
             <div class="pt-sm mt-sm border-t">
                 {% if action_modal %}
-                    <button type="button"
-                            class="btn btn-sm btn-outline w-full"
-                            data-modal-target="{{ action_modal }}">{{ action_label }}</button>
+                    {{ render_button(label=action_label, variant="outline", size="sm", extra_classes="w-full", attrs={"data-modal-target": action_modal}) }}
                 {% else %}
-                    <a href="{{ action_href }}"
-                       class="btn btn-sm btn-outline w-full"
-                       role="button">{{ action_label }}</a>
+                    {{ render_button(label=action_label, href=action_href, variant="outline", size="sm", extra_classes="w-full") }}
                 {% endif %}
             </div>
         {% endif %}
@@ -120,7 +118,7 @@
     <div class="telemetry-strip{% if extra_classes %} {{ extra_classes }}{% endif %}"
          {{ kwargs|xmlattr }}>
         <div class="flex items-center gap-sm">
-            <span class="material-symbols-outlined text-muted">terminal</span>
+            {{ render_icon("terminal", extra_classes="text-muted") }}
             <div class="flex flex-col">
                 {% if title %}<span class="telemetry-title">{{ title }}</span>{% endif %}
                 {% if subtitle %}<span class="telemetry-subtitle">{{ subtitle }}</span>{% endif %}

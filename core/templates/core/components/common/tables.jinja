@@ -16,7 +16,7 @@
                 {% elif rows %}
                     {% for row in rows %}
                         <tr>
-                            {% for cell in row %}<td>{{ cell|safe }}</td>{% endfor %}
+                            {% for cell in row %}<td>{{ cell }}</td>{% endfor %}
                         </tr>
                     {% endfor %}
                 {% else %}

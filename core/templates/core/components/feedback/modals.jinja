@@ -6,8 +6,9 @@
          id="{{ target_id }}"
          role="dialog"
          aria-modal="true"
-         aria-labelledby="{{ target_id }}_title">
-        <div class="modal-dialog">
+         {% if title %}aria-labelledby="{{ target_id }}_title"{% endif %}>
+        <div class="modal-dialog"
+             {% if max_width %}style="max-width: {{ max_width }};"{% endif %}>
             {% if title or subtitle %}
                 <div class="card-header">
                     <div>

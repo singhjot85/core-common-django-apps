@@ -68,18 +68,14 @@
                         {% elif user_profile and user_profile.name %}
                             {{ user_profile.name }}
                         {% else %}
-                            Admin User
+                            Guest
                         {% endif %}
                     </div>
-                    <div class="user-email text-muted">
-                        {% if request and request.user and request.user.is_authenticated %}
-                            {{ request.user.email or request.user.username ~ '@example.com' }}
-                        {% elif user_profile and user_profile.email %}
-                            {{ user_profile.email }}
-                        {% else %}
-                            admin@example.com
-                        {% endif %}
-                    </div>
+                    {% if request and request.user and request.user.is_authenticated and request.user.email %}
+                        <div class="user-email text-muted">{{ request.user.email }}</div>
+                    {% elif user_profile and user_profile.email %}
+                        <div class="user-email text-muted">{{ user_profile.email }}</div>
+                    {% endif %}
                 </div>
             </div>
         {% endblock sidebar_user %}

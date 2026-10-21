@@ -41,7 +41,7 @@ core/
 │       │   └── components.css     # Component-specific CSS rules
 │       └── js/
 │           ├── core.js            # Base utilities (CSRF token, toast messages, modal helpers)
-│           └── api_client.js      # Fetch helper for DRF REST endpoints
+│           └── service.js         # Core data & API service layer for DRF endpoints
 ├── templates/
 │   ├── Readme.md                  # This specification and developer guide
 │   └── core/

@@ -71,6 +71,7 @@ class TestCoreComponentMacros:
         {{ button(label="Save", variant="primary", size="md") }}
         {{ button(label="Link", href="/profile", variant="outline") }}
         {{ button(label="Disabled", disabled=True) }}
+        {{ button(label="Modal", attrs={"data-modal-target": "test_modal"}) }}
         """
         tmpl = jinja_engine.from_string(template_str)
         rendered = tmpl.render(request_context)
@@ -80,6 +81,8 @@ class TestCoreComponentMacros:
         assert 'href="/profile"' in rendered
         assert 'class="btn btn-outline btn-md"' in rendered
         assert "disabled" in rendered
+        assert 'data-modal-target="test_modal"' in rendered
+        assert "attrs=" not in rendered
 
     def test_badge_macro(self, jinja_engine, request_context):
         template_str = """
@@ -129,6 +132,15 @@ class TestCoreComponentMacros:
         assert "Card Subtitle" in rendered
         assert "<p>Card body content</p>" in rendered
 
+        # Subtitle without title should still render header
+        sub_tmpl = jinja_engine.from_string("""
+        {% from "core/components/common/cards.jinja" import card %}
+        {% call card(subtitle="Standalone Subtitle") %}<p>Body</p>{% endcall %}
+        """)
+        sub_rendered = sub_tmpl.render(request_context)
+        assert '<div class="card-header">' in sub_rendered
+        assert "Standalone Subtitle" in sub_rendered
+
     def test_gauge_and_service_card_and_banner_macros(
         self, jinja_engine, request_context
     ):
@@ -158,14 +170,15 @@ class TestCoreComponentMacros:
     def test_table_macro(self, jinja_engine, request_context):
         template_str = """
         {% from "core/components/common/tables.jinja" import table %}
-        {{ table(headers=["Name", "Email"], rows=[["Alice", "alice@example.com"], ["Bob", "bob@example.com"]]) }}
+        {{ table(headers=["Name", "Email"], rows=[["<script>alert(1)</script>", "bob@example.com"]]) }}
         """
         tmpl = jinja_engine.from_string(template_str)
         rendered = tmpl.render(request_context)
 
         assert "<th>Name</th>" in rendered
         assert "<th>Email</th>" in rendered
-        assert "<td>Alice</td>" in rendered
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in rendered
+        assert "<script>" not in rendered
         assert "<td>bob@example.com</td>" in rendered
 
     def test_form_macros(self, jinja_engine, request_context):
@@ -194,8 +207,11 @@ class TestCoreComponentMacros:
         {% from "core/components/feedback/alerts.jinja" import alert %}
         {% from "core/components/feedback/modals.jinja" import modal %}
         {{ alert("Operation succeeded", variant="success") }}
-        {% call modal("test_modal", title="Test Modal") %}
+        {% call modal("test_modal", title="Test Modal", max_width="650px") %}
           <p>Modal body</p>
+        {% endcall %}
+        {% call modal("headless_modal") %}
+          <p>Headless body</p>
         {% endcall %}
         """
         tmpl = jinja_engine.from_string(template_str)
@@ -205,7 +221,38 @@ class TestCoreComponentMacros:
         assert "Operation succeeded" in rendered
         assert 'id="test_modal"' in rendered
         assert "Test Modal" in rendered
+        assert 'aria-labelledby="test_modal_title"' in rendered
+        assert 'style="max-width: 650px;"' in rendered
         assert "<p>Modal body</p>" in rendered
+
+        assert 'id="headless_modal"' in rendered
+        assert 'aria-labelledby="headless_modal_title"' not in rendered
+
+    def test_message_list_macro(self, jinja_engine, request_context):
+        class DummyMsg:
+            def __init__(self, message, tags):
+                self.message = message
+                self.tags = tags
+
+        template_str = """
+        {% from "core/components/feedback/alerts.jinja" import message_list %}
+        {{ message_list(messages) }}
+        """
+        tmpl = jinja_engine.from_string(template_str)
+        messages = [
+            DummyMsg("Operation failed", "error"),
+            DummyMsg("Saved successfully", "success"),
+            "Simple string alert",
+        ]
+        rendered = tmpl.render(
+            {"request": request_context["request"], "messages": messages}
+        )
+        assert "alert alert-danger" in rendered
+        assert "Operation failed" in rendered
+        assert "alert alert-success" in rendered
+        assert "Saved successfully" in rendered
+        assert "alert alert-info" in rendered
+        assert "Simple string alert" in rendered
 
     def test_sidebar_link_macro(self, jinja_engine, request_context):
         template_str = """
@@ -343,6 +390,10 @@ class TestFullPageTemplateRendering:
         assert "data-theme-toggle" in rendered
         assert "core_theme" in rendered
         assert "dark_mode" in rendered
+        assert "tenant-ref-id" not in rendered
+        assert "Guest" in rendered
+        assert "Admin User" not in rendered
+        assert "admin@example.com" not in rendered
 
 
 class TestSafeDatabaseLoaderAndSandboxedEnvironment:
