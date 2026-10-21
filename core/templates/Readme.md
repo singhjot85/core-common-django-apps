@@ -61,6 +61,18 @@ core/
 │           └── feedback/
 │               ├── alerts.jinja   # Flash banners and dismissible messages
 │               └── modals.jinja   # Modal dialog macro with header, body, footer slots
+│       ├── forms/                 # Reusable form builder and specialized field macros
+│       │   ├── base_form.jinja    # Form container (CSRF, header, errors, submit button)
+│       │   ├── dynamic_form.jinja # Schema-driven dynamic form builder
+│       │   ├── form_field_text.jinja
+│       │   ├── form_field_email.jinja
+│       │   ├── form_field_password.jinja
+│       │   ├── form_field_otp.jinja
+│       │   ├── form_field_checkbox.jinja
+│       │   ├── form_field_select.jinja
+│       │   └── form_field_hidden.jinja
+│       └── views/                 # Ready-to-use core views
+│           └── authenticated_view.jinja # End-to-end multi-flow auth view (Login, Signup, OTP, SSO)
 ├── utils/
 │   └── jinja2/
 │       ├── backend.py             # Custom Jinja2Backend with app_dirname='templates'
@@ -215,6 +227,10 @@ Consuming projects (such as `sample_project` or customer microservices) can cons
     - `Core.modal.close(modalId)`: Closes modal and restores scrolling.
   - **Alert Management**:
     - `Core.alert.dismiss(element)`: Removes parent alert banner.
+  - **Auth & Forms Management**:
+    - `Core.auth.switchTab(tabKey)`: Switches between Sign In and Create Account views.
+    - `Core.auth.switchMethod(methodKey)`: Switches between Password and OTP authentication sub-methods.
+    - `Core.auth.togglePassword(btn)`: Toggles password field masking between `password` and `text`.
   - **REST API Client**:
     - `Core.api.get(url)`, `Core.api.post(url, data)`, `Core.api.patch(url, data)`, `Core.api.delete(url)`: Standard fetch wrapper auto-injecting CSRF token headers and parsing JSON payloads.
 
@@ -229,4 +245,65 @@ Consuming projects (such as `sample_project` or customer microservices) can cons
     - `data-modal-target="modal-id"`: Triggers opening the target modal.
     - `data-modal-close`: Triggers closing the target/parent modal.
     - `data-alert-dismiss`: Dismisses and removes the parent alert banner.
+    - `data-auth-tab="signin|signup"`: Switches authentication top-level tab.
+    - `data-auth-method="password|otp"`: Switches sign-in sub-method.
+    - `data-password-toggle="field-id"`: Toggles password visibility on the referenced input.
+    - `data-otp-group`: Auto-advances focus across 6 segmented challenge digits.
   - All event listeners are automatically attached on `DOMContentLoaded` by `core.js`.
+
+---
+
+## 4. Form Templates & Authentication Views
+
+### Forms System (`core/templates/core/forms/`)
+
+The forms architecture provides lightweight, composable wrappers around the base input macros in `core/components/common/forms.jinja`, ensuring visual consistency and centralized styling without duplicate code.
+
+#### 1. `base_form.jinja`
+Form wrapper providing standard HTML `<form>`, CSRF token, optional header, error callout, and submit CTA.
+```jinja
+{% from "core/forms/base_form.jinja" import base_form %}
+
+{% call base_form(action="/login/", method="post", title="Sign In", submit_label="Continue") %}
+  {{ form_field_email("email", label="Work Email", required=True) }}
+  {{ form_field_password("password", label="Password", required=True) }}
+{% endcall %}
+```
+
+#### 2. Individual Field Macros (`form_field_<type>.jinja`)
+- `form_field_text.jinja`: Standard single-line text input.
+- `form_field_email.jinja`: Email input with type validation.
+- `form_field_password.jinja`: Password input with integrated show/hide toggle button (`data-password-toggle`).
+- `form_field_otp.jinja`: 6-digit challenge input with auto-advance and automatic synchronization with a hidden `<input>` value.
+- `form_field_checkbox.jinja`: Custom-styled checkbox.
+- `form_field_select.jinja`: Dropdown select menu with options array.
+- `form_field_hidden.jinja`: Hidden input element for tokens or state.
+
+#### 3. `dynamic_form.jinja`
+Schema-driven form engine that accepts a list of field specifications and dispatches to the corresponding field template:
+```jinja
+{% from "core/forms/dynamic_form.jinja" import dynamic_form %}
+
+{% set fields = [
+  {"name": "full_name", "type": "text", "label": "Full Name", "required": true},
+  {"name": "email", "type": "email", "label": "Email Address", "required": true},
+  {"name": "role", "type": "select", "label": "Role", "options": [{"value": "admin", "label": "Administrator"}, {"value": "member", "label": "Member"}]},
+  {"name": "agree_terms", "type": "checkbox", "label": "I accept terms of service"}
+] %}
+
+{{ dynamic_form(fields=fields, action="/register/", submit_label="Create Account") }}
+```
+
+### Authentication View (`core/templates/core/views/authenticated_view.jinja`)
+
+A ready-to-use authentication page that extends `core/base.jinja` and replaces navigation chrome with a focused, centered gateway card.
+
+- **Capabilities**:
+  - Tabbed interface switching between **Sign In** and **Create Account**.
+  - Sub-method toggle between **Password** and **One-Time Passcode (OTP)**.
+  - Social Single Sign-On (SSO) buttons for Google Workspace, Apple ID, and Enterprise identity providers.
+  - Security badges in footer (256-bit SSL, Tenant Isolation, PCI-DSS compliance).
+- **Interactivity**: 100% declarative via data attributes (`data-auth-tab`, `data-auth-method`, `data-password-toggle`, `data-otp-group`). Zero inline JavaScript.
+- **Customization**:
+  - Context variables: `PROJECT_LABEL`, `brand_logo_url`, `terms_url`, `privacy_url`, `status_url`, `social_providers`.
+  - Blocks: `{% block auth_header %}`, `{% block auth_card %}`, `{% block auth_footer %}`.

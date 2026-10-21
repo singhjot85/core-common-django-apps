@@ -1,0 +1,34 @@
+{# Form Field: OTP (One-Time Password / Passcode) #}
+{% macro form_field_otp(name="otp", label="Enter 6-digit verification code", digits=6, required=True, error=None, hint=None, resend_text="Resend Code", resend_href="#resend", extra_classes="") %}
+    <div class="form-group{% if extra_classes %} {{ extra_classes }}{% endif %}">
+        {% if label %}
+            <div class="flex items-center justify-between mb-xs">
+                <label class="form-label mb-0">{{ label }}</label>
+                {% if resend_text %}
+                    <a href="{{ resend_href }}"
+                       class="font-size-xs text-primary font-family-mono"
+                       data-otp-resend>{{ resend_text }}</a>
+                {% endif %}
+            </div>
+        {% endif %}
+        <div class="otp-input-group" data-otp-group="{{ name }}">
+            {% for i in range(digits) %}
+                <input type="text"
+                       name="{{ name }}_{{ i }}"
+                       id="id_{{ name }}_{{ i }}"
+                       class="otp-digit-box form-control{% if error %} is-invalid{% endif %}"
+                       maxlength="1"
+                       inputmode="numeric"
+                       pattern="[0-9]*"
+                       autocomplete="one-time-code"
+                       data-otp-box
+                       data-otp-index="{{ i }}"
+                       {% if required %}required{% endif %}
+                       {{ kwargs|xmlattr }}>
+            {% endfor %}
+            <input type="hidden" name="{{ name }}" id="id_{{ name }}" value="">
+        </div>
+        {% if hint %}<span class="form-hint">{{ hint }}</span>{% endif %}
+        {% if error %}<span class="form-error">{{ error }}</span>{% endif %}
+    </div>
+{% endmacro %}

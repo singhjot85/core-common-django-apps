@@ -1,0 +1,31 @@
+{# Dynamic Form Macro #}
+{% from "core/forms/base_form.jinja" import base_form %}
+{% from "core/forms/form_field_text.jinja" import form_field_text %}
+{% from "core/forms/form_field_email.jinja" import form_field_email %}
+{% from "core/forms/form_field_password.jinja" import form_field_password %}
+{% from "core/forms/form_field_otp.jinja" import form_field_otp %}
+{% from "core/forms/form_field_checkbox.jinja" import form_field_checkbox %}
+{% from "core/forms/form_field_select.jinja" import form_field_select %}
+{% from "core/forms/form_field_hidden.jinja" import form_field_hidden %}
+{% macro dynamic_form(fields=[], action="", method="post", submit_label="Submit", submit_variant="primary", form_id=None, title=None, subtitle=None, form_errors=None, extra_classes="") %}
+    {% call base_form(action=action, method=method, form_id=form_id, title=title, subtitle=subtitle, submit_label=submit_label, submit_variant=submit_variant, form_errors=form_errors, extra_classes=extra_classes) %}
+        {% for field in fields %}
+            {% set f_type = field.type|default("text") %}
+            {% if f_type == "email" %}
+                {{ form_field_email(name=field.name, label=field.label, value=field.value|default("") , placeholder=field.placeholder|default(""), required=field.required|default(false), error=field.error|default(none), hint=field.hint|default(none), extra_classes=field.extra_classes|default("")) }}
+            {% elif f_type == "password" %}
+                {{ form_field_password(name=field.name, label=field.label, value=field.value|default("") , placeholder=field.placeholder|default(""), required=field.required|default(false), error=field.error|default(none), hint=field.hint|default(none), extra_classes=field.extra_classes|default("")) }}
+            {% elif f_type == "otp" %}
+                {{ form_field_otp(name=field.name|default("otp") , label=field.label|default("Enter 6-digit verification code"), digits=field.digits|default(6), required=field.required|default(true), error=field.error|default(none), hint=field.hint|default(none), resend_text=field.resend_text|default("Resend Code"), resend_href=field.resend_href|default("#resend"), extra_classes=field.extra_classes|default("")) }}
+            {% elif f_type == "checkbox" %}
+                {{ form_field_checkbox(name=field.name, label=field.label, checked=field.checked|default(false) , extra_classes=field.extra_classes|default("")) }}
+            {% elif f_type == "select" %}
+                {{ form_field_select(name=field.name, options=field.options|default([]) , label=field.label, selected=field.selected|default(none), required=field.required|default(false), error=field.error|default(none), hint=field.hint|default(none), extra_classes=field.extra_classes|default("")) }}
+            {% elif f_type == "hidden" %}
+                {{ form_field_hidden(name=field.name, value=field.value|default("") ) }}
+            {% else %}
+                {{ form_field_text(name=field.name, label=field.label, value=field.value|default("") , placeholder=field.placeholder|default(""), required=field.required|default(false), error=field.error|default(none), hint=field.hint|default(none), extra_classes=field.extra_classes|default("")) }}
+            {% endif %}
+        {% endfor %}
+    {% endcall %}
+{% endmacro %}

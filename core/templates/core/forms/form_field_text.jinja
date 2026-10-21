@@ -1,0 +1,5 @@
+{# Form Field: Text #}
+{% from "core/components/common/forms.jinja" import input %}
+{% macro form_field_text(name, label=None, value="", placeholder="", required=False, error=None, hint=None, extra_classes="") %}
+    {{ input(name=name, label=label, value=value, type="text", placeholder=placeholder, required=required, error=error, hint=hint, extra_classes=extra_classes, **kwargs) }}
+{% endmacro %}

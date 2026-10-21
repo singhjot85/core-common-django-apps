@@ -395,6 +395,125 @@ class TestFullPageTemplateRendering:
         assert "Admin User" not in rendered
         assert "admin@example.com" not in rendered
 
+    def test_authenticated_view_renders(self, request_obj):
+        context = {
+            "request": request_obj,
+            "PROJECT_LABEL": "Test Core Platform",
+            "signin_action": "/login/",
+            "signup_action": "/signup/",
+            "otp_action": "/otp/",
+        }
+        rendered = render_to_string(
+            "core/views/authenticated_view.jinja", context, request=request_obj
+        )
+        assert "Test Core Platform" in rendered
+        assert "Sign In" in rendered
+        assert "Create Account" in rendered
+        assert "data-auth-tab" in rendered
+        assert "data-auth-method" in rendered
+        assert "data-password-toggle" in rendered
+        assert "data-otp-box" in rendered
+        assert "Provision Tenant Workspace" in rendered
+        assert "256-bit SSL Encrypted" in rendered
+        assert "Enterprise Tenant Isolation" in rendered
+        assert "PCI-DSS Level 1 Compliant" in rendered
+
+
+class TestCoreFormTemplates:
+    @pytest.fixture
+    def jinja_engine(self):
+        for engine in engines.all():
+            if engine.__class__.__name__ == "Jinja2":
+                return engine
+        return engines["jinja2"]
+
+    @pytest.fixture
+    def request_context(self):
+        factory = RequestFactory()
+        request = factory.get("/")
+        return {"request": request}
+
+    def test_base_form_macro(self, jinja_engine, request_context):
+        template_str = """
+        {% from "core/forms/base_form.jinja" import base_form %}
+        {% call base_form(action="/submit/", method="post", title="User Form", form_errors=["Invalid input"]) %}
+            <input type="text" name="sample">
+        {% endcall %}
+        """
+        tmpl = jinja_engine.from_string(template_str)
+        rendered = tmpl.render(request_context)
+
+        assert 'action="/submit/"' in rendered
+        assert 'method="post"' in rendered
+        assert "User Form" in rendered
+        assert "Invalid input" in rendered
+        assert 'name="sample"' in rendered
+
+    def test_individual_form_field_macros(self, jinja_engine, request_context):
+        template_str = """
+        {% from "core/forms/form_field_text.jinja" import form_field_text %}
+        {% from "core/forms/form_field_email.jinja" import form_field_email %}
+        {% from "core/forms/form_field_password.jinja" import form_field_password %}
+        {% from "core/forms/form_field_otp.jinja" import form_field_otp %}
+        {% from "core/forms/form_field_checkbox.jinja" import form_field_checkbox %}
+        {% from "core/forms/form_field_select.jinja" import form_field_select %}
+        {% from "core/forms/form_field_hidden.jinja" import form_field_hidden %}
+
+        {{ form_field_text("username", label="Username", value="alice", required=True) }}
+        {{ form_field_email("user_email", label="Email") }}
+        {{ form_field_password("user_pass", label="Password") }}
+        {{ form_field_otp("user_otp", label="Verification Code", digits=6) }}
+        {{ form_field_checkbox("remember", label="Remember Me", checked=True) }}
+        {{ form_field_select("role", options=[("admin", "Admin"), ("member", "Member")], selected="admin") }}
+        {{ form_field_hidden("csrf_dummy", value="dummy_token") }}
+        """
+        tmpl = jinja_engine.from_string(template_str)
+        rendered = tmpl.render(request_context)
+
+        assert 'name="username"' in rendered
+        assert 'value="alice"' in rendered
+        assert 'name="user_email"' in rendered
+        assert 'type="email"' in rendered
+        assert 'name="user_pass"' in rendered
+        assert 'data-password-toggle="id_user_pass"' in rendered
+        assert "data-otp-box" in rendered
+        assert 'name="user_otp_0"' in rendered
+        assert 'name="user_otp_5"' in rendered
+        assert 'name="remember"' in rendered
+        assert "checked" in rendered
+        assert 'name="role"' in rendered
+        assert 'value="admin" selected' in rendered
+        assert 'name="csrf_dummy"' in rendered
+        assert 'value="dummy_token"' in rendered
+
+    def test_dynamic_form_macro(self, jinja_engine, request_context):
+        template_str = """
+        {% from "core/forms/dynamic_form.jinja" import dynamic_form %}
+        {{ dynamic_form(fields=[
+            {"type": "text", "name": "first_name", "label": "First Name", "value": "John"},
+            {"type": "email", "name": "work_email", "label": "Work Email"},
+            {"type": "password", "name": "account_pass", "label": "Password"},
+            {"type": "checkbox", "name": "terms", "label": "I accept"},
+            {"type": "select", "name": "tier", "label": "Tier", "options": ["Free", "Pro"], "selected": "Pro"},
+            {"type": "hidden", "name": "step", "value": "1"}
+        ], action="/api/register/", submit_label="Create Account") }}
+        """
+        tmpl = jinja_engine.from_string(template_str)
+        rendered = tmpl.render(request_context)
+
+        assert 'action="/api/register/"' in rendered
+        assert "Create Account" in rendered
+        assert 'name="first_name"' in rendered
+        assert 'value="John"' in rendered
+        assert 'name="work_email"' in rendered
+        assert 'name="account_pass"' in rendered
+        assert 'data-password-toggle="id_account_pass"' in rendered
+        assert 'name="terms"' in rendered
+        assert 'name="tier"' in rendered
+        assert 'value="Pro" selected' in rendered
+        assert 'name="step"' in rendered
+        assert 'value="1"' in rendered
+
 
 class TestSafeDatabaseLoaderAndSandboxedEnvironment:
     def test_safe_database_loader_delegates_to_fallback(self):

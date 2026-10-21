@@ -216,6 +216,41 @@
         return Core.api.request(url, { ...options, method: "DELETE" });
       },
     },
+
+    /**
+     * Auth Page & Form Utilities
+     */
+    auth: {
+      switchTab: function (tabKey) {
+        document.querySelectorAll("[data-auth-tab]").forEach(function (btn) {
+          const isActive = btn.getAttribute("data-auth-tab") === tabKey;
+          btn.classList.toggle("active", isActive);
+        });
+        document.querySelectorAll("[data-auth-tab-content]").forEach(function (content) {
+          const isTarget = content.getAttribute("data-auth-tab-content") === tabKey;
+          content.style.display = isTarget ? "" : "none";
+        });
+      },
+      switchMethod: function (methodKey) {
+        document.querySelectorAll("[data-auth-method]").forEach(function (btn) {
+          const isActive = btn.getAttribute("data-auth-method") === methodKey;
+          btn.classList.toggle("active", isActive);
+        });
+        document.querySelectorAll("[data-auth-method-content]").forEach(function (content) {
+          const isTarget = content.getAttribute("data-auth-method-content") === methodKey;
+          content.style.display = isTarget ? "" : "none";
+        });
+      },
+      togglePassword: function (btn) {
+        const targetId = btn.getAttribute("data-password-toggle");
+        const input = document.getElementById(targetId);
+        if (input) {
+          const isPassword = input.type === "password";
+          input.type = isPassword ? "text" : "password";
+          btn.classList.toggle("active", isPassword);
+        }
+      },
+    },
   };
 
   // Initialize interactive event listeners
@@ -289,6 +324,61 @@
           backdrop.classList.remove("open");
           document.body.style.overflow = "";
         }
+      });
+    });
+
+    // Auth Tab Switcher
+    document.querySelectorAll("[data-auth-tab]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        const tab = btn.getAttribute("data-auth-tab");
+        Core.auth.switchTab(tab);
+      });
+    });
+
+    // Auth Method Switcher (Password vs OTP)
+    document.querySelectorAll("[data-auth-method]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        const method = btn.getAttribute("data-auth-method");
+        Core.auth.switchMethod(method);
+      });
+    });
+
+    // Password Visibility Toggle
+    document.querySelectorAll("[data-password-toggle]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        Core.auth.togglePassword(btn);
+      });
+    });
+
+    // OTP Box auto-advance and backspace navigation
+    document.querySelectorAll("[data-otp-group]").forEach(function (group) {
+      const boxes = Array.from(group.querySelectorAll("[data-otp-box]"));
+      const hiddenInput = group.querySelector('input[type="hidden"]');
+
+      function syncOTP() {
+        if (hiddenInput) {
+          hiddenInput.value = boxes.map(function (b) { return b.value; }).join("");
+        }
+      }
+
+      boxes.forEach(function (box, idx) {
+        box.addEventListener("input", function () {
+          if (box.value.length >= 1 && idx < boxes.length - 1) {
+            boxes[idx + 1].focus();
+            boxes[idx + 1].select();
+          }
+          syncOTP();
+        });
+
+        box.addEventListener("keydown", function (e) {
+          if (e.key === "Backspace" && !box.value && idx > 0) {
+            boxes[idx - 1].focus();
+            boxes[idx - 1].select();
+          }
+        });
       });
     });
   });

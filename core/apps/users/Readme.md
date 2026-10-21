@@ -140,3 +140,18 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 | `/api/users/auth/otp/send/` | `POST` | Asynchronously dispatches OTP via phone or email (`202 Accepted`). |
 | `/api/users/auth/otp/verify/` | `POST` | Verifies OTP and returns SimpleJWT tokens. |
 | `/api/users/auth/social/google/` | `POST` | Exchanges Google ID token for SimpleJWT tokens. |
+
+---
+
+## 7. UI Template Views (`core/apps/users/api/template_views.py`)
+
+In addition to headless JSON API endpoints, the users app provides server-rendered UI views backed by `authenticated_view.jinja`:
+
+| View | Route | Tab | Description |
+| :--- | :--- | :--- | :--- |
+| **`LoginView`** | `/` (root), `/login/` | `signin` | Multi-channel sign-in gateway (password credentials and 6-digit OTP verification). |
+| **`SignupView`** | `/signup/` | `signup` | Tenant workspace administrator registration flow. |
+| **`RegisterView`** | `/register/` | `signup` | Semantic alias for `SignupView`. |
+| **`ForgotPasswordView`** | `/forgot-password/` | `signin` | Password reset initiation flow. |
+
+All template views supply default action targets resolved from the URL configuration, brand metadata from settings, and declarative data attributes for seamless client interactivity.

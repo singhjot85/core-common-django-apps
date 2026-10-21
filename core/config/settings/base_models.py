@@ -78,11 +78,9 @@ SHARED_EXTRA_DEPENDENCIES = [
     "dj_rest_auth",
     "constance",
 ]
-
 PUBLIC_ONLY_EXTRA_DEPENDENCIES = [
     "django_celery_results",
 ]
-
 TENANT_ONLY_EXTRA_DEPENDENCIES = []
 
 PROJECT_APPS = [

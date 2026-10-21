@@ -53,9 +53,8 @@ TEMPLATES_DIR = os.path.join(BASE_DIR, "django_templates", "templates")
 SECRET_KEY = os.getenv("DJANGO_SECRETE_KEY", "")
 
 STATIC_URL = "/static/"
-ROOT_URLCONF = "config.urls"
-PUBLIC_SCHEMA_URLCONF = "config.public_urls"
-
+ROOT_URLCONF = "core.config.urls"
+PUBLIC_SCHEMA_URLCONF = "core.config.public_urls"
 
 TENANT_TYPE_PUBLIC = "public"
 TENANT_TYPE_ORGANIZATION = "organization"
