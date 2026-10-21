@@ -53,14 +53,27 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         abstract = True
 
     @property
-    def cache_key(self):
+    def cache_key(self) -> str:
+        """Cache key for the current instance's interface_type and schema context."""
         return self.get_cache_key(self.interface_type)
 
     @classmethod
-    def get_cache_key(cls, interface_type):
+    def get_cache_key(cls, interface_type: str) -> str:
+        """
+        Construct a schema-isolated cache key for the given template interface type.
+
+        Format: `<schema_name>:<app_label>:<model_name>:<interface_type>`
+
+        Args:
+            interface_type: Category/interface identifier of the template.
+
+        Returns:
+            Formatted cache key string.
+        """
         return f"{connection.schema_name}:{cls._meta.app_label}:{cls._meta.model_name}:{interface_type}"
 
     def save(self, *args, **kwargs):
+        """Save instance and bust its cached serialized representation."""
         cache.delete(self.cache_key)
         return super().save(*args, **kwargs)
 
@@ -69,7 +82,18 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         cls, interface_type: str, field: str | None = None
     ) -> str | None:
         """
-        Get a single source field for multipart templates.
+        Resolve the template source string for the specified interface type.
+
+        If `field` is specified, returns that exact field (e.g. 'html_content' or 'plain_content').
+        Otherwise, iterates through `cls.TEMPLATE_FIELD_PRIORITY` and returns the first
+        non-empty field content.
+
+        Args:
+            interface_type: Category/interface identifier of the template.
+            field: Optional specific content field name to retrieve.
+
+        Returns:
+            Template string if found, otherwise None.
         """
         serialized_template = cls.get_template(interface_type)
         if field:
@@ -83,6 +107,18 @@ class BaseTemplateModel(BaseSemanticVersionModel):
 
     @classmethod
     def get_template(cls, interface_type: str) -> dict:
+        """
+        Fetch the active serialized template dictionary for an interface type.
+
+        Checks Redis cache first. If missing, queries the latest active record
+        by semantic version, caches the result, and returns it.
+
+        Args:
+            interface_type: Category/interface identifier of the template.
+
+        Returns:
+            Dictionary containing 'plain_content' and 'html_content' keys.
+        """
         cache_key = cls.get_cache_key(interface_type)
         if serialized_template := cache.get(cache_key, None):
             return serialized_template
@@ -108,6 +144,15 @@ class BaseTemplateModel(BaseSemanticVersionModel):
 
     @classmethod
     def serialize_for_cache(cls, obj: "BaseTemplateModel | None") -> dict:
+        """
+        Serialize template content fields for fast caching in Redis.
+
+        Args:
+            obj: BaseTemplateModel instance or None.
+
+        Returns:
+            Dictionary with 'plain_content' and 'html_content'.
+        """
         if not obj:
             return {}
         return {"plain_content": obj.plain_content, "html_content": obj.html_content}

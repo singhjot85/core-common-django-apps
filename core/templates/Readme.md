@@ -87,18 +87,33 @@ core/
 
 ---
 
-## 2. Jinja2 Engine & Standard Helpers
+## 2. Jinja2 Engine, Loaders & Environments
 
-All application UI templates use **Jinja2** via `core.utils.jinja2.Jinja2Backend`.
+The platform maintains a strict separation between **trusted application UI templates** and **dynamic, user-editable database templates**.
 
-### Modular Environment Architecture (`core/utils/jinja2/`)
-- `globals/urls.py`: `url("named_route", *args, **kwargs)` and `static("path/to/asset.css")`
-- `filters/dates.py`: `format_date(val, fmt)` and `format_datetime(val, fmt)`
-- `filters/currency.py`: `format_currency(val, symbol)`
-- `environment.py`: Factory aggregating `CORE_GLOBALS` and `CORE_FILTERS` into the Jinja2 `Environment`.
+### 1. Trusted Application UI Templates (`TEMPLATES` backend)
+- **Engine**: Configured via `core.utils.jinja2.Jinja2Backend` in Django settings.
+- **App Dirs**: `app_dirname = "templates"` ensures templates are autodiscovered across installed apps (e.g. `core/templates/` and `<app>/templates/`).
+- **Loader**: Automatically uses `jinja2.FileSystemLoader` pointing to project and app template directories.
+- **Environment**: Initialized via `core.utils.jinja2.environment.jinja2_environment`.
+- **Bindings & Context**: Full request context, CSRF token helpers (`csrf_input`, `csrf_token`), static/url resolution (`url`, `static`), messages framework, and format filters (`format_date`, `format_currency`).
 
-### Standard Bindings in Templates
-Every Jinja2 template automatically has access to:
+### 2. Dynamic Database Templates & Sandboxing (`core.utils.jinja2`)
+- **Loader (`SafeDatabaseLoader`)**:
+  - Dynamically resolves templates from database models inheriting `BaseTemplateModel`.
+  - Supports colon identifiers (`app:model:interface`) and virtual URIs (`db://app/model/interface`).
+  - Implements multi-tenant Redis caching via `connection.schema_name`.
+  - Gracefully falls back to filesystem templates when no database override exists.
+- **Sandbox (`jinja2_sandboxed_environment`)**:
+  - Built on `jinja2.sandbox.ImmutableSandboxedEnvironment` to prevent Server-Side Template Injection (SSTI).
+  - Enforces `StrictUndefined` so missing placeholders raise errors immediately.
+  - Exposes only sanitized filters (`CORE_SAFE_FILTERS`).
+- **Render Helpers**:
+  - `render("template_name", context)`: Safely renders a database or sandboxed file template. Context must only be plain primitives or dictionaries, never live ORM model instances.
+  - `render_block("template_name", "block_name", context)`: Renders an individual named block (e.g., `{% block subject %}` in an email).
+
+### Standard Bindings in Application UI Templates
+Every Jinja2 UI template automatically has access to:
 - `url("named_route", *args, **kwargs)`: Reverse Django URL routing.
 - `static("path/to/asset.css")`: Static asset URL resolution.
 - `csrf_input`: Standard HTML hidden CSRF token input tag.
@@ -107,6 +122,7 @@ Every Jinja2 template automatically has access to:
 - `messages`: Django messages framework iterator.
 - `format_date(val)` / `format_datetime(val)` / `format_currency(val)`: Usable both as filters (`{{ val|format_date }}`) and as functions (`{{ format_date(val) }}`).
 - `icon("icon_name", size=20)`: Google Material Symbols icon component.
+
 
 ---
 

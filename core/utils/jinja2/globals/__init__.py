@@ -1,3 +1,7 @@
+"""
+Jinja2 global function registrations.
+"""
+
 from core.utils.jinja2.filters import CORE_FILTERS
 
 from .urls import CORE_URL_GLOBALS

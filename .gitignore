@@ -169,3 +169,5 @@ tempCodeRunnerFile.py
 # Logs of any kind should be ignored
 **/logs/*
 local_data/*
+
+**/graphify-out/*

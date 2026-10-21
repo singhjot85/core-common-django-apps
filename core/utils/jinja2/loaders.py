@@ -1,3 +1,10 @@
+"""
+Database-backed Jinja2 template loader with filesystem fallback.
+
+Enables loading dynamically stored, multi-tenant templates from models
+subclassing `BaseTemplateModel`.
+"""
+
 import logging
 import typing
 
@@ -12,14 +19,53 @@ if typing.TYPE_CHECKING:
 
 
 class SafeDatabaseLoader(BaseLoader):
+    """
+    Jinja2 template loader that resolves templates from database models with filesystem fallback.
+
+    Template identifiers can be expressed in two formats:
+    1. Colon-delimited: `app_name:model_name:interface_type`
+       (e.g., `"invoices:invoicetemplate:standard"`)
+    2. Virtual URI: `db://app_name/model_name/interface_type`
+       (e.g., `"db://invoices/invoicetemplate/standard"`)
+
+    If the template identifier does not match a database pattern, or if no database
+    record is active for that interface type, lookup delegates to the optional
+    `fallback_loader` (e.g. `FileSystemLoader`).
+
+    Cache Invalidation:
+    - For database templates: checked against the model's Redis cache key.
+    - For file templates: verified against the file's mtime and invalidated if a database
+      override is subsequently created.
+
+    Attributes:
+        fallback_loader (BaseLoader | None): Optional fallback loader for file-backed templates.
+    """
+
     def __init__(self, fallback_loader: BaseLoader | None = None):
+        """
+        Initialize the SafeDatabaseLoader.
+
+        Args:
+            fallback_loader: Optional Jinja2 BaseLoader instance (e.g. FileSystemLoader)
+                to delegate to when a template is not stored in the database.
+        """
         self.fallback_loader = fallback_loader
 
     def get_template_model(
         self, app_name: str, model_name: str
     ) -> type["BaseTemplateModel"]:
         """
-        Get template model from given app_name and model_name.
+        Dynamically resolve a concrete or abstract template model class.
+
+        Args:
+            app_name: Django application label (e.g., 'invoices').
+            model_name: Model class name (e.g., 'InvoiceTemplate' or 'invoicetemplate').
+
+        Returns:
+            The Django Model class subclassing BaseTemplateModel.
+
+        Raises:
+            LookupError: If the app or model cannot be resolved from Django apps registry.
         """
         return typing.cast(
             type["BaseTemplateModel"],
@@ -29,16 +75,34 @@ class SafeDatabaseLoader(BaseLoader):
     def generate_filename(
         self, app_name: str, model_name: str, interface_type: str
     ) -> str:
-        """Generate a virtual URI filename for the database template."""
+        """
+        Generate a virtual URI filename for the database template.
+
+        Args:
+            app_name: Django app label.
+            model_name: Django model name.
+            interface_type: Category/interface identifier of the template.
+
+        Returns:
+            Virtual URI string formatted as `db://<app_name>/<model_name>/<interface_type>`.
+        """
         return f"db://{app_name}/{model_name}/{interface_type}"
 
     def get_source(
         self, environment, template: str
     ) -> tuple[str, str, typing.Callable]:
         """
-        Loads template source from database if template identifier matches
-        'app_name:model_name:interface_type' or 'db://app_name/model_name/interface_type',
-        otherwise delegates to fallback_loader.
+        Load template source from the database or delegate to the fallback loader.
+
+        Args:
+            environment: The active Jinja2 Environment instance.
+            template: Template name or database identifier string.
+
+        Returns:
+            tuple: (source_code, filename_or_virtual_uri, uptodate_callable)
+
+        Raises:
+            TemplateNotFound: If the template cannot be found in the database or fallback loader.
         """
         normalized_template = template
         if normalized_template.startswith("db://"):

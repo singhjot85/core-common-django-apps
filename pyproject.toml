@@ -39,7 +39,11 @@ build-backend = "poetry.core.masonry.api"
 
 
 [dependency-groups]
-dev = ["pre-commit (>=4.6.2,<5.0.0)", "black (>=26.5.1,<27.0.0)"]
+dev = [
+    "pre-commit (>=4.6.2,<5.0.0)",
+    "black (>=26.5.1,<27.0.0)",
+    "graphifyy (>=0.9.93,<0.10.0)",
+]
 
 
 [tool.isort]
@@ -62,7 +66,7 @@ addopts = [
     "--reuse-db",
     "--import-mode=importlib",
     "-p no:warnings",
-    "--maxfail=5"
+    "--maxfail=5",
 ]
 markers = [
     "slow: marks tests that take longer to run",
@@ -72,9 +76,7 @@ markers = [
 ]
 
 [tool.poetry]
-packages = [
-    { include = "core" }
-]
+packages = [{ include = "core" }]
 
 [tool.ruff]
 target-version = "py312"
@@ -97,11 +99,11 @@ select = [
     "PT",      # flake8-pytest-style (pytest best practices)
 ]
 ignore = [
-    "E501",    # line length (handled by ruff format)
-    "E203",    # whitespace before ':'
-    "B009",    # getattr-with-constant: Allow getattr(obj, "field")
-    "B010",    # setattr-with-constant: Allow setattr(obj, "field", value)
-    "DJ001",   # Avoid using `null=True` on string-based fields such as `TextField`
+    "E501",  # line length (handled by ruff format)
+    "E203",  # whitespace before ':'
+    "B009",  # getattr-with-constant: Allow getattr(obj, "field")
+    "B010",  # setattr-with-constant: Allow setattr(obj, "field", value)
+    "DJ001", # Avoid using `null=True` on string-based fields such as `TextField`
 ]
 
 [tool.ruff.lint.isort]
