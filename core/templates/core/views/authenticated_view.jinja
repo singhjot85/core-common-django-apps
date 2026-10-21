@@ -163,6 +163,33 @@
                         </div>
                     </div>
                 </div>
+                <!-- Footer Security Badges -->
+                <div class="auth-footer text-center mt-lg radius-lg border">
+                    <div class="flex items-center justify-center gap-md flex-wrap mb-xs font-size-xs">
+                        <span class="inline-flex items-center gap-xs">
+                            {{ icon("verified", size=16, extra_classes="text-success") }}
+                            <span>256-bit SSL Encrypted</span>
+                        </span>
+                        <span>•</span>
+                        <span class="inline-flex items-center gap-xs">
+                            {{ icon("domain", size=16, extra_classes="text-primary") }}
+                            <span>Enterprise Tenant Isolation</span>
+                        </span>
+                        <span>•</span>
+                        <span class="inline-flex items-center gap-xs">
+                            {{ icon("shield", size=16, extra_classes="text-warning") }}
+                            <span>PCI-DSS Level 1 Compliant</span>
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-center gap-md font-size-xs text-muted">
+                        <a href="{{ privacy_url|default('#privacy') }}"
+                           class="text-muted hover:text-primary">Privacy Policy</a>
+                        <a href="{{ terms_url|default('#terms') }}"
+                           class="text-muted hover:text-primary">Terms of Service</a>
+                        <a href="{{ status_url|default('#status') }}"
+                           class="text-muted hover:text-primary">Platform Status</a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

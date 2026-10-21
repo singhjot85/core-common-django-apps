@@ -3,8 +3,8 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-from django.template import engines
-from django.template.loader import render_to_string
+from django.template import TemplateDoesNotExist, engines
+from django.template.loader import get_template, render_to_string
 from django.test import RequestFactory
 from jinja2 import DictLoader, TemplateNotFound
 from jinja2.exceptions import SecurityError
@@ -554,3 +554,15 @@ class TestSafeDatabaseLoaderAndSandboxedEnvironment:
         # Verify sandbox prevents access to dangerous internal attributes
         with pytest.raises(SecurityError):
             env.from_string("{{ ''.__class__.__mro__[1].__subclasses__() }}").render()
+
+    def test_jinja2_backend_ignores_non_jinja_extension(self):
+        """Verify Jinja2Backend raises TemplateDoesNotExist for non-jinja files (e.g. admin/login.html)."""
+        jinja_backend = engines["jinja2"]
+        with pytest.raises(TemplateDoesNotExist):
+            jinja_backend.get_template("admin/login.html")
+
+    def test_admin_login_resolves_via_dtl(self):
+        """Verify admin/login.html resolves successfully using the DjangoTemplates engine."""
+        template = get_template("admin/login.html")
+        assert template is not None
+        assert template.backend.name == "django"

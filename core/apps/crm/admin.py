@@ -51,8 +51,8 @@ class CustomerAddressInline(admin.StackedInline):
         "state",
         "postal_code",
         "country",
-        "latitude",
-        "longitude",
+        # "latitude",
+        # "longitude",
         "is_removed",
     )
 
