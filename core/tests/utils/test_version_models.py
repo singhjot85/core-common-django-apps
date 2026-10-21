@@ -4,16 +4,10 @@ import pytest
 
 from core.apps.configurations import get_configuration_model
 from core.apps.invoices import get_invoice_template_model
-from core.utils.models import (
-    BaseSemanaticVersionModel,
-    BaseSemanticVersionModel,
-    BaseTemplateModel,
-)
+from core.utils.models import BaseSemanticVersionModel, BaseTemplateModel
 from core.utils.models.version import (
     InvalidVersionException,
     SemanticVersioningModel,
-    SemanticVersionManager,
-    SemanticVersionManger,
     validate_version,
 )
 
@@ -33,7 +27,7 @@ class TestValidateVersion:
         validate_version(valid_version)
 
     @pytest.mark.parametrize(
-        "invalid_val,expected_error",
+        ("invalid_val", "expected_error"),
         [
             (123, "Invalid Version, expected string"),
             (None, "Invalid Version, expected string"),
@@ -77,13 +71,12 @@ class TestSemanticVersioningModelUnits:
         instance.clean()
 
     @pytest.mark.parametrize(
-        "major,minor,patch,expected_msg",
+        ("major", "minor", "patch", "expected_msg"),
         [
             (-1, 0, 0, "Version part cannot be negative"),
             (1, -1, 0, "Version part cannot be negative"),
             (1, 0, -1, "Version part cannot be negative"),
             (0, 0, 0, "Version cannot be less than 1.0.0"),
-            (-1, 0, 0, "Version part cannot be negative"),
         ],
     )
     def test_clean_raises_for_invalid_parts(self, major, minor, patch, expected_msg):
@@ -201,9 +194,8 @@ class TestSemanticVersioningModelUnits:
     def test_bump_version_invalid_type_raises_value_error(self):
         """Test that an unknown bump_type raises ValueError."""
         instance = Configuration(version="1.0.0")
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Invalid bump_type"):
             instance.bump_version(bump_type="invalid")
-        assert "Invalid bump_type" in str(exc_info.value)
 
     def test_bump_version_commit(self):
         """Test bumping version with commit=True calls save with update_fields."""
@@ -375,16 +367,12 @@ class TestSemanticVersionQuerySetUnits:
 
         with patch.object(qs, "select_for_update", return_value=mock_locked_qs):
             with patch("core.utils.models.version.transaction.atomic"):
-                with pytest.raises(ValueError) as exc_info:
+                with pytest.raises(ValueError) as exc_info:  # noqa: PT011
                     qs.versioned_update_or_create(
                         interface_type="app",
                         bump_type="unsupported",
                     )
                 assert "Invalid bump_type" in str(exc_info.value)
-
-    def test_manager_alias_backward_compatibility(self):
-        """Test that SemanticVersionManger alias is preserved."""
-        assert SemanticVersionManger is SemanticVersionManager
 
 
 class TestBaseSemanticVersionModel:
@@ -393,10 +381,6 @@ class TestBaseSemanticVersionModel:
     def test_meta_abstract(self):
         """Ensure BaseSemanticVersionModel is marked abstract."""
         assert BaseSemanticVersionModel._meta.abstract is True
-
-    def test_backward_compatibility_alias(self):
-        """Ensure BaseSemanaticVersionModel alias points to BaseSemanticVersionModel."""
-        assert BaseSemanaticVersionModel is BaseSemanticVersionModel
 
     def test_bump_types_constant(self):
         """Ensure bump types tuple is correctly declared."""

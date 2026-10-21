@@ -36,9 +36,9 @@ class TestSeederRegistry:
         """Dev-prefixed seeders must NOT appear in fixture_registry."""
         registry = fixture_registry.registry
         dev_keys = [k for k in registry if k.startswith("dev_")]
-        assert (
-            len(dev_keys) == 0
-        ), f"Dev seeders should not be in fixture_registry: {dev_keys}"
+        assert len(dev_keys) == 0, (
+            f"Dev seeders should not be in fixture_registry: {dev_keys}"
+        )
 
     def test_dev_seeders_in_seeder_registry(self):
         """Dev-prefixed seeders must appear in seeder_registry."""
@@ -50,7 +50,6 @@ class TestSeederRegistry:
         """All expected dev seeders should be in the global registry."""
         registry = seeder_registry.registry
         expected_dev_keys = {
-            "dev_tenant_seeder",
             "dev_user_seeder",
             "dev_customer_seeder",
             "dev_customer_phone_seeder",
@@ -63,7 +62,6 @@ class TestSeederRegistry:
             "dev_invoice_party_email_seeder",
             "dev_invoice_party_phone_seeder",
             "dev_invoice_item_seeder",
-            "dev_invoice_seeder",
         }
         registered_keys = set(registry.keys())
         missing = expected_dev_keys - registered_keys

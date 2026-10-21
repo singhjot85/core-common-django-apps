@@ -89,7 +89,7 @@ class AbstractInvoicePartyEmail(BaseModel):
 
     invoice_party = models.ForeignKey(
         settings.INVOICES_INVOICE_PARTY_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="emails",
         verbose_name=_("Invoice Party"),
     )
@@ -117,7 +117,7 @@ class AbstractInvoicePartyPhone(BaseModel):
 
     invoice_party = models.ForeignKey(
         settings.INVOICES_INVOICE_PARTY_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="phones",
         verbose_name=_("Invoice Party"),
     )

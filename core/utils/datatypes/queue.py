@@ -1,33 +1,66 @@
+"""
+Pointer-based First-In-First-Out (FIFO) Queue implementation.
+
+Maintains start and end index pointers over a backing Python list to avoid
+costly O(N) array-shift overhead on dequeuing, automatically cleaning memory
+when the queue is emptied.
+"""
+
+from __future__ import annotations
+
 import typing
 
-QUEUE: typing.TypeAlias = list[typing.Any]
+QUEUE_DATA: typing.TypeAlias = list[typing.Any]
 
 
 class Queue:
+    """
+    Pointer-based FIFO Queue.
+
+    Uses `_start_index` and `_end_index` cursors over an underlying list,
+    providing O(1) amortized enqueue and dequeue operations.
+
+    Attributes:
+        _start_index (int): Cursor pointing to the front (head) of the queue.
+        _end_index (int): Cursor pointing to the rear (tail) of the queue.
+        _queue (list[Any]): Backing storage list.
+    """
+
     _start_index: int
     _end_index: int
-    _queue: QUEUE
+    _queue: QUEUE_DATA
 
     def __init__(self):
-        self.clean_queue()  # Start with clean queue always
+        """Initialize an empty queue."""
+        self.clean_queue()
 
-    def clean_queue(self):
+    def clean_queue(self) -> None:
         """
-        Currently to prevent cpu cycle's we are keeping the ``_queue`` attribute as-is,
-        but when both the indice's meet, i.e. end of traversal we can clean it to free the space
+        Reset the queue storage and cursor indices to 0.
+
+        Frees previously stored references when traversal finishes.
         """
         self._queue = []
         self._start_index = 0
         self._end_index = 0
 
     @property
-    def indices(self):
+    def indices(self) -> tuple[int, int]:
+        """
+        Get the current cursor positions (start_index, end_index).
+
+        Returns:
+            tuple[int, int]: Current head and tail integer indices.
+        """
         return self._start_index, self._end_index
 
     @property
-    def queue(self):
+    def queue(self) -> list[typing.Any]:
         """
-        Returns the active elements in the queue.
+        Get all active elements currently pending in the queue.
+
+        Returns:
+            list[Any]: Slice of active items from head to tail.
         """
         if not self._queue:
             return []
@@ -37,6 +70,12 @@ class Queue:
         return self._queue[self._start_index : self._end_index + 1]
 
     def peep(self) -> typing.Optional[typing.Any]:
+        """
+        Inspect the front element of the queue without removing it.
+
+        Returns:
+            Any | None: Head element if queue is non-empty, otherwise None.
+        """
         if not self.queue:
             return None
 
@@ -44,14 +83,13 @@ class Queue:
 
     def enqueue(self, value: typing.Any) -> tuple[int, int]:
         """
-        Enque an element to queue,
-        Internally increase the end_index
+        Add an element to the rear of the queue.
 
         Args:
-            value (Any): Value to put in queue
+            value (Any): The element to enqueue.
 
         Returns:
-            (int, int): start and end index of the queue
+            tuple[int, int]: Updated (start_index, end_index) cursors.
         """
         is_empty = len(self.queue) == 0
         self._queue.append(value)
@@ -63,11 +101,14 @@ class Queue:
         return self.indices
 
     def dequeue(self) -> typing.Optional[typing.Any]:
-        """Pop the first element of the queue,
-        Internally move's the start pointer one step ahead,
+        """
+        Remove and return the front element of the queue.
+
+        Advances `_start_index` pointer, automatically resetting storage
+        when the last remaining element is dequeued.
 
         Returns:
-            (Any, optional): First element of the queue
+            Any | None: Head element if queue was non-empty, otherwise None.
         """
         active_q = self.queue
         if not active_q:

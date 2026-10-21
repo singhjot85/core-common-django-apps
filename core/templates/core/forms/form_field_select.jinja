@@ -1,0 +1,5 @@
+{# Form Field: Select Dropdown #}
+{% from "core/components/common/forms.jinja" import select %}
+{% macro form_field_select(name, options=[], label=None, selected=None, required=False, error=None, hint=None, extra_classes="") %}
+    {{ select(name=name, options=options, label=label, selected=selected, required=required, error=error, hint=hint, extra_classes=extra_classes, **kwargs) }}
+{% endmacro %}

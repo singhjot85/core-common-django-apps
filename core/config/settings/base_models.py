@@ -78,11 +78,9 @@ SHARED_EXTRA_DEPENDENCIES = [
     "dj_rest_auth",
     "constance",
 ]
-
 PUBLIC_ONLY_EXTRA_DEPENDENCIES = [
     "django_celery_results",
 ]
-
 TENANT_ONLY_EXTRA_DEPENDENCIES = []
 
 PROJECT_APPS = [
@@ -106,7 +104,6 @@ DJANGO_TENANT_PUBLIC_APPS = [
     *PUBLIC_ONLY_EXTRA_DEPENDENCIES,
     TENANTS_APP,
     USERS_APP,
-    # "apps.setup",
 ]
 
 DJANGO_TENANT_PRIVATE_APPS = [
@@ -115,7 +112,9 @@ DJANGO_TENANT_PRIVATE_APPS = [
     *SHARED_EXTRA_DEPENDENCIES,
     *TENANT_ONLY_EXTRA_DEPENDENCIES,
     CRM_APP,
+    CONFIGURATION_APP,
     INVOICES_APP,
+    USERS_APP,
     # "apps.payments_management",
     # "apps.setup",
     # "apps.notifications",

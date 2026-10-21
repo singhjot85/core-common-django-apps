@@ -89,7 +89,7 @@ class AbstractOrganizationEmail(BaseModel):
 
     organization: AbstractBillingOrganization = models.ForeignKey(
         settings.INVOICES_BILLING_ORGANIZATION_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="emails",
         verbose_name=_("Billing Organization"),
     )
@@ -126,7 +126,7 @@ class AbstractOrganizationPhone(BaseModel):
 
     organization: AbstractBillingOrganization = models.ForeignKey(
         settings.INVOICES_BILLING_ORGANIZATION_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="phones",
         verbose_name=_("Billing Organization"),
     )
@@ -163,7 +163,7 @@ class AbstractOrganizationFinancials(BaseModel):
 
     organization: AbstractBillingOrganization = models.OneToOneField(
         settings.INVOICES_BILLING_ORGANIZATION_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="financial_data",
         verbose_name=_("Billing Organization"),
     )
@@ -191,7 +191,7 @@ class AbstractOrganizationAssets(BaseModel):
 
     billing_org: AbstractBillingOrganization = models.ForeignKey(
         settings.INVOICES_BILLING_ORGANIZATION_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="assets",
         verbose_name=_("Billing Organization"),
     )

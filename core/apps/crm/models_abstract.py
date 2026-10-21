@@ -37,6 +37,9 @@ class AbstractCustomer(BaseModel, AbstractParty):
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=32, null=True, blank=True)
     details = models.JSONField(default=dict, blank=True, encoder=DjangoJSONEncoder)
+    user = models.ForeignKey(
+        to=settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True
+    )
 
     class Meta:
         abstract = True
@@ -69,7 +72,7 @@ class AbstractCustomerPhone(BaseModel):
 
     customer = models.ForeignKey(
         settings.CRM_CUSTOMER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="phones",
     )
     phone = models.CharField(max_length=32)
@@ -107,7 +110,7 @@ class AbstractCustomerEmail(BaseModel):
 
     customer = models.ForeignKey(
         settings.CRM_CUSTOMER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="emails",
     )
     email = models.EmailField(max_length=255)
@@ -145,7 +148,7 @@ class AbstractCustomerAddress(BaseModel, AbstractAddress):
 
     customer = models.ForeignKey(
         settings.CRM_CUSTOMER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="addresses",
     )
     address_type = models.CharField(
@@ -183,7 +186,7 @@ class AbstractCustomerIdentification(BaseModel):
 
     customer = models.ForeignKey(
         settings.CRM_CUSTOMER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="identifications",
     )
     identity_type = models.CharField(
@@ -285,7 +288,7 @@ class AbstractCustomerPreference(BaseModel):
 
     customer = models.ForeignKey(
         settings.CRM_CUSTOMER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="preferences",
     )
     preference_type = models.ForeignKey(

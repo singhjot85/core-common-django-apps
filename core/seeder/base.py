@@ -11,18 +11,22 @@ import typing
 from functools import cached_property
 
 from django.conf import settings
-from django.db import DEFAULT_DB_ALIAS, connection, models, transaction
+from django.db import DEFAULT_DB_ALIAS, models, transaction
 
 from core.exceptions import InvalidTypeError, SeederException
+from core.seeder.constants import (
+    ForwardSingularRelation,
+    ManagerRelation,
+    ReverseSingularRelation,
+)
 from core.seeder.registry import fixture_registry, seeder_registry
 from core.utils.checks import is_model, is_multi_tenant
 from core.utils.database import get_public_schema_name
 from core.utils.strings import camel_to_snake_case
 
 if typing.TYPE_CHECKING:
+    from core.seeder.constants import BaseModelRelation
     from core.seeder.datasource import AbstractDataSource
-
-empty = object()
 
 
 class BaseMeta:
@@ -42,11 +46,13 @@ class BaseMeta:
     model: models.Model
     fields: list
     data_source: AbstractDataSource
+    object_create_method: typing.Callable
+
+    is_fixture: bool = False
+    schema_name: typing.Optional[str] = None
     tenant_type: str = settings.TENANT_TYPE_ORGANIZATION
 
-    schema_name: typing.Optional[str] = None
     depends_on: typing.Optional[list]
-    is_fixture: typing.Optional[bool]
     execution_order: typing.Optional[int]
     related_seeders: typing.Optional[dict[str, BaseSeeder]]
 
@@ -58,7 +64,7 @@ class BaseMeta:
         cls._validate_model(seeder_name)
         cls._validate_fields(seeder_name)
         cls._validate_depends_on(seeder_name)
-        cls._validate_relation_map()
+        cls._validate_related_seeder_map()
 
     @classmethod
     def _validate_depends_on(cls, seeder_name):
@@ -104,7 +110,7 @@ class BaseMeta:
             raise SeederException(seeder_name, "Fields not defined for seeder")
 
     @classmethod
-    def _validate_relation_map(cls):
+    def _validate_related_seeder_map(cls):
         """
         Validate related_seeders
         """
@@ -133,8 +139,7 @@ class BaseSeeder:
     # Only for type convention, do not override
     _model: models.Model
     _fields: list[str]
-    _relation_map: dict[str, type[BaseSeeder]]
-    _nonconcrete_relations: list[dict]
+    _related_seeder_map: dict[str, type[BaseSeeder]]
 
     def __init_subclass__(cls, **kwargs):
         """
@@ -156,7 +161,7 @@ class BaseSeeder:
         except Exception as e:
             raise SeederException(cls.__name__, str(e)) from e
 
-    def __init__(self, find_seeder: bool = False):
+    def __init__(self, **kwargs):
         """
         Initialize variable's for given seeder instance.
 
@@ -173,14 +178,34 @@ class BaseSeeder:
         self._fields = getattr(self._meta, "fields", None)
 
         self.execution_order = getattr(self._meta, "execution_order", None)
-        self._relation_map = getattr(self._meta, "related_seeders", {})
-
-        self.pick_from_global_registry = find_seeder
-        self._nonconcrete_relations = []
-
+        self._related_seeder_map = getattr(self._meta, "related_seeders", {})
         self._data_source: typing.Optional[AbstractDataSource] = getattr(
             self._meta, "data_source", None
         )
+
+        self._related_data: list["BaseModelRelation"] = []
+        self.context = kwargs
+        self.creation_method = getattr(
+            self._meta,
+            "object_create_method",
+            self._model._default_manager.get_or_create,
+        )
+
+    @classmethod
+    def get_seeder_model(cls) -> type["models.Model"]:
+        """
+        Get model from seeder
+        """
+        Meta: type[BaseMeta] = getattr(cls, "Meta", None)
+        return getattr(Meta, "model", None)
+
+    @classmethod
+    def execution_order(cls):
+        """
+        Get execution order of this seeder
+        """
+        Meta: type[BaseMeta] = getattr(cls, "Meta", None)
+        return getattr(Meta, "execution_order", None)
 
     @property
     def seedable_fields(self):
@@ -246,7 +271,7 @@ class BaseSeeder:
         return get_public_schema_name()
 
     @classmethod
-    def get_dependencies(cls) -> list:
+    def get_model_dependencies(cls) -> list:
         """
         Get all the dependencies for given seeder.
         """
@@ -256,133 +281,175 @@ class BaseSeeder:
 
         return []
 
-    @classmethod
-    def get_seeder_from_registry(cls, model_name: str) -> type[BaseSeeder]:
+    def to_internal_values(self, data: dict):
         """
-        Get seeder for given model_name from the registry
+        Convert the json field to python internal value
+
+        Expected data format:
+        ```json
+        {
+            "attr": "val",
+
+            # This will do a related_model.objects.get(attribute=val)
+            "related_field__attribute": "val",
+
+            # This related create a realted_object and then link it to current model.
+            # NOTE: Fot this notation you need to first define a realted seeder on this seeder.
+            "related_field": {
+                "attr1": "val1",
+                "attr2": "val2",
+                "attr3": "val3",
+            }
+        }
+        ```
         """
-        return seeder_registry.get(model_name)
+        self._validated_data = {}
+        for field_name, field_val in data.items():
+            field_name: str
+            field_val: typing.Any
+
+            if field_name not in self.seedable_fields:
+                continue
+
+            related_unique_attr = None
+            if "__" in field_name:
+                field_name, related_unique_attr = field_name.split("__")
+
+            field: models.Field = self._model._meta.get_field(field_name)
+
+            if field.concrete and not field.is_relation:
+                self._validated_data.update({field_name: field.clean(field_val, None)})
+                continue
+
+            related_data = self.get_related_instance(
+                field_name, field_val, related_unique_attr
+            )
+            if related_data:
+                self._related_data.append(related_data)
+
+        return self._validated_data
+
+    def get_related_instance(
+        self, field_name: str, field_val: typing.Any, related_unique_attr: str
+    ):
+        """ """
+        field: models.ForeignObjectRel = self._model._meta.get_field(field_name)
+
+        def seed_related_instance() -> models.Model:
+            """
+            Seed a related instance and get its instance
+            """
+            if field.name in self._related_seeder_map:
+                CustomSeeder = self._related_seeder_map[field.name]
+                return CustomSeeder().seed(field_val)
+            return None
+
+        def retrieve_related_instance() -> models.Model:
+            """ """
+            RelatedModel = (
+                field.field.model  # Reverse 1-1 need this special access route for the realted model
+                if field.one_to_one and field.auto_created
+                else field.related_model
+            )
+            return RelatedModel._default_manager.get(**{related_unique_attr: field_val})
+
+        related_instance = None
+        if related_unique_attr is not None:
+            related_instance = retrieve_related_instance()
+        elif isinstance(field_val, dict):
+            related_instance = seed_related_instance()
+
+        if related_instance:
+            # Handle both ForeignKey and OneToOne
+            if field.many_to_one or (field.one_to_one and not field.auto_created):
+                return ForwardSingularRelation(
+                    related_instance=related_instance,
+                    allow_null=field.null,
+                    fk_field_name=field_name,
+                )
+
+            # Handle reverse OneToOne
+            elif field.one_to_one and field.auto_created:
+                return ReverseSingularRelation(
+                    related_instance=related_instance,
+                    allow_null=field.null,
+                    fk_field_name=field_name,
+                )
+
+            # Handle ManyToMany, reverse ForeignKey and reverse ManyToMany
+            elif field.many_to_many or field.one_to_many:
+                return ManagerRelation(
+                    related_instance=related_instance,
+                    allow_null=True,
+                    field_name=field_name,
+                )
+
+    def _filter_seedable_fields(self, data: dict):
+        """ """
+        seedable_data = {}
+        # Filter out fields that are not declared seedable
+        for key, val in data.items():
+            if key not in self.seedable_fields:
+                seedable_data.update({key: val})
+
+        return data
 
     def validate(self, data: dict):
         """
-        Pre Seeding Validation hook, this executes before any object intitation takes place.
+        Validate incoming dictionary before seeding.
+
+        Args:
+            data (dict): Mapping of field names to values.
+
+        Returns:
+            dict: The validated data dictionary.
+
+        Raises:
+            InvalidTypeError: If data is not a dictionary instance.
         """
-        if not isinstance(data, dict):
-            raise InvalidTypeError(type=type(data), expected=dict)
         return data
-
-    def to_internal_value(self, field_name: str, field_val, model_instance):
-        """
-        Convert the json field to python internal value
-        """
-        if field_name not in self.seedable_fields:
-            return empty
-
-        field: models.Field = self._model._meta.get_field(field_name)
-
-        if field.concrete and not field.is_relation:
-            return field.clean(field_val, model_instance)
-
-        related_instance = self.seed_related_instance(field, field_val)
-        if field.many_to_many and not field.auto_created:
-            self._nonconcrete_relations.append(
-                {"accessor_name": field.name, "instance": related_instance}
-            )
-            return empty
-        elif (
-            field.one_to_many
-            or (
-                field.one_to_one and field.auto_created
-            )  # I think this needs to be handeled differently
-            or (field.many_to_many and field.auto_created)
-        ):
-            self._nonconcrete_relations.append(
-                {
-                    "accessor_name": field.get_accessor_name(),
-                    "instance": related_instance,
-                }
-            )
-            return empty
-        else:
-            return model_instance
-
-        return None
-
-    def get_related_model_name(self, field: models.ForeignObjectRel):
-        """
-        Get model name for given related field.
-        """
-        return field.model
-
-    def seed_related_instance(self, field: models.Field, data) -> models.Model:
-        """
-        Seed a related instance and get its instance
-        """
-        if not field.is_relation:
-            return None
-
-        field_name = field.name
-        if field_name in self._relation_map:
-            CustomSeeder = self._relation_map[field_name]
-            return CustomSeeder().seed(data)
-
-        if self.pick_from_global_registry:
-            model_name = self.get_related_model_name(field)
-            RegisteredSeeder = self.get_seeder_from_registry(model_name)
-            if RegisteredSeeder:
-                return RegisteredSeeder.seed(data)
-
-        return None
-
-    def set_field_value(self, field_name, field_value, model_instance):
-        """
-        Set field attribute to the model instance.
-        """
-        method_name = f"set_field_{field_name}"
-        if hasattr(self, method_name) and callable(getattr(self, method_name)):
-            return getattr(self, method_name)(model_instance, field_value)
-
-        return setattr(model_instance, field_name, field_value)
 
     def seed(self, data: dict) -> models.Model:
         """
         Seed the data
         """
-        if (
-            is_multi_tenant()
-            and self._meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION
-            and getattr(connection, "schema_name", None) == get_public_schema_name()
-        ):
-            raise SeederException(
-                seeder_name=self.__class__.__name__,
-                message="Seeder for organization tenant type cannot run on public schema",
-            )
-
-        instance = None
         try:
-            validated_data: dict = self.validate(data)
+            filtered_data = self._filter_seedable_fields(data)
+            validated_data = self.validate(filtered_data)
 
             with transaction.atomic(using=DEFAULT_DB_ALIAS):
-                instance = self._model()
-                for field, val in validated_data.items():
-                    field_value = self.to_internal_value(field, val, instance)
-                    if field_value is empty:
-                        continue
+                internal_values = self.to_internal_values(validated_data)
+                return self.create(internal_values)
 
-                    self.set_field_value(field, val, instance)
-
-                # Set all the fields that are not directly on model
-                for nonconcrete_map in self._nonconcrete_relations:
-                    accessor_name = nonconcrete_map["accessor_name"]
-                    obj = nonconcrete_map["instance"]
-                    Manager = getattr(instance, accessor_name)
-                    Manager.add(obj)
-
-                # Make sure everythin persist in db
-                instance.save()
         except Exception as e:
             raise SeederException(
                 seeder_name=self.__class__.__name__, message=str(e)
             ) from e
+
+    def create(self, data: dict) -> models.Model:
+        """ """
+
+        required_relations = []  # These are needed to prevent not-null constaints
+        for related_data in self._related_data:
+            if (
+                isinstance(related_data, ForwardSingularRelation)
+                and related_data.allow_null is False
+            ):
+                data.update(
+                    **{related_data.fk_field_name: related_data.related_instance}
+                )
+
+        if required_relations:
+            data.update(*required_relations)
+
+        instance = self.creation_method(**data)
+
+        # Methods like get_or_create, update_or_create can return a tuple
+        if isinstance(instance, tuple):
+            instance = instance[0]
+
+        # All the FK, 1-1, 1-M, M-1, M-M linkage happend after the object is created
+        for related_data in self._related_data:
+            related_data.link_relation(instance)
 
         return instance

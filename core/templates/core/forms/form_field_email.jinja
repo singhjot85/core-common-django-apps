@@ -1,0 +1,5 @@
+{# Form Field: Email #}
+{% from "core/components/common/forms.jinja" import input %}
+{% macro form_field_email(name, label=None, value="", placeholder="name@example.com", required=False, error=None, hint=None, extra_classes="") %}
+    {{ input(name=name, label=label, value=value, type="email", placeholder=placeholder, required=required, error=error, hint=hint, extra_classes=extra_classes, **kwargs) }}
+{% endmacro %}

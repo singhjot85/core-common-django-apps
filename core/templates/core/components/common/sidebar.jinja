@@ -1,0 +1,16 @@
+{# Sidebar Link Component #}
+{% from "core/components/common/icons.jinja" import icon %}
+{% from "core/components/common/badges.jinja" import badge %}
+{% macro sidebar_link(title, href="#", icon_name="circle", is_active=False, badge_text=None, badge_variant="primary", extra_classes="") %}
+    <a href="{{ href }}"
+       class="sidebar-link{% if is_active %} active{% endif %}{% if extra_classes %} {{ extra_classes }}{% endif %}"
+       title="{{ title }}"
+       {{ kwargs|xmlattr }}>
+        <span class="sidebar-link-icon">{{ icon(icon_name, size=20) }}</span>
+        <span class="sidebar-link-text">{{ title }}</span>
+        {% if badge_text %}<span class="sidebar-link-badge">{{ badge(badge_text, variant=badge_variant) }}</span>{% endif %}
+    </a>
+{% endmacro %}
+{% macro sidebar_divider() %}
+    <div class="sidebar-divider"></div>
+{% endmacro %}

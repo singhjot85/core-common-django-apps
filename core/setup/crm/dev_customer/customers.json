@@ -1,34 +1,16 @@
 [
     {
-        "tenant_schema": "public",
-        "first_name": "Alice",
-        "last_name": "Public",
-        "customer_type": "individual",
-        "status": "active",
-        "linked_user_email": "admin1@public.localhost"
-    },
-    {
-        "tenant_schema": "public",
-        "first_name": "Bob",
-        "last_name": "Public",
-        "customer_type": "individual",
-        "status": "active",
-        "linked_user_email": "user1@public.localhost"
-    },
-    {
-        "tenant_schema": "private",
         "first_name": "Charlie",
         "last_name": "Private",
         "customer_type": "individual",
         "status": "active",
-        "linked_user_email": "admin1@private.localhost"
+        "user__email": "admin1@localhost.com"
     },
     {
-        "tenant_schema": "private",
         "first_name": "Diana",
         "last_name": "Private",
         "customer_type": "individual",
         "status": "active",
-        "linked_user_email": "user1@private.localhost"
+        "user__email": "client1@localhost.com"
     }
 ]

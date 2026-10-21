@@ -1,0 +1,35 @@
+{# Base Form Container Macro #}
+{% from "core/components/common/buttons.jinja" import button %}
+{% from "core/components/feedback/alerts.jinja" import alert %}
+{% macro base_form(action="", method="post", form_id=None, title=None, subtitle=None, submit_label="Submit", submit_variant="primary", form_errors=None, extra_classes="") %}
+    <form action="{{ action }}"
+          method="{{ method }}"
+          {% if form_id %}id="{{ form_id }}"{% endif %}
+          class="base-form{% if extra_classes %} {{ extra_classes }}{% endif %}"
+          {{ kwargs|xmlattr }}>
+        {% if method|lower != "get" and csrf_input is defined %}{{ csrf_input }}{% endif %}
+        {% if title or subtitle %}
+            <div class="form-header mb-md">
+                {% if title %}<h3 class="font-size-lg font-weight-semibold mb-xs">{{ title }}</h3>{% endif %}
+                {% if subtitle %}<p class="text-muted font-size-sm mb-0">{{ subtitle }}</p>{% endif %}
+            </div>
+        {% endif %}
+        {% if form_errors %}
+            <div class="form-errors mb-md">
+                {% if form_errors is string %}
+                    {{ alert(message=form_errors, variant="danger") }}
+                {% elif form_errors is sequence %}
+                    {% for err in form_errors %}{{ alert(message=err, variant="danger") }}{% endfor %}
+                {% endif %}
+            </div>
+        {% endif %}
+        <div class="form-body">
+            {% if caller %}{{ caller() }}{% endif %}
+        </div>
+        {% if submit_label %}
+            <div class="form-footer mt-lg">
+                {{ button(label=submit_label, variant=submit_variant, type="submit", extra_classes="w-full") }}
+            </div>
+        {% endif %}
+    </form>
+{% endmacro %}

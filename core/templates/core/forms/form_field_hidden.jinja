@@ -1,0 +1,8 @@
+{# Form Field: Hidden #}
+{% macro form_field_hidden(name, value="") %}
+    <input type="hidden"
+           name="{{ name }}"
+           id="id_{{ name }}"
+           value="{{ value }}"
+           {{ kwargs|xmlattr }}>
+{% endmacro %}

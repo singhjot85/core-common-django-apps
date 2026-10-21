@@ -23,6 +23,11 @@ APP_DIR = os.path.join(BASE_DIR, APP_NAME)  # Path to /backend/apps
 CORE_BASE_DIR = Path(__file__).resolve().parent.parent.parent
 CORE_APP_DIR = os.path.join(CORE_BASE_DIR, APP_NAME)
 CORE_SETUP_DIR = os.path.join(CORE_BASE_DIR, "setup")
+SANDBOX_TEMPLATES_DIRS = [
+    CORE_SETUP_DIR,
+    os.path.join(CORE_BASE_DIR, "templates"),
+    os.path.join(BASE_DIR, "templates"),
+]
 
 SENSITIVE_PHRASES = os.getenv("SENSITIVE_PHRASES", [])
 APPLICATION_TIMEZONE = os.getenv("TIME_ZONE", "UTC")
@@ -45,11 +50,11 @@ ALLOWED_HOSTS = []
 
 TIME_ZONE = APPLICATION_TIMEZONE
 TEMPLATES_DIR = os.path.join(BASE_DIR, "django_templates", "templates")
+SECRET_KEY = os.getenv("DJANGO_SECRETE_KEY", "")
 
-STATIC_URL = "static/"
-ROOT_URLCONF = "config.urls"
-PUBLIC_SCHEMA_URLCONF = "config.public_urls"
-
+STATIC_URL = "/static/"
+ROOT_URLCONF = "core.config.urls"
+PUBLIC_SCHEMA_URLCONF = "core.config.public_urls"
 
 TENANT_TYPE_PUBLIC = "public"
 TENANT_TYPE_ORGANIZATION = "organization"
@@ -109,11 +114,6 @@ DATABASES = {
 CACHE_URL = get_cache_url()
 CACHE_BACKEND, RESOLVED_CACHE_OPTIONS = get_cache_ops()
 
-CACHE_SMALL_SMALL_TIMEOUT = os.getenv("CACHE_SMALL_SMALL_TIMEOUT", 30)  # 30 seconds
-CACHE_SMALL_TIMEOUT = os.getenv("CACHE_SMALL_TIMEOUT", 30 * 2)  # 2 mins
-CACHE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_TIMEOUT", 60 * 20)  # 20 mins
-CACHE_LARGE_LARGE_TIMEOUT = os.getenv("CACHE_LARGE_LARGE_TIMEOUT", 60 * 60)  # 1 hour
-
 CACHES = {
     DEFAULT_CACHE_DATABASE: {
         "BACKEND": CACHE_BACKEND,
@@ -148,6 +148,9 @@ CELERY_TASK_SOFT_TIME_LIMIT = TASK_SOFT_TIME_LIMIT
 # Writes extended results to backend (name, args, kwargs, worker, retries, queue, delivery_info).
 CELERY_RESULT_EXTENDED = True
 CELERY_DEFAULT_TASK_QUEUE = DEFAULT_TASK_QUEUE_NAME
+CELERY_TASK_MAX_RETRIES = TASK_MAX_RETRIES
+CELERY_TASK_DEFAULT_RETRY_DELAY = TASK_DEFAULT_RETRY_DELAY
+CELERY_TASK_AUTORETRY_FOR = TASK_AUTORETRY_FOR
 
 # Need to define this explicilty fo celery
 TENANT_DB_ALIAS = DEAFULT_DATABASE
@@ -158,9 +161,21 @@ TENANT_DB_ALIAS = DEAFULT_DATABASE
 # CELERY_BEAT_SCHEDULER = "config.beat.CustomDatabaseScheduler"
 
 # -----------------------------
-#   Django Templates
+#   Django & Jinja2 Templates
 # -----------------------------
 TEMPLATES = [
+    {
+        "BACKEND": "core.utils.jinja2.Jinja2Backend",
+        "DIRS": [
+            os.path.join(BASE_DIR, "templates"),
+            # os.path.join(BASE_DIR.parent, "sample_project", "templates"),
+        ],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            # "loader": "core.utils.jinja2.loaders.SafeDatabaseLoader",
+            "environment": "core.utils.jinja2.environment.jinja2_environment",
+        },
+    },
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [TEMPLATES_DIR],
@@ -173,6 +188,10 @@ TEMPLATES = [
             ],
         },
     },
+]
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
 ]
 
 # -----------------------------

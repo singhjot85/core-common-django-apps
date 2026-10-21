@@ -212,10 +212,10 @@ class OTPSendSerializer(serializers.Serializer):
             validator = EmailValidator()
             try:
                 validator(identifier)
-            except Exception:
+            except Exception as e:
                 raise serializers.ValidationError(
                     {"identifier": _("Invalid email address format.")}
-                )
+                ) from e
 
         attrs["identifier"] = identifier
         return attrs

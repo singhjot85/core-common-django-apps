@@ -1,3 +1,13 @@
+"""
+DAG builder implementations for resolving dependency orders among Python objects and classes.
+
+Provides BaseDAGBuilder and InstanceDAGBuilder which map arbitrary Python objects to
+graph nodes, construct dependency edges, execute topological sorts, and ensure initial
+execution constraints are satisfied.
+"""
+
+from __future__ import annotations
+
 import typing
 
 from core.utils.datatypes.graph import DirectedGraph
@@ -5,75 +15,118 @@ from core.utils.datatypes.graph import DirectedGraph
 
 class BaseDAGBuilder(DirectedGraph):
     """
-    Base class DirectedAcyclicGraph Implementation.
+    Abstract Base Class for Directed Acyclic Graph (DAG) builders.
+
+    Subclasses must implement `resolve_dependencies()` to construct graph edges
+    prior to topological sort execution.
     """
 
-    def resolve_dependencies(self):
+    def resolve_dependencies(self) -> None:
         """
-        Resolve dependencies based on your own logic
+        Construct nodes and directed edges in the underlying graph.
+
+        Raises:
+            NotImplementedError: If not overridden by a subclass.
         """
-        raise NotImplementedError("Dependecy resolution logic not found.")
+        raise NotImplementedError("Dependency resolution logic not found.")
 
 
 class InstanceDAGBuilder(BaseDAGBuilder):
     """
-    Build DAG for an given sequence of classes/objects
+    Builds and resolves a DAG for an arbitrary sequence of Python classes or objects.
+
+    Maps instances to integer indices, queries per-instance dependencies, builds
+    directed edges `(prerequisite -> dependent)`, and executes a BFS topological sort
+    using Kahn's algorithm.
+
+    Attributes:
+        _instance_to_num (dict[str, int]): Map of instance label to unique integer index.
+        _num_to_instance (dict[int, typing.Any]): Map of integer index back to instance.
+        _first_instance (typing.Any): Optional instance pinned to execute first.
     """
 
-    _instance_to_num: dict
-    _num_to_instance: dict
-    _first_instance: typing.Any
-
     def __init__(self, *args, **kwargs):
-        self._instance_to_num = {}
-        self._num_to_instance = {}
+        """Initialize the instance DAG builder with empty node mappings."""
+        self._instance_to_num: dict[str, int] = {}
+        self._num_to_instance: dict[int, typing.Any] = {}
+        self._first_instance: typing.Optional[typing.Any] = None
         super().__init__(*args, **kwargs)
 
     def get_instance_sequence(self) -> typing.Union[list, tuple]:
         """
-        Get sequence of instance that need to Sorted using DAG
-        """
-        raise NotImplementedError("get_instance_sequence is needer to build DAG.")
+        Get the sequence of instances or classes that need to be topologically sorted.
 
-    def is_initial_attribute(self) -> bool:
-        """
-        Get the attribute representing inital instance.
+        Returns:
+            list | tuple: Sequence of instances to sort.
 
-        Example:
-        >>> instance.initial
+        Raises:
+            NotImplementedError: If not overridden by a subclass.
         """
-        raise NotImplementedError("is_initial_attribute not implemented")
+        raise NotImplementedError("get_instance_sequence is needed to build DAG.")
 
-    def get_dependencies(self, instance) -> list:
+    def is_initial_attribute(self, instance: typing.Any) -> bool:
         """
-        Get the all the dependencies for the instance.
+        Check if a given instance qualifies as the initial / root execution node.
 
-        Example:
-        >>> instance.depends_on
-        """
-        raise NotImplementedError("get_dependencies not implemented")
+        Args:
+            instance (Any): The instance or class to evaluate.
 
-    def instance_label(self, kls):
-        """
-        Get stringified notation of the instance.
-        Overridable for instance specific string notation logic.
-        """
-        return kls.__name__
+        Returns:
+            bool: True if instance is designated as an initial node, False otherwise.
 
-    def _instance_to_number_map(self):
+        Raises:
+            NotImplementedError: If not overridden by a subclass.
         """
-        Hepler method, that label's a positive integer to each object for DAG topological sort.
-        The idea is to make object dependecy sorting easier.
+        raise NotImplementedError("is_initial_attribute not implemented.")
+
+    def get_dependencies(self, instance: typing.Any) -> list:
         """
-        kls_sequence: list[type] = self.get_instance_sequence()
+        Get all prerequisite dependencies that must execute BEFORE the given instance.
+
+        Args:
+            instance (Any): The instance or class whose prerequisites are queried.
+
+        Returns:
+            list: List of prerequisite instances or classes.
+
+        Raises:
+            NotImplementedError: If not overridden by a subclass.
+        """
+        raise NotImplementedError("get_dependencies not implemented.")
+
+    def instance_label(self, kls: typing.Any) -> str:
+        """
+        Compute a unique string identifier for a given instance or class.
+
+        Defaults to `kls.__name__`. Can be overridden for custom labeling.
+
+        Args:
+            kls (Any): The object or class.
+
+        Returns:
+            str: String label used in internal index mapping.
+        """
+        return getattr(kls, "__name__", str(kls))
+
+    def _instance_to_number_map(self) -> None:
+        """
+        Assign a unique positive integer index to each instance in the sequence.
+
+        Populates `_instance_to_num` and `_num_to_instance` lookup tables.
+        """
+        kls_sequence = self.get_instance_sequence()
         for i, kls in enumerate(kls_sequence):
             self._instance_to_num[self.instance_label(kls)] = i
             self._num_to_instance[i] = kls
 
-    def _resolve_and_build_adjacency_list(self):
+    def _resolve_and_build_adjacency_list(self) -> None:
         """
-        Resolve dependecies/nodes of the graph into weights
-        and build an adjaceny list out of that.
+        Construct graph nodes and dependency edges from instance dependencies.
+
+        For each dependency `dep` of `instance`, adds a directed edge:
+            `(dep) ---> (instance)`
+        signifying that `dep` has in-degree 0 and must execute before `instance`.
+        Also determines the optional `_first_instance`.
         """
         self._instance_to_number_map()
         self._first_instance = None
@@ -82,8 +135,7 @@ class InstanceDAGBuilder(BaseDAGBuilder):
                 self._adjanceny_list[i] = []
 
         for instance in self.get_instance_sequence():
-
-            # Add a dependency to adjanceny list
+            # Add dependency edges: prerequisite (dep) -> dependent (instance)
             if depends_on := self.get_dependencies(instance):
                 for dep in depends_on:
                     self.add_node(
@@ -95,24 +147,37 @@ class InstanceDAGBuilder(BaseDAGBuilder):
             if self.is_initial_attribute(instance):
                 self._first_instance = instance
 
+        # To be safe, when no instance is found assign any random as first
+        if not self._first_instance:
+            self._first_instance = self.adjacency_list[1][0]
+
     def resolve_dependencies(self):
         """
-        Overridable resolve dependency module.
+        Hook to resolve instance dependencies into graph adjacency lists.
         """
         self._resolve_and_build_adjacency_list()
 
-    def topo_sorted_instances(self) -> list[type]:
+    def topo_sorted_instances(self) -> list[typing.Any]:
         """
-        Get sorted Instances in the order of the dependencies
+        Compute the topologically sorted order of instances based on dependencies.
+
+        Executes Kahn's algorithm BFS topological sort, then positions `_first_instance`
+        at the head of the sequence if configured.
+
+        Returns:
+            list[Any]: Topologically ordered list of instances.
+
+        Raises:
+            CycleError: If circular dependencies exist among instances.
         """
         self.resolve_dependencies()
         sorted_graph: list[int] = self.bfs_topological_sort()
 
-        sorted_instances: list[type] = []
+        sorted_instances: list[typing.Any] = []
         for index in sorted_graph:
             sorted_instances.append(self._num_to_instance[index])
 
-        # Append the first at start
+        # Pin the designated first instance at the start of the sequence
         if self._first_instance:
             if self._first_instance in sorted_instances:
                 sorted_instances.remove(self._first_instance)

@@ -16,7 +16,7 @@ def get_object_or_raise(model: type[models.Model], **lookup_kwargs):
 
         return model.objects.get(**lookup_kwargs)
     except model.DoesNotExist:
-        raise ObjectNotFound(model=model, **lookup_kwargs)
+        raise ObjectNotFound(model=model, **lookup_kwargs) from None
 
 
 def safe_get_object_or_raise(model: type["models.Model"], **lookup_kwargs):
@@ -41,7 +41,7 @@ def safe_get_object_or_raise(model: type["models.Model"], **lookup_kwargs):
             .first()
         )
     except model.DoesNotExist:
-        raise ObjectNotFound(model=model, **lookup_kwargs)
+        raise ObjectNotFound(model=model, **lookup_kwargs) from None
 
 
 def filter_objects_or_raise(

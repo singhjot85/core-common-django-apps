@@ -1,0 +1,80 @@
+{# Forms Macro Component #}
+{% macro input(name, label=None, value="", type="text", placeholder="", required=False, error=None, hint=None, extra_classes="") %}
+    <div class="form-group{% if extra_classes %} {{ extra_classes }}{% endif %}">
+        {% if label %}
+            <label class="form-label" for="id_{{ name }}">
+                {{ label }}
+                {% if required %}<span class="text-danger">*</span>{% endif %}
+            </label>
+        {% endif %}
+        <input type="{{ type }}"
+               name="{{ name }}"
+               id="id_{{ name }}"
+               value="{{ value }}"
+               placeholder="{{ placeholder }}"
+               class="form-control{% if error %} is-invalid{% endif %}"
+               {% if required %}required{% endif %}
+               {{ kwargs|xmlattr }}>
+        {% if hint %}<span class="form-hint">{{ hint }}</span>{% endif %}
+        {% if error %}<span class="form-error">{{ error }}</span>{% endif %}
+    </div>
+{% endmacro %}
+{% macro select(name, options=[], label=None, selected=None, required=False, error=None, hint=None, extra_classes="") %}
+    <div class="form-group{% if extra_classes %} {{ extra_classes }}{% endif %}">
+        {% if label %}
+            <label class="form-label" for="id_{{ name }}">
+                {{ label }}
+                {% if required %}<span class="text-danger">*</span>{% endif %}
+            </label>
+        {% endif %}
+        <select name="{{ name }}"
+                id="id_{{ name }}"
+                class="form-select{% if error %} is-invalid{% endif %}"
+                {% if required %}required{% endif %}
+                {{ kwargs|xmlattr }}>
+            {% for opt in options %}
+                {% if opt is mapping %}
+                    <option value="{{ opt.value }}"
+                            {% if opt.value == selected %}selected{% endif %}>{{ opt.label }}</option>
+                {% elif opt is sequence and opt is not string %}
+                    <option value="{{ opt[0] }}" {% if opt[0] == selected %}selected{% endif %}>{{ opt[1] }}</option>
+                {% else %}
+                    <option value="{{ opt }}" {% if opt == selected %}selected{% endif %}>{{ opt }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+        {% if hint %}<span class="form-hint">{{ hint }}</span>{% endif %}
+        {% if error %}<span class="form-error">{{ error }}</span>{% endif %}
+    </div>
+{% endmacro %}
+{% macro textarea(name, label=None, value="", rows=4, placeholder="", required=False, error=None, hint=None, extra_classes="") %}
+    <div class="form-group{% if extra_classes %} {{ extra_classes }}{% endif %}">
+        {% if label %}
+            <label class="form-label" for="id_{{ name }}">
+                {{ label }}
+                {% if required %}<span class="text-danger">*</span>{% endif %}
+            </label>
+        {% endif %}
+        <textarea name="{{ name }}"
+                  id="id_{{ name }}"
+                  rows="{{ rows }}"
+                  placeholder="{{ placeholder }}"
+                  class="form-control{% if error %} is-invalid{% endif %}"
+                  {% if required %}required{% endif %}
+                  {{ kwargs|xmlattr }}>{{ value }}</textarea>
+        {% if hint %}
+            <span class="form-hint">{{ hint }}</span>
+        {% endif %}
+        {% if error %}<span class="form-error">{{ error }}</span>{% endif %}
+    </div>
+{% endmacro %}
+{% macro checkbox(name, label, checked=False, extra_classes="") %}
+    <div class="form-check{% if extra_classes %} {{ extra_classes }}{% endif %}">
+        <input type="checkbox"
+               name="{{ name }}"
+               id="id_{{ name }}"
+               {% if checked %}checked{% endif %}
+               {{ kwargs|xmlattr }}>
+        <label class="form-label mb-0" for="id_{{ name }}">{{ label }}</label>
+    </div>
+{% endmacro %}

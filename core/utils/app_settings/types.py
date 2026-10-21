@@ -294,4 +294,4 @@ class Configuration(BaseDescriptor):
             )
             return config_details.get(self.name.lower(), self.default)
         except Exception as e:
-            raise AppSettingException(str(e), self.app_settings_key)
+            raise AppSettingException(str(e), self.app_settings_key) from e

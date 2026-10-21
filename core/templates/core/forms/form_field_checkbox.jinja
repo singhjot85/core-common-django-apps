@@ -1,0 +1,5 @@
+{# Form Field: Checkbox #}
+{% from "core/components/common/forms.jinja" import checkbox %}
+{% macro form_field_checkbox(name, label, checked=False, extra_classes="") %}
+    {{ checkbox(name=name, label=label, checked=checked, extra_classes=extra_classes, **kwargs) }}
+{% endmacro %}

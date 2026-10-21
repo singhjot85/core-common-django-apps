@@ -8,7 +8,7 @@ services:
       context: ../../..
       dockerfile: sample_project/compose/local/backend/Dockerfile
     container_name: ${STACK_NAME:-core}_django
-    restart: unless-stopped
+    restart: on-failure:3
     env_file:
       - ./backend/.env
       - ./database/.env
@@ -17,6 +17,12 @@ services:
         condition: service_healthy
       cache:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python sample_project/manage.py check"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     volumes:
       - ../../..:/backend
       - ./backend/scripts:/scripts
@@ -84,7 +90,7 @@ services:
       - "${CELERY_PORT:-5555}:5555"
     depends_on:
       django:
-        condition: service_started
+        condition: service_healthy
       broker:
         condition: service_healthy
 

@@ -1,22 +1,5 @@
 [
     {
-        "tenant_schema": "public",
-        "name": "Web Development Service",
-        "description": "Full-stack web development per hour",
-        "price": "2500.00",
-        "HSN_code": "998314",
-        "is_active": true
-    },
-    {
-        "tenant_schema": "public",
-        "name": "Cloud Hosting - Monthly",
-        "description": "Monthly cloud hosting package",
-        "price": "5000.00",
-        "HSN_code": "998315",
-        "is_active": true
-    },
-    {
-        "tenant_schema": "private",
         "name": "Consulting Service",
         "description": "Technical consulting per hour",
         "price": "3500.00",
@@ -24,7 +7,6 @@
         "is_active": true
     },
     {
-        "tenant_schema": "private",
         "name": "Support Contract - Annual",
         "description": "Annual premium support contract",
         "price": "120000.00",

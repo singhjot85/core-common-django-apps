@@ -9,10 +9,10 @@ from rest_framework.exceptions import ValidationError
 from core.apps.configurations.constants import InterfaceTypeChoices
 from core.apps.tenants import get_tenant_model
 from core.utils.checks import is_multi_tenant
-from core.utils.models import BaseModel, BaseSemanaticVersionModel
+from core.utils.models import BaseModel, BaseSemanticVersionModel
 
 
-class AbstractConfiguration(BaseSemanaticVersionModel):
+class AbstractConfiguration(BaseSemanticVersionModel):
     """
     Configurations model to store database configuration values
     """
@@ -117,14 +117,14 @@ if is_multi_tenant():
     tenant-wise config version tracking
     """
 
-    class AbstractTenantConfiguration(BaseSemanaticVersionModel):
+    class AbstractTenantConfiguration(BaseSemanticVersionModel):
         """
         Abstract Class for a tenant configuration.
         """
 
         tenant = models.ForeignKey(
             settings.TENANTS_TENANT_MODEL,
-            on_delete=models.CASCADE,
+            on_delete=models.PROTECT,
             null=True,
             blank=True,
             related_name="tenant_configs",

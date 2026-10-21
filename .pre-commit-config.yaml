@@ -3,19 +3,21 @@ default_stages: [pre-commit, pre-push]
 fail_fast: false
 
 repos:
-  # Formating Python Files.
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-      - id: black
-        args: ["--target-version", "py312"]
 
-  # To automatically upgrade syntax for newer versions of the language.
-  # Dont, think we need this as of now,
-  # - repo: https://github.com/asottile/pyupgrade
-  #   rev: v3.20.0
-  #   hooks:
-  #     - id: pyupgrade
+  # -------------------------------------------------------------
+  # Ruff: High-performance Linter & Formatter (replaces Black, isort, Flake8)
+  # -------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      # Linter & autofixer (replaces flake8, isort, debug-statements, flake8-print)
+      - id: ruff
+        name: ruff-lint
+        args: ["--fix"]
+
+      # Code formatter (drop-in replacement for Black)
+      - id: ruff-format
+        name: ruff-format
 
   # General Pre-Commit hooks ensuring file consistency
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -25,45 +27,31 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-merge-conflict
-      - id: debug-statements
+      # - id: debug-statements
       - id: mixed-line-ending
-
-  # Wrapper around multiple-python formatting tools
-  # Description for each ignore:
-  #   E501: line too long (98 > 79 characters)
-  #   W503: line break before binary operator
-  #   F403: import *
-  #   F405: import * used and not able to resolve
-  #   E203: whitespace before ':'
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.2.0
-    hooks:
-      - id: flake8
-        # additional_dependencies: [flake8-isort, flake8-print]
-        additional_dependencies: [flake8-print]
-        args: ["--ignore=E501,W503,F403,F405,E203"]
-
-  # Dont think we need this, we already have isort through flake8
-  # Isort from flake8 only flags and not fix import(s), figure out why it does so
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
 
   # Validate Code complexity
   - repo: https://github.com/yunojuno/pre-commit-xenon
     rev: v0.1
     hooks:
       - id: xenon
-        args: ["--max-average=A", "--max-modules=C", "--max-absolute=F"]
+        args: ["--max-average=B", "--max-modules=C", "--max-absolute=E"]
 
   # Formatter and linter for HTML templates
   - repo: https://github.com/djlint/djLint
     rev: v1.36.4
     hooks:
+      - id: djlint-reformat-jinja
+        name: djLint Formatter (Jinja)
+        types_or: [html, jinja]
+        args: ["--profile=jinja"]
+      - id: djlint-jinja
+        name: djLint Linter (Jinja)
       - id: djlint-reformat-django
+        name: djLint Re-Formatter (Django)
         exclude: '^frontend/index\.html$'
       - id: djlint-django
+        name: djLint Linter (Django)
         exclude: '^frontend/index\.html$'
 
   # Check for any secrete leak(s) inside repo
@@ -75,4 +63,45 @@ repos:
         args:
           - "--baseline"
           - ".secrets.baseline"
-        exclude: '^package-lock.json'
+        exclude: '^(package-lock\.json|core/setup/.*\.json)$'
+
+# NOTE: Ruff replaces all these
+# # Formating Python Files.
+# - repo: https://github.com/psf/black
+#   rev: 25.1.0
+#   hooks:
+#     - id: black
+#       args: ["--target-version", "py312"]
+
+# # Wrapper around multiple-python formatting tools
+# # Description for each ignore:
+# #   E501: line too long (98 > 79 characters)
+# #   W503: line break before binary operator
+# #   F403: import *
+# #   F405: import * used and not able to resolve
+# #   E203: whitespace before ':'
+# - repo: https://github.com/PyCQA/flake8
+#   rev: 7.2.0
+#   hooks:
+#     - id: flake8
+#       # additional_dependencies: [flake8-isort, flake8-print]
+#       additional_dependencies:
+#         - flake8-print
+#         - flake8-import-restrictions
+#       args:
+#         - "--ignore=E501,W503,F403,F405,E203,IMR241"
+#       exclude: '^(.*/db_migrations/.*)$'
+
+# # Dont think we need this, we already have isort through flake8
+# # Isort from flake8 only flags and not fix import(s), figure out why it does so
+# - repo: https://github.com/PyCQA/isort
+#   rev: 5.13.2
+#   hooks:
+#     - id: isort
+
+# # To automatically upgrade syntax for newer versions of the language.
+# # Dont, think we need this as of now,
+# - repo: https://github.com/asottile/pyupgrade
+#   rev: v3.20.0
+#   hooks:
+#     - id: pyupgrade

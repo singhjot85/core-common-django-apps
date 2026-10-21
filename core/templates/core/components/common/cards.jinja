@@ -1,0 +1,137 @@
+{# Cards Macro Component #}
+{% from "core/components/common/icons.jinja" import icon as render_icon %}
+{% from "core/components/common/buttons.jinja" import button as render_button %}
+{% macro card(title=None, subtitle=None, header_actions=None, footer_content=None, extra_classes="") %}
+    <div class="card{% if extra_classes %} {{ extra_classes }}{% endif %}"
+         {{ kwargs|xmlattr }}>
+        {% if title or subtitle or header_actions %}
+            <div class="card-header">
+                <div>
+                    {% if title %}<h3 class="card-title">{{ title }}</h3>{% endif %}
+                    {% if subtitle %}<p class="text-muted mb-0">{{ subtitle }}</p>{% endif %}
+                </div>
+                {% if header_actions %}<div class="card-actions">{{ header_actions|safe }}</div>{% endif %}
+            </div>
+        {% endif %}
+        <div class="card-body">
+            {% if caller %}{{ caller() }}{% endif %}
+        </div>
+        {% if footer_content %}<div class="card-footer">{{ footer_content|safe }}</div>{% endif %}
+    </div>
+{% endmacro %}
+{% macro stat_card(label, value, subtext=None, icon=None, trend=None, trend_variant="success", extra_classes="") %}
+    <div class="stat-card{% if extra_classes %} {{ extra_classes }}{% endif %}"
+         {{ kwargs|xmlattr }}>
+        <div class="flex items-center justify-between">
+            <span class="stat-card-label">{{ label }}</span>
+            {% if icon %}<span class="stat-card-icon">{{ icon|safe }}</span>{% endif %}
+        </div>
+        <div class="stat-card-value">{{ value }}</div>
+        {% if trend %}
+            <div class="flex items-center gap-xs font-size-xs mt-xs">
+                <span class="badge badge-{{ trend_variant }}">{{ trend }}</span>
+                {% if subtext %}<span class="text-muted">{{ subtext }}</span>{% endif %}
+            </div>
+        {% elif subtext %}
+            <div class="stat-card-subtext">{{ subtext }}</div>
+        {% endif %}
+    </div>
+{% endmacro %}
+{% macro gauge_card(label, value, status="Optimal", percent=0, details_left=None, details_right=None, icon=None, progress_variant="secondary", extra_classes="") %}
+    <div class="card p-md flex flex-col justify-between{% if extra_classes %} {{ extra_classes }}{% endif %}"
+         {{ kwargs|xmlattr }}>
+        <div>
+            <div class="flex items-center justify-between mb-sm">
+                <span class="font-size-sm font-weight-medium text-muted">{{ label }}</span>
+                {% if icon %}<span class="text-muted">{{ icon|safe }}</span>{% endif %}
+            </div>
+            <div class="flex items-baseline justify-between mb-sm">
+                <span class="font-size-2xl font-weight-bold">{{ value }}</span>
+                {% if status %}<span class="badge badge-{{ progress_variant }}">{{ status }}</span>{% endif %}
+            </div>
+            <div class="progress-bar">
+                <div class="progress-bar-fill progress-bar-{{ progress_variant }}"
+                     style="width: {{ percent }}%"></div>
+            </div>
+        </div>
+        {% if details_left or details_right %}
+            <div class="flex items-center justify-between text-muted font-size-xs mt-sm font-family-mono">
+                <span>{{ details_left or '' }}</span>
+                <span>{{ details_right or '' }}</span>
+            </div>
+        {% endif %}
+    </div>
+{% endmacro %}
+{% macro service_card(title, status="Connected", status_variant="success", metrics=[], action_label=None, action_href="#", action_modal=None, icon=None, extra_classes="") %}
+    <div class="card p-md flex flex-col justify-between{% if extra_classes %} {{ extra_classes }}{% endif %}"
+         {{ kwargs|xmlattr }}>
+        <div>
+            <div class="flex items-center justify-between pb-sm mb-sm border-b">
+                <div class="flex items-center gap-sm">
+                    {% if icon %}<span class="text-primary">{{ icon|safe }}</span>{% endif %}
+                    <h3 class="font-weight-semibold font-size-base mb-0">{{ title }}</h3>
+                </div>
+                {% if status %}<span class="badge badge-{{ status_variant }}">{{ status }}</span>{% endif %}
+            </div>
+            {% if metrics %}
+                <div class="service-metrics-list py-xs">
+                    {% for m in metrics %}
+                        <div class="service-metric-row flex items-center justify-between py-xs">
+                            <span class="font-size-sm text-muted">{{ m.label }}</span>
+                            <span class="font-size-sm font-weight-semibold font-family-mono {{ m.value_classes or '' }}">{{ m.value }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        {% if action_label %}
+            <div class="pt-sm mt-sm border-t">
+                {% if action_modal %}
+                    {{ render_button(label=action_label, variant="outline", size="sm", extra_classes="w-full", attrs={"data-modal-target": action_modal}) }}
+                {% else %}
+                    {{ render_button(label=action_label, href=action_href, variant="outline", size="sm", extra_classes="w-full") }}
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+{% endmacro %}
+{% macro status_banner(title, description=None, badge_text=None, badge_variant="success", extra_classes="") %}
+    <div class="status-banner{% if extra_classes %} {{ extra_classes }}{% endif %}"
+         {{ kwargs|xmlattr }}>
+        <div class="flex items-center gap-md">
+            <div class="status-indicator">
+                <span class="status-indicator-pulse"></span>
+                <span class="status-indicator-dot"></span>
+            </div>
+            <div>
+                <div class="flex items-center gap-sm">
+                    <h2 class="status-banner-title">{{ title }}</h2>
+                    {% if badge_text %}<span class="badge badge-{{ badge_variant }}">{{ badge_text }}</span>{% endif %}
+                </div>
+                {% if description %}<p class="status-banner-desc text-muted mb-0">{{ description }}</p>{% endif %}
+            </div>
+        </div>
+        {% if caller %}<div class="status-banner-actions">{{ caller() }}</div>{% endif %}
+    </div>
+{% endmacro %}
+{% macro telemetry_strip(title=None, subtitle=None, status_badge="CELERY QUEUE READY", sync_status="SYNC OK", extra_classes="") %}
+    <div class="telemetry-strip{% if extra_classes %} {{ extra_classes }}{% endif %}"
+         {{ kwargs|xmlattr }}>
+        <div class="flex items-center gap-sm">
+            {{ render_icon("terminal", extra_classes="text-muted") }}
+            <div class="flex flex-col">
+                {% if title %}<span class="telemetry-title">{{ title }}</span>{% endif %}
+                {% if subtitle %}<span class="telemetry-subtitle">{{ subtitle }}</span>{% endif %}
+            </div>
+        </div>
+        <div class="flex items-center gap-sm font-size-xs">
+            {% if status_badge %}
+                <span class="badge badge-success flex items-center gap-xs">
+                    <span class="status-indicator-dot status-indicator-dot-sm"></span>
+                    {{ status_badge }}
+                </span>
+            {% endif %}
+            {% if sync_status %}<span class="text-muted font-size-xs font-family-mono">{{ sync_status }}</span>{% endif %}
+        </div>
+    </div>
+{% endmacro %}

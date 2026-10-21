@@ -14,16 +14,24 @@ LOGGER = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def provision_tenant_schema(self, tenant_id):
+def provision_tenant_schema(self, tenant_id: str):
     """
     Provision a tenant schema for creation, the scehma is not created on main thread its offloaded to an task queue
     """
+    if not tenant_id:
+        LOGGER.error("Tenant id not provided.")
+        return
 
     TenantModel: type["Tenants"] = get_tenant_model()
+
     try:
         tenant = TenantModel.objects.get(id=tenant_id)
     except TenantModel.DoesNotExist:
         LOGGER.error(f"Tenant {tenant_id} not found.")
+        return
+
+    if tenant.status == TenantStatus.READY:
+        LOGGER.info(f"Tenant {tenant.schema_name} is already provisioned and READY.")
         return
 
     try:
@@ -34,14 +42,12 @@ def provision_tenant_schema(self, tenant_id):
         tenant.create_schema(check_if_exists=True, sync_schema=True, verbosity=1)
 
         # 3. Mark tenant as READY
-        tenant.status = TenantStatus.READY
-        tenant.save(update_fields=["status"])
+        TenantModel.objects.filter(id=tenant.id).update(status=TenantStatus.READY)
         LOGGER.info(f"Tenant {tenant.schema_name} provisioned successfully.")
 
     except Exception as exc:
         LOGGER.exception(
             f"Failed to migrate schema for tenant {tenant.schema_name}: {exc}"
         )
-        tenant.status = TenantStatus.FAILED
-        tenant.save(update_fields=["status"])
+        TenantModel.objects.filter(id=tenant.id).update(status=TenantStatus.FAILED)
         raise exc

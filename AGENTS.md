@@ -1,12 +1,12 @@
 # AGENTS.md — Developer & AI Agent Context Guide
 
-This document defines the architectural patterns, coding standards, design strategies, and exploration workflows for AI agents and developers working on this codebase.
+Architectural patterns, coding standards, and workflows for AI agents and developers working on this codebase.
 
-## 1. Repository Topology & Architectural Overview
+## 1. Overview & Hard Rules
 
-The repository is designed as a reusable, production-ready Django core framework (typically consumed as a submodule or base package). It emphasizes modularity, multi-tenant isolation, swappable model declarations, and decoupled configuration.
+This repository is a reusable, production-ready Django core framework, typically consumed as a submodule or base package. It emphasizes modularity, multi-tenant isolation, swappable model declarations, and decoupled configuration.
 
-### Directory Structure Pattern
+### Directory Structure
 
 ```
 ├── core/
@@ -20,221 +20,369 @@ The repository is designed as a reusable, production-ready Django core framework
 │   │   ├── file_handling.py     # Dynamic module loading & introspection
 │   │   ├── lazy_objects.py      # Runtime lazy choice registries
 │   │   ├── routers.py           # Environment-aware API routing
-│   │   └── tasks.py             # Standardized Celery task queueing wrapper
+│   │   └── tasks.py             # Standardized Celery task queueing wrapper (queue_task)
 │   └── apps/                    # Modular, swappable core apps
 │       └── <app_name>/          # Structured domain modules
 ├── sample_project/              # Reference host project and integration templates
 └── scripts/                     # Operational and development utilities
 ```
 
-## 2. File Scanning & Codebase Navigation Guide
+### Hard Rules (never violate)
 
-When exploring or modifying modules across this repository, follow this systematic order:
+Each rule is explained in the section named in brackets.
 
-1. **Check Module Documentation (`Readme.md`)**: Each subpackage maintains a concise `Readme.md` explaining its architectural role, key models, and usage patterns.
-2. **Inspect App Settings (`app_settings.py`)**: Identifies declared settings, type validations, default strategies, runtime `Constance` flags, and dynamic `Configuration` bindings.
-3. **Inspect Constants & Registries (`constants.py` / `interfaces/`)**: Review enumerations, status choices, and runtime choices registered into `LazyDynamicChoiceTypes`.
-4. **Inspect Abstract Models (`models_abstract.py`)**: Abstract base classes contain the actual business logic, managers, clean methods, and lifecycle hooks.
-5. **Inspect Concrete Models (`models.py`)**: Checks swappability settings (`swappable = "APP_MODEL_KEY"`).
-6. **Inspect Tasks & Asynchronous Workers (`tasks.py`)**: Checks background jobs, schema migration tasks, and Celery worker routines.
-7. **Inspect API Surface (`api/serializers.py`, `api/views.py`, `urls.py`)**: Identifies endpoints, serializers, viewsets, and permissions.
+- **Never** import concrete models directly. Use the model getters. [4.2]
+- **Never** call `.delay()` / `.apply_async()` directly. Use `queue_task()`. [4.7]
+- **Never** run external calls or network I/O on the HTTP request thread. [4.4]
+- **Never** instantiate a settings class inside `app_settings.py`. [4.3]
+- **Never** override core settings (`CORE_BASE_DIR` etc.) to suit a host project. [4.3]
+- **Never** hardcode colors/spacing in templates or write inline JS. [4.8]
+- **Never** put `unittest.mock` imports or `if testing:` branches in production code. [3, Phase 4]
+- **Never** fix a stale migration or the test DB yourself, and never delete or re-create the test DB. Report it and wait. [3, Phase 4]
+- **Never** run plain `poetry`, `pytest`, or `docker` commands for tests. Use the `make` targets. [3, Phase 4]
+- **Never** bypass pre-commit hooks. [3, Phase 4]
+- **Never** log secrets or PII. Route PII-bearing data through `ContentMaskingUtils`. [3, Phase 2]
 
-## 3. Four-Phase Development Lifecycle
+### Precedence
 
-All non-trivial logic additions and refactors should be planned across four distinct phases:
+If instructions conflict: Hard Rules > the Phase workflow in section 3 > section 4 design norms > section 7 (Ponytail). Ponytail decides _how little code to write_ inside the workflow. It never skips the analysis, review gate, tests, or pre-commit steps.
 
-### Phase 1: Analysis Phase
+## 2. Codebase Navigation Guide
 
-- **Input & Output Contracts**:
-  - Define explicit data types. Use `typing.TYPE_CHECKING` for type-only model/class imports to avoid circular dependencies and premature app loading.
-- **Missing Data & Validation Strategy**:
-  - Raise domain exceptions ([`ObjectNotFound`](core/utils/error_handling/exceptions.py), [`InvalidTypeError`](core/utils/error_handling/exceptions.py)) or resolve pre-configured defaults from `constants.py` / dynamic database configurations.
-- **Thread & Process State Awareness**:
-  - **Main Request Thread**: HTTP lifecycle (must stay lightweight; never execute blocking I/O, heavy computation, or schema migrations here).
-  - **Delegated Worker Threads**: Celery tasks for background processing, heavy migrations, or external API integration.
-  - **Schema Context**: Multi-tenant database schema switching (`schema_context(schema_name)`).
-  - **Transaction Boundaries**: Plan database transactions (`transaction.atomic()`) and defer side effects to transaction commits (`on_commit=True`).
+Explore in this order and stop as soon as you have enough context:
 
-### Phase 2: Logical Writing Phase
+1. **graphify**: for a module overview, use graphify instead of scanning files (see section 6).
+2. **Module docs (`Readme.md`)**: most subpackages have a concise `Readme.md` covering architectural role, key models, and usage. Read it if it exists.
+3. **App settings (`app_settings.py`)**: declared settings, type validation, default strategies, `Constance` flags, `Configuration` bindings.
+4. **Constants & registries (`constants.py` / `interfaces/`)**: enumerations, status choices, and choices registered into `LazyDynamicChoiceTypes`.
+5. **Abstract models (`models_abstract.py`)**: the actual business logic, managers, `clean` methods, lifecycle hooks.
+6. **Concrete models (`models.py`)**: swappability (`swappable = "APP_MODEL_KEY"`).
+7. **Tasks (`tasks.py`)**: background jobs, schema migration tasks, Celery routines.
+8. **API surface (`api/serializers.py`, `api/views.py`, `urls.py`)**: endpoints, serializers, viewsets, permissions.
+9. **Templates & frontend (`core/templates/`, `<app>/templates/`)**: read `core/templates/Readme.md` before any template or frontend change (see 4.8).
 
-- Write clean, self-contained logic addressing functional requirements.
-- **Fail Fast**: Check for missing parameters and unexpected data types at the beginning of functions.
-- **Order of Execution**: Handle trivial, frequent execution paths first to minimize unnecessary CPU cycles before processing complex branch logic (e.g., M2M relations, reverse relations).
+## 3. Development Workflows
 
-### Phase 3: Refactor Phase
+### Step 0: Triage (always first)
 
-- Break monolithic logic into modular, single-responsibility helper functions or service classes.
-- Apply DRY and Object-Oriented Principles (encapsulate specialized field setters, e.g. passwords, files).
-- Keep functions pure where practical, separating validation logic from mutation logic.
+| Track                    | Use when                                                                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Bug-Fix Flow**         | Existing behavior is wrong and the fix stays inside current models, tasks, and interfaces (includes typos and small config fixes) |
+| **Four-Phase Lifecycle** | New feature, new or changed model/task/cron, behavior change, or a refactor                                                       |
 
-### Phase 4: Testing & Quality Phase
+**Escalate to the Four-Phase Lifecycle.** Stop, say why, and wait for the user if any of these is true:
 
-- Mock external APIs, I/O boundaries, and Celery tasks.
-- **Never Accommodate `Mock` in Production Logic (Anti-Pattern)**:
-  Production framework code (such as `BaseMeta`, `BaseSeeder`, descriptors, managers) must never import `unittest.mock` or check `isinstance(..., Mock)`. Production validation must enforce genuine domain types (`isinstance(model, type) and issubclass(model, models.Model)`). If needed, use real models or factories in tests instead of forcing production code to accept mock types.
-- Validate multi-tenant schema isolation where applicable.
-- **Pre-Commit Hooks Verification**:
-  - Always run `poetry run pre-commit run --all-files` post changes.
-  - Ensure all hooks (Black formatting, isort import sorting, flake8 linting, whitespace, YAML check) pass successfully with zero errors before considering any task complete.
+- The fix needs a new or changed model, migration, task, cron, or setting.
+- It changes a public interface (signatures, API contract, serializer fields).
+- The root cause is a design flaw, or there are several reasonable fixes with trade-offs.
+- It spans more than one app or more than ~3 files.
+
+If you cannot reproduce the bug or find the root cause after a reasonable attempt, stop and report what you found. Do not guess-fix.
+
+### Bug-Fix Flow
+
+1. **Reproduce:** write a failing regression test first (factories, per Phase 4 test rules). The test proves the bug exists and later proves it's fixed.
+2. **Locate:** `graphify query` / `graphify explain` first, then read only the lines it points to. Grep every caller of the function you will touch.
+3. **Fix the root cause once**, in the shared code, not at the symptom. No drive-by refactors and no scope beyond the bug. Fail fast, query discipline, and `queue_task` rules from Phase 2 still apply to any code you write.
+4. **Verify:** the new test passes. Run the narrowest `make` target, then `make t DIR=<app>` for the touched app.
+5. **Close out:** `poetry run pre-commit run --all-files`, then `graphify update .`. Update the app `Readme.md` only if documented behavior changed.
+6. **Report in the final message:** root cause, the fix, the test added, what you did not check, and anything adjacent you noticed but deliberately left alone.
+
+All Phase 4 hard rules apply here too: make targets only, the stale migration/test DB protocol, no mocks in production code, and never bypass hooks.
+
+### Four-Phase Lifecycle
+
+Use for the Full-lifecycle track. Do not start a phase before the previous one is done.
+
+#### Phase 1: Analysis (the `What` phase)
+
+**Use:** the first phase for every new requirement, including plan mode and `/plan`.
+**Goal:** identify what needs to be built and which restrictions or blockers affect it.
+**Do not write implementation code in this phase.** Reading existing code is fine.
+
+**Workflow**
+
+1. Create a log at `docs/analysis/<feature-slug>.md` before analyzing.
+2. Iterate as needed. After each iteration, edit the log in place: improve it, compact it, and remove superseded notes instead of appending.
+3. After each iteration, present a short plan summary and the open points that need discussion, each with your recommendation. Then **stop and wait for user feedback.**
+4. After the final iteration, use the log to build the task and document it (docstrings or `Readme.md`).
+
+**1. System analysis**
+
+- Before deciding "existing vs new", run `graphify query` to find existing models, tasks, crons, and patterns (see section 6). Do not guess from memory.
+- Input data (structure, type), input source (API call, cron job, async task), and output contract (database, API response).
+- Does the task need any of the following?
+  - Caching (frequently accessed data)
+  - Async tasks (long-running or external-I/O-dependent work)
+  - Database changes
+  - Cron scheduling (periodic or event-based runs)
+- Database: can existing models be used, or do we need new ones? When planning new models, consider the expected queries and the volume of data going into each table.
+- Async tasks and crons: do suitable ones already exist, or do we need new ones?
+- Architecture: can an existing pattern be used, or does this need something new? If new, justify why.
+
+**2. Data analysis**
+
+- Missing or invalid data: raise an exception, roll back the transaction, or only log the failure?
+- Retries: is active retry logic needed? If so, define the mechanism, max attempts, backoff, and what happens when retries are exhausted.
+- Errors: what is logged, at what level, and with what context?
+- Exceptions: reuse existing ones first (`core/utils/error_handling/exceptions.py`, then Django/DRF built-ins). Propose a new exception only if none fit.
+
+**3. Thread & process state awareness**
+
+- **Main request thread:** HTTP lifecycle. Must stay lightweight. Never run blocking I/O, heavy computation, or schema migrations here.
+- **Worker threads:** Celery tasks handle background processing, heavy migrations, and external API integration.
+- **Schema context:** multi-tenant schema switching uses `schema_context(schema_name)`. Celery tasks do not inherit the request's schema, so pass the schema name explicitly.
+- **Transaction boundaries:** plan `transaction.atomic()` blocks. Dispatch side effects (tasks, emails, webhooks) through `queue_task` (4.7) so they fire only after commit.
+
+**Done when:** every item above is answered (or marked N/A with a reason) and the user has approved the plan.
+
+#### Phase 2: Logical Writing (the `How` phase)
+
+Start only after the Phase 1 plan is approved. If a requirement is missing or unclear, go back to Phase 1 instead of guessing. Write clean, self-contained logic for the approved plan and add no scope beyond it.
+
+- **Scaffolding:** use `make start-app` to create a new app. See 4.1 for file layout.
+- **Fail fast:** validate parameters and data types at the top of each function and raise early, using the exceptions chosen in Phase 1. Do not let bad input travel deep into the logic.
+- **Order of execution:** handle cheap, frequent paths first (early returns, simple field checks, cached lookups) before expensive branches such as M2M or reverse relations. Do not run extra queries for data the common path never uses.
+- **Query discipline:** avoid N+1 queries. Use `select_related` / `prefetch_related` for reads and `bulk_create` / `bulk_update` for batch writes.
+- **Side effects:** dispatch tasks, emails, and webhooks through `queue_task` (4.7). Pass IDs or serialized data to tasks, never model instances.
+- **Logging:** log failures with enough context to debug (IDs, schema name). Never log secrets or PII. Route data expected to contain PII through `ContentMaskingUtils`.
+
+**Done when:** the logic satisfies the approved plan, handles the failure cases decided in Phase 1, and runs without errors. Polish belongs to Phase 3.
+
+#### Phase 3: Refactor
+
+Refactor only after the logic works. Behavior must not change: run the existing tests before and after, and add tests first if the code has none.
+
+- Follow section 7 (Ponytail): make the smallest complete change, and before touching shared code, find every caller (use `graphify path` / `graphify explain` first, then grep) and fix the root cause once.
+- Break monolithic logic into single-responsibility helper functions or service classes. Rule of thumb: if a function needs "and" to describe it, split it.
+- Apply DRY and OO principles. Encapsulate specialized field handling (password hashing, file uploads) in one place (model method, service, or custom field) so every caller gets the same behavior.
+- Keep functions pure where practical: separate validation (no side effects, returns or raises) from mutation (DB writes, external calls).
+- Do not abstract early. Extract a helper when duplication is real (about the third occurrence) or it isolates a distinct responsibility. Do not build a framework for a single use.
+- Keep the public interface (signatures, API contracts) stable unless the approved plan says otherwise.
+
+**Done when:** tests pass, no logic is duplicated, each function has one responsibility, and docstrings reflect final behavior.
+
+#### Phase 4: Testing & Quality
+
+Start only after Phase 3. Tests describe the behavior in the approved Phase 1 plan, including its failure cases.
+
+**Test design**
+
+- Run the full workflow end to end. Mock/patch only external APIs and I/O boundaries (HTTP calls, file storage, email/SMS gateways). Never mock internal services, helpers, or the ORM.
+- Never mock database objects. Create real instances with factories (`factories.py`). If no factory exists, create one.
+- Celery tasks: run them eagerly when verifying the workflow (e.g. `CELERY_TASK_ALWAYS_EAGER`; confirm against this project's test settings). Mock a task only when it calls an external API or I/O boundary.
+- Multi-tenant code: validate schema isolation (data created in tenant A must not be visible from tenant B).
+- Cover the Phase 1 paths: happy path, each missing/invalid-data case (assert the exact exception), retry behavior, and post-commit side effects (fire only after commit, never on rollback). Use your test framework's on-commit capture helper, because plain test transactions never commit.
+- Group related tests under classes. Name tests for behavior (`test_raises_when_schema_missing`), not for the function.
+
+**Running tests** (always the make targets, never plain `poetry`, `pytest`, or `docker`)
+
+| Command                                      | Runs           |
+| -------------------------------------------- | -------------- |
+| `make t` / `make test`                       | all tests      |
+| `make t DIR=<path>` / `make test DIR=<path>` | one directory  |
+| `make tf TEST_FILTER=<expr>`                 | filtered tests |
+
+Use the narrowest target while iterating, then the full suite before finishing.
+
+**Migrations & test database (hard rules)**
+
+- Never fix a stale migration or database yourself. Never delete or re-create the test DB.
+- If tests fail from a stale migration or table, **stop and report**: which migration or table is stale, the evidence (error message, missing column), and the suggested fix. Then wait for the user to apply it.
+
+**No `Mock` in production logic (anti-pattern)**
+
+- Production framework code (`BaseMeta`, `BaseSeeder`, descriptors, managers) must never import `unittest.mock` or check `isinstance(..., Mock)`.
+- Production validation must enforce genuine domain types, e.g. `isinstance(model, type) and issubclass(model, models.Model)`.
+- If a test cannot satisfy that validation, fix the test with a real model or factory. Do not loosen production code, and do not add `if testing:` or settings-based branches.
+
+**Pre-commit verification**
+
+- `pre-commit` is the only command allowed to run on the host machine, outside the container.
+- After changes, run `poetry run pre-commit run --all-files`.
+- All hooks (Black, isort, flake8, whitespace, YAML check) must pass with zero errors. If a hook auto-fixes files, rerun until clean.
+- Never bypass hooks (`--no-verify`, skipping hooks, disabling a lint rule). Fix the cause, or ask the user if a rule genuinely needs an exception.
+
+**Done when:**
+
+- all tests pass via the make targets, no mocks are used outside external API/I/O boundaries, pre-commit is clean, and the final report states what was tested, what was not, and any stale migration/DB issue waiting on the user.
+- `graphify update .` has been run after code changes (see section 6).
 
 ## 4. Key Design Norms & Architectural Rules
 
-### 1. Models (`models_abstract.py` & `models.py`)
+### 4.1 App Structure & File Conventions
 
-> **Architecture in 1–2 Lines**:
-> Abstract models (`models_abstract.py`) define all fields, managers, clean methods, and business logic. Concrete models (`models.py`) subclass abstract models, add no new fields, and declare swappability (`swappable = "APP_MODEL_KEY"`).
+- App-wide settings go in `app_settings.py`.
+- Models are built as abstracts in `models_abstract.py`. If an app has many models, split into `models_abstract/<model_name>.py`. Only swappable concretes go in `models.py`.
+- Factories go in `factories.py` and admin classes in `admin.py`.
+  - Public apps register admin on `public_admin_site`.
+  - Tenant apps register admin on `private_admin_site`.
+- Keep imports at module level. Use inline imports only to break an unavoidable circular dependency.
 
-#### How to Work with Models
+### 4.2 Models (`models_abstract.py` & `models.py`)
 
-- **NEVER Import Concrete Models Directly**:
-  - **Forbidden**: `from core.apps.users.models import User` or `from .models import Invoice`.
-  - **Why?** Direct imports bind logic to specific concrete implementations at module load time, bypassing Django's swappable model mechanism (`swappable = "APP_MODEL_KEY"`) and breaking custom model overrides provided by consuming projects.
-- **Dynamic Model Getters**:
-  - Every modular app must define and export model getter functions in its root `__init__.py` (e.g., `get_user_model()`, `get_customer_model()`, `get_invoice_model()`) backed by `django.apps.apps.get_model(settings.<APP>_<MODEL>_MODEL, require_ready=False)`.
-  - Serializers, ViewSets, admin classes, tasks, managers, and services must always resolve their models using these getter functions:
-    ```python
-    from core.apps.users import get_user_model
+> Abstract models define all fields, managers, clean methods, and business logic. Concrete models subclass them, add no new fields, and declare swappability (`swappable = "APP_MODEL_KEY"`).
 
-    User = get_user_model()
-    ```
-  - **Resolve at Module Level**: Assign `User = get_user_model()` once at module level in serializers, views, and services. Avoid calling `get_user_model()` repeatedly inside method bodies or loops.
-- **Static Typing with `typing.TYPE_CHECKING`**:
-  - Always use `if typing.TYPE_CHECKING:` to import abstract classes (e.g. `from core.apps.users.models_abstract import AbstractUser`) for type annotations. This guarantees full IDE auto-complete and static analysis without triggering premature runtime imports or circular dependencies:
-    ```python
-    import typing
+- **Never import concrete models directly** (`from core.apps.users.models import User`, `from .models import Invoice`). Direct imports bind logic to a concrete class at load time, bypass Django's swappable mechanism, and break overrides in consuming projects.
+- **Use dynamic model getters.** Every modular app exports getters from its root `__init__.py` (`get_user_model()`, `get_customer_model()`, `get_invoice_model()`), backed by `django.apps.apps.get_model(settings.<APP>_<MODEL>_MODEL, require_ready=False)`. Serializers, viewsets, admin, tasks, managers, and services must resolve models through them.
+- **Resolve once, at module level:** `User = get_user_model()`. Never call a getter repeatedly inside `validate_*()`, `save()`, view actions, or loops.
 
-    if typing.TYPE_CHECKING:
-        from core.apps.users.models_abstract import AbstractUser
+  ```python
+  from core.apps.users import get_user_model
 
-    def process_user(user: "AbstractUser") -> None: ...
-    ```
-- **Foreign Key Declarations**:
-  - Always reference foreign models via settings strings (e.g., `to=settings.AUTH_USER_MODEL`, `to=settings.CRM_CUSTOMER_MODEL`). Never pass concrete classes directly to `models.ForeignKey()`.
-- **No Multi-Table Inheritance (MTI)**:
-  - Multi-table inheritance (`class Child(ParentModel)`) creates unnecessary joins and migration complexity.
-  - Use a single concrete table per entity with discriminator fields (`type`, `sub_type`, `status`) and abstract mixins for shared behavior.
-- **Base Model Hierarchy (`core.utils.models`)**:
-  - Standard entities inherit from `BaseModel` (UUID PK, timestamps, soft delete: `is_removed`, `removed_by`).
-  - Configuration/schema entities inherit from `BaseVersioningModel` (semantic versions `version_major/minor/patch`, `bump_version()`).
-  - Event/audit records inherit from `BaseLogModel` (UUID PK, timestamps, choice-based `status`, `status_changed`).
-  - `.delete()` soft-deletes rows by default (`is_removed=True`). Hard deletion requires explicit `soft=False`.
+  User = get_user_model()
+  ```
 
----
+- **Type annotations:** import abstract classes under `typing.TYPE_CHECKING` and use quoted annotations. This gives IDE support without premature imports or cycles.
 
-### 2. App Settings (`app_settings.py` & `__init__.py`)
+  ```python
+  import typing
 
-> **Architecture in 1–2 Lines**:
-> App settings define declarative descriptors (`Settings`, `Constance`, `Configuration`) on an app-specific `BaseSettings` class, instantiated as a shared singleton in the app's root `__init__.py`.
+  if typing.TYPE_CHECKING:
+      from core.apps.users.models_abstract import AbstractUser
 
-#### Rules & Descriptor Lifecycle Constraints
+  def process_user(user: "AbstractUser") -> None: ...
+  ```
 
-- **Class Definition vs. Initialization**:
-  - **NEVER** instantiate the settings class inside `app_settings.py`. Only define the class `class <App>Settings(BaseSettings):` inside `app_settings.py`.
-  - Instantiate the shared singleton inside the app root `__init__.py`:
+- **Foreign keys:** reference models by settings string (`to=settings.AUTH_USER_MODEL`, `to=settings.CRM_CUSTOMER_MODEL`). Never pass a concrete class to `models.ForeignKey()`.
+- **No multi-table inheritance.** `class Child(ParentModel)` adds joins and migration complexity. Use one concrete table per entity with discriminator fields (`type`, `sub_type`, `status`) and abstract mixins for shared behavior.
+- **Base model hierarchy (`core.utils.models`):**
+  - `BaseModel`: standard entities (UUID PK, timestamps, soft delete via `is_removed`, `removed_by`).
+  - `BaseVersioningModel`: configuration/schema entities (`version_major/minor/patch`, `bump_version()`).
+  - `BaseLogModel`: event/audit records (UUID PK, timestamps, choice-based `status`, `status_changed`).
+  - `.delete()` soft-deletes by default (`is_removed=True`). Hard deletion requires explicit `soft=False`.
+
+### 4.3 App Settings (`app_settings.py` & `__init__.py`)
+
+> Declarative descriptors (`Settings`, `Constance`, `Configuration`) live on an app-specific `BaseSettings` subclass, instantiated as a shared singleton in the app's root `__init__.py`.
+
+- **Define vs. instantiate:**
+  - Only define `class <App>Settings(BaseSettings):` in `app_settings.py`. **Never** instantiate it there.
+  - Instantiate the singleton in the app root `__init__.py`, so imports are always `from core.apps.<app> import app_settings`:
+
     ```python
     # core/apps/<app>/__init__.py
     from core.apps.<app>.app_settings import <App>Settings
 
     app_settings: <App>Settings = <App>Settings()
     ```
-  - This ensures a single shared instance with unambiguous import paths: `from core.apps.<app> import app_settings`.
-- **Descriptor Lifecycle & Python Protocol (PEP 487)**:
-  - In Python, descriptor `__init__` runs **during** the class body execution, whereas `__set_name__(owner, name)` is called by the metaclass **only after** the entire class body has finished executing.
-  - Descriptors must initialize default attributes (`self.name = None`, `self.app_settings_key = None`) in `__init__`, and must **never** assume `self.app_settings_key` exists when handling exceptions in early `self.validate(self.default)` calls. Use `getattr(self, "app_settings_key", None)` safely.
-- **Deferred Model Imports During App Population**:
-  - When Django boots, `apps.populate()` imports installed apps before `apps.ready = True`.
-  - Descriptors using `SettingsType.DEFFERED_IMPORT` must handle `AppRegistryNotReady` gracefully so eager validation does not crash startup when importing models or model mixins.
-- **Supported Descriptor Types**:
-  - `Settings`: Static code configurations, lazy dotted imports (`SettingsType.IMPORT`, `SettingsType.DEFFERED_IMPORT`), model strings (`SettingsType.MODEL_IMPORT`), and Python primitive types (`int`, `str`, `bool`).
-  - `Constance`: Live admin-editable flags backed by `django-constance` with automatic fieldset registration.
-  - `Configuration`: Database-stored versioned JSON settings resolved per `interface_type` and cached per schema context.
-- **Zero Heavy Network Dependencies**:
-  - Adapter backends and descriptors must avoid requiring optional heavy external packages (e.g., prefer Python's standard library `http.client` / `_http_client` over external `requests` for token verification).
-- **Core Directory Isolation (`CORE_BASE_DIR`, `CORE_APP_DIR`, `CORE_SETUP_DIR`)**:
-  - **Never Override Core Settings for Inheriting Projects**: Inheriting projects (host projects) define their own `BASE_DIR` and `APP_DIR` pointing to their own project root and host apps. Core settings must never be hijacked or overridden to accommodate host projects.
-  - Core-internal paths (fixtures, dev seeders, autodiscovery) must always anchor to core-specific directory constants (`settings.CORE_BASE_DIR`, `settings.CORE_APP_DIR`, `settings.CORE_SETUP_DIR`).
-  - `FileDataSource` and `AutoDiscovery` must receive complete paths anchored to these constants (e.g. `FileDataSource(os.path.join(settings.CORE_APP_DIR, "crm/fixtures/..."))` or `AutoDiscovery(root_path=settings.CORE_APP_DIR)`), ensuring host projects overriding `BASE_DIR` never break core fixtures, seeders, or module resolution.
 
----
+- **Descriptor lifecycle (PEP 487):** descriptor `__init__` runs _during_ class body execution, but `__set_name__(owner, name)` runs only _after_ the class body finishes.
+  - Initialize defaults (`self.name = None`, `self.app_settings_key = None`) in `__init__`.
+  - Never assume `self.app_settings_key` exists in exception handling during early `self.validate(self.default)` calls. Use `getattr(self, "app_settings_key", None)`.
+- **Deferred model imports:** Django imports installed apps in `apps.populate()` before `apps.ready = True`. Descriptors using `SettingsType.DEFFERED_IMPORT` must handle `AppRegistryNotReady` gracefully so eager validation never crashes startup.
+- **Descriptor types:**
+  - `Settings`: static code configuration, lazy dotted imports (`SettingsType.IMPORT`, `SettingsType.DEFFERED_IMPORT`), model strings (`SettingsType.MODEL_IMPORT`), and primitives (`int`, `str`, `bool`).
+  - `Constance`: live admin-editable flags backed by `django-constance`, with automatic fieldset registration.
+  - `Configuration`: database-stored, versioned JSON settings resolved per `interface_type` and cached per schema context.
+- **No heavy network dependencies:** adapters and descriptors must not require optional heavy packages. Prefer the standard library (`http.client` / `_http_client`) over `requests` for token verification.
+- **Core directory isolation (`CORE_BASE_DIR`, `CORE_APP_DIR`, `CORE_SETUP_DIR`):**
+  - Host projects define their own `BASE_DIR` and `APP_DIR`. Never override or hijack core settings to accommodate them.
+  - Core-internal paths (fixtures, dev seeders, autodiscovery) must anchor to the core constants.
+  - `FileDataSource` and `AutoDiscovery` must receive complete anchored paths, e.g. `FileDataSource(os.path.join(settings.CORE_APP_DIR, "crm/fixtures/..."))` or `AutoDiscovery(root_path=settings.CORE_APP_DIR)`, so a host project overriding `BASE_DIR` never breaks core fixtures, seeders, or module resolution.
 
-### 3. Views & API (`api/views.py`, `api/serializers.py`)
+### 4.4 Views & API (`api/views.py`, `api/serializers.py`)
 
-> **Architecture in 1–2 Lines**:
-> Views act as thin HTTP dispatchers delegating business logic to managers and services; serializers validate request schemas and format output data using dynamically resolved models.
+> Views are thin HTTP dispatchers that delegate business logic to managers and services. Serializers validate request schemas and format output using dynamically resolved models.
 
-#### Rules & Patterns
+- **Models and imports:** follow 4.1 and 4.2 (module-level getters, `TYPE_CHECKING` annotations, no inline imports).
+- **Serializers:**
+  - Always declare explicit `fields`. Never use `fields = "__all__"` on mutable entities.
+  - Declare `read_only_fields = ["id", "created", "modified", ...]`.
+  - Render choices with `serializers.CharField(source="get_<field>_display", read_only=True)`.
+  - Expose model properties (`full_name`, totals) as read-only fields.
+- **Views:**
+  - Restrict `http_method_names` to what the domain needs.
+  - Query `.available_objects` for soft-deletable models, with `select_related()` / `prefetch_related()` to prevent N+1.
+  - For asynchronous state changes (e.g. OTP dispatch), return `status.HTTP_202_ACCEPTED` immediately. This avoids leaking entity existence and keeps request threads free.
+  - **No synchronous external calls or network I/O on the request thread** (SMS, email, etc.). Queue them with `queue_task()`. If queuing fails, log the error only. Never fall back to a blocking external call in the request-response cycle.
 
-- **No Inline / Lazy Imports in Services & Views**:
-  - Keep imports clean at module level. Avoid inline `from core.apps... import ...` inside view methods or service functions unless breaking an unavoidable circular dependency.
-- **Module-Level Model Resolution**:
-  - Call model getters once at the module top level:
-    ```python
-    User = get_user_model()
-    ```
-  - Do not repeatedly call `User = get_user_model()` inside `validate_*()`, `save()`, or view action methods.
-- **Type Annotations via `typing.TYPE_CHECKING`**:
-  - Annotate user and model parameters using quoted type annotations backed by `if typing.TYPE_CHECKING:` imports:
-    ```python
-    def get_jwt_tokens_for_user(user: "AbstractUser") -> dict: ...
-    ```
-- **Serializer Invariants**:
-  - Always declare explicit `fields` lists. Never use `fields = "__all__"` on mutable entities.
-  - Explicitly declare `read_only_fields = ["id", "created", "modified", ...]`.
-  - Format choice representations using `serializers.CharField(source="get_<field>_display", read_only=True)`.
-  - Expose model properties (`full_name`, totals) as read-only serializer fields.
-- **View Invariants**:
-  - Restrict `http_method_names` according to domain requirements.
-  - Always query `.available_objects` for soft-deletable models and apply `select_related()` / `prefetch_related()` to prevent N+1 query bottlenecks.
-  - For asynchronous state changes (such as OTP dispatch), return `status.HTTP_202_ACCEPTED` immediately to avoid leaking entity existence or blocking request worker threads.
-  - **No Synchronous External Calls or Network I/O**: Views must never execute external service calls or network I/O (e.g., SMS/Email delivery) directly on the HTTP request thread. All external dispatches must be queued asynchronously via `queue_task()`. Errors during queuing must only be logged; never fall back to executing blocking external calls synchronously in the request-response cycle.
+### 4.5 URLs & Routers (`urls.py`)
 
----
+- Register ViewSets on routers from `get_api_router_instance()` (`SimpleRouter` in production, `DefaultRouter` in development for browsable docs).
+- Use kebab-case, pluralized resource paths with an explicit `basename`, e.g. `router.register("users", UserViewSet, basename="users")`.
 
-### 4. URLs & Routers (`urls.py`)
+### 4.6 Generators (`core/utils/generators/`)
 
-> **Architecture in 1–2 Lines**:
-> Modular app routing registers ViewSets on environment-aware DRF routers configured via `get_api_router_instance()`.
+> Cross-cutting generation strategies (usernames, tokens, codes) live in dedicated generator classes.
 
-#### Rules & Patterns
+- Encapsulate generation state, fallback ladders, and normalization inside the class (e.g. `UsernameGenerator`).
+- Provide an explicit `.generate(user_model=..., max_attempts=...)` method plus a functional helper (e.g. `generate_unique_username(...)`).
+- Write thorough docstrings covering argument priority, normalization rules, and collision escalation.
 
-- Register routers using `get_api_router_instance()` (`SimpleRouter` in production, `DefaultRouter` in development for browsable documentation).
-- Use kebab-case pluralized resource paths with an explicit `basename` (e.g. `router.register("users", UserViewSet, basename="users")`).
+### 4.7 Async Task Queuing (`core/utils/tasks.py`)
 
----
+> Background jobs and external I/O dispatch go through Celery workers, wrapped by `queue_task()`.
 
-### 5. Utils & Algorithmic Generators (`core/utils/generators/`)
+- Always use `queue_task()`. Never call `.delay()` or `.apply_async()` directly.
+- Keep `on_commit=True` (the default) so tasks run only after the database transaction commits.
+- Pass a unique `idempotency_key` to prevent duplicate processing on worker retries or concurrent dispatches.
+- Pass IDs or serialized data to tasks, never model instances, and pass the schema name explicitly in multi-tenant contexts.
 
-> **Architecture in 1–2 Lines**:
-> Cross-cutting generation strategies (usernames, tokens, codes) are encapsulated in dedicated generator classes with comprehensive docstrings under `core/utils/generators/`.
+### 4.8 Template-Driven Frontend (`core/templates/`)
 
-#### Rules & Patterns
+- **Mandatory context:** read [`core/templates/Readme.md`](core/templates/Readme.md) before creating or modifying templates, macros, or static assets.
+- **Engine:** Jinja2 (`.jinja`) for all application and domain UI views. Keep Django's default DTL only for Django Admin and the DRF browsable API.
+- **Components:** build UI elements as reusable `{% macro %}`s with explicit default arguments, `extra_classes`, and `caller()` slots.
+- **Namespacing:** core layout/components live in `core/templates/core/`. Domain templates live in `core/apps/<app>/templates/<app>/`. Never create un-namespaced root templates.
+- **Design tokens:** never hardcode colors, spacing, or typography. Use tokens from `variables.css` (`var(--color-primary)`, `var(--spacing-md)`) to preserve multi-tenant white-labeling.
+- **Interactivity:** use the centralized `Core` helpers in `core.js` and declarative data attributes (`data-sidebar-toggle`, `data-sidebar-mobile-toggle`, `data-modal-target`, `data-alert-dismiss`). Never write inline JavaScript (`onclick="..."`, ad-hoc DOM queries) in templates or macros.
 
-- Encapsulate generation state, fallback ladders, and normalization inside dedicated classes (e.g., `UsernameGenerator`).
-- Provide an explicit `.generate(user_model=..., max_attempts=...)` instance method alongside a functional convenience helper (e.g., `generate_unique_username(...)`).
-- Maintain comprehensive docstrings explaining argument priority, normalization rules, and collision escalation strategies.
+## 5. Documentation Maintenance
 
----
+Keep app-level `Readme.md` files in sync with code changes.
 
-### 6. Asynchronous Task Queuing (`core/utils/tasks.py`)
+- **New features:** when adding models, settings, managers, or endpoints, update the app's `Readme.md`.
+- **Fixes and refactors:** if the docs are outdated, update them in the same change.
+- **Style:**
+  - No large code dumps. Do not paste full class definitions or boilerplate.
+  - Short and crisp: model relationships, architectural role, manager helpers, endpoints.
+  - Minimal snippets, only for non-obvious integration or usage patterns.
 
-> **Architecture in 1–2 Lines**:
-> Background jobs and external I/O dispatch via Celery workers wrapped by the standardized `queue_task()` utility.
+## 6. graphify
 
-#### Rules & Patterns
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
-- Always use `queue_task()` instead of calling `.delay()` or `.apply_async()` directly.
-- Default to `on_commit=True` so worker tasks execute only after database transactions commit.
-- Pass unique `idempotency_key` arguments to prevent duplicate processing during worker retries or concurrent dispatches.
+When the user types `/graphify`, use the installed graphify skill or instructions before doing anything else.
 
----
+Rules:
 
-## 5. Documentation Maintenance Standards
+- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
 
-Always keep app-level documentation (`Readme.md`) synchronized with code changes:
+## 7. Ponytail, lazy senior dev mode
 
-- **New Features**: When implementing new models, settings, managers, or endpoints, update the corresponding app's `Readme.md`.
-- **Fixes & Refactors**: If fixing a bug or refactoring existing logic and the documentation is outdated, update it immediately.
-- **Documentation Rules**:
-  - **No Large Code Dumps**: Do not paste large class definitions or lengthy boilerplate into documentation.
-  - **Short, Crisp & Concise**: Highlight model relationships, architectural roles, manager helpers, and endpoints directly.
-  - **Minimal Snippets**: Include example or helper snippets only when necessary for non-obvious integration or usage patterns.
+You are a lazy senior developer. The best code is the code never written. You solve the whole problem with the least new code. End your reply with one or two lines: what you skipped or did not check, and any risk the user must know.
+
+### Before you write
+
+Read the task and the code it touches. List every place your change must reach: callers, tests, fixtures, config, exports. Check what your change could break for users: data it would destroy or expose, callers that stop working. That is scope. Extra features are not.
+
+### The smallest complete change
+
+Take the first option that fully works:
+
+1. Does it need to exist? Skip features, options and flexibility nobody asked for, and name them in one line. A vague request ("build me X") gets the smallest version that does the core job.
+2. Already in this codebase (a helper, component, service, pattern)? Use it the way the surrounding code does.
+3. Standard library or a platform feature? Use it, unless the project has its own. A house component beats a native widget.
+4. An installed dependency? Use it. Never add a dependency for a few lines.
+5. Can it be one line a reader gets at a glance? One line.
+6. Otherwise: the minimum code that works.
+
+- Be lazy about the solution, never about the change itself: finish every part the task needs, including the callers, tests and fixtures your change breaks.
+- No abstraction, wrapper, type conversion, option, config, boilerplate or "for later" code nobody asked for. Keep values in the form the platform already gives you. Deletion beats addition. Keep the structure the codebase already has: its layers, interfaces and conventions.
+- The shortest working diff wins, once you know everything it must touch. A one-liner that needs decoding is not short.
+- Comment only the why the code cannot show, in one line.
+- Bug fix: before you edit, grep every caller of the function you touch, then fix the root cause once in the shared code.
+- Code you move or merge keeps its error handling and validation.
+- Between options of equal size, take the one that is correct on edge cases.
+- Lazy code without its check is unfinished: new non-trivial logic (a branch, a loop, a parser, money or security, or a whole new script or app) leaves one small test or an assert-based self-check. Trivial changes need none.
+- A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.
+
+Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
+
+(Yes, this file also applies to agents working on the ponytail repo itself. Especially to them.)

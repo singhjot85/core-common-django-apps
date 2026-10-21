@@ -67,7 +67,6 @@ class DirtyFieldsMixin(object):
         deferred_fields = self.get_deferred_fields()
 
         for field in self._meta.concrete_fields:
-
             # For backward compatibility reasons, in particular for fkey fields, we check both
             # the real name and the wrapped name (it means that we can specify either the field
             # name with or without the "_id" suffix.
@@ -198,7 +197,6 @@ def reset_state(sender, instance, **kwargs):
         for field_name in update_fields:
             field = sender._meta.get_field(field_name)
             if not FIELDS_TO_CHECK or (field.name in FIELDS_TO_CHECK):
-
                 if field.get_attname() in instance.get_deferred_fields():
                     continue
 

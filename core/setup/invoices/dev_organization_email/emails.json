@@ -1,14 +1,6 @@
 [
     {
-        "tenant_schema": "public",
-        "linked_organization": "Public Corp",
-        "email": "billing@public.localhost",
-        "type": "primary",
-        "is_primary": true
-    },
-    {
-        "tenant_schema": "private",
-        "linked_organization": "PrivateCo Ltd",
+        "organization__organization_name": "PrivateCo Ltd",
         "email": "billing@private.localhost",
         "type": "primary",
         "is_primary": true

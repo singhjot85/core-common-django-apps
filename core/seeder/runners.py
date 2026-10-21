@@ -17,18 +17,22 @@ from rest_framework.exceptions import MethodNotAllowed
 from core.apps.tenants import get_tenant_model
 from core.apps.tenants.constants import TenantStatus
 from core.exceptions import SeederException
-from core.seeder.registry import fixture_registry
-from core.seeder.registry import seeder_registry as default_seeder_registry
+from core.seeder.registry import (
+    fixture_registry,
+    seeder_registry as default_seeder_registry,
+)
 from core.utils.checks import is_multi_tenant, is_production
 from core.utils.database import core_schema_context, get_public_schema_name
 from core.utils.datatypes import InstanceDAGBuilder
-from core.utils.registry import ClassRegistry
 from core.utils.strings import camel_to_snake_case
 
 LOGGER = logging.getLogger(__name__)
 
 if typing.TYPE_CHECKING:
+    from django.db import models
+
     from core.seeder.base import BaseSeeder
+    from core.utils.registry import ClassRegistry
 
 
 class SeederRunner(InstanceDAGBuilder):
@@ -99,11 +103,10 @@ class SeederRunner(InstanceDAGBuilder):
             int | None: Smallest execution order integer, or None if none set.
         """
         orders = []
-        for s in self.seeders:
-            meta = getattr(s, "Meta", None)
-            order = getattr(meta, "execution_order", None)
-            if order is not None:
+        for Seeder in self.seeders:
+            if (order := Seeder.execution_order()) is not None:
                 orders.append(order)
+
         return min(orders) if orders else None
 
     def is_initial_attribute(self, seeder: type["BaseSeeder"]) -> bool:
@@ -116,11 +119,15 @@ class SeederRunner(InstanceDAGBuilder):
         Returns:
             bool: True if seeder is an initial node.
         """
-        meta = getattr(seeder, "Meta", None)
-        order = getattr(meta, "execution_order", None)
-        if order is not None and self._min_execution_order is not None:
-            return order <= self._min_execution_order
-        return bool(meta and getattr(meta, "initial", False))
+        # If entire series don't have any seeder, make any radom as initial
+        if self._min_execution_order is None:
+            return True
+
+        # If current seeder has no execution order don't make it first
+        if (order := seeder.execution_order()) is None:
+            return False
+
+        return order <= self._min_execution_order
 
     def get_dependencies(self, seeder: type["BaseSeeder"]) -> list:
         """
@@ -132,7 +139,24 @@ class SeederRunner(InstanceDAGBuilder):
         Returns:
             list: List of model classes or seeder classes that this seeder depends upon.
         """
-        return seeder.get_dependencies()
+        dep_models: list[type["models.Model"]] = seeder.get_model_dependencies()
+        if not dep_models:
+            return []
+
+        dependent_seeders = []
+        # TODO: Time Coplexity for this comaprison can be imporved by pre-builing a dict/map
+        for CandidateSeeder in self.seeders:
+            CandidateSeeder: type["BaseSeeder"]
+            SeederModel = CandidateSeeder.get_seeder_model()
+            for Model in dep_models:
+                if (
+                    Model._meta.app_label == SeederModel._meta.app_label
+                    and Model._meta.model_name == SeederModel._meta.model_name
+                    and Model._meta.db_table == SeederModel._meta.db_table
+                ):
+                    dependent_seeders.append(CandidateSeeder)
+
+        return dependent_seeders
 
     # ------------------------------
     #   Base Seeder Methods
@@ -163,12 +187,17 @@ class SeederRunner(InstanceDAGBuilder):
             else [seeder.seed_data]
         )
 
+        instances = []
         for data in seed_data:
-
             # If schema for an object is defined, only run for that schema
-            if item_schema := data.get("_schema_name"):
+            if item_schema := data.pop("_schema_name", False):
                 with core_schema_context(item_schema):
-                    seeder.seed(data=data)
+                    seeder.context["_item_schema"] = item_schema
+                    instance = seeder.seed(data=data)
+                    seeder.context.pop("_item_schema", None)
+                    if instance:
+                        instances.append(str(instance))
+
                 continue
 
             # If needs to run for all schemas, iterate through all tenants and run in their schema context
@@ -182,12 +211,21 @@ class SeederRunner(InstanceDAGBuilder):
                     .values_list("schema_name", flat=True)
                 ):
                     with core_schema_context(tenant_schema):
-                        seeder.seed(data=data)
+                        instance = seeder.seed(data=data)
+                        if instance:
+                            instances.append(str(instance))
+
                 continue
 
             # For single-schema seeders, run in the seeder's target schema context
             with core_schema_context(seeder.schema_name):
-                seeder.seed(data=data)
+                instance = seeder.seed(data=data)
+                if instance:
+                    instances.append(str(instance))
+
+                continue
+
+        return instances
 
     def run(self):
         """
@@ -198,12 +236,15 @@ class SeederRunner(InstanceDAGBuilder):
         LOGGER.info("Seeder Execution Started...")
         seeders: list[type["BaseSeeder"]] = self.topo_sorted_instances()
 
+        all_instances = []
         with transaction.atomic(using=DEFAULT_DB_ALIAS):
             for Seeder in seeders:
                 label = self.seeder_label(Seeder)
                 try:
                     seeder = Seeder()
-                    self._run(seeder)
+                    instances = self._run(seeder)
+                    if instances:
+                        all_instances.extend(instances)
 
                     LOGGER.info(
                         msg=f"[{seeder.schema_name}] Successfully Executed Seeder >>> {label}"
@@ -216,6 +257,7 @@ class SeederRunner(InstanceDAGBuilder):
                     raise e
 
         LOGGER.info("Seeder Execution Finished...")
+        return all_instances
 
 
 class SeedDevelopmentData(SeederRunner):
@@ -233,7 +275,7 @@ class SeedDevelopmentData(SeederRunner):
             raise MethodNotAllowed("Seeding data not allowed in current env.")
 
         seeder_registry = kwargs.pop("seeder_registry", default_seeder_registry)
-        super().__init__(seeder_registry=seeder_registry, *args, **kwargs)
+        super().__init__(*args, seeder_registry=seeder_registry, **kwargs)
 
 
 class SeedFixtures(SeederRunner):
@@ -246,4 +288,4 @@ class SeedFixtures(SeederRunner):
         Initialize SeedFixtures with the static fixture registry.
         """
         seeder_registry = kwargs.pop("seeder_registry", fixture_registry)
-        super().__init__(seeder_registry=seeder_registry, *args, **kwargs)
+        super().__init__(*args, seeder_registry=seeder_registry, **kwargs)

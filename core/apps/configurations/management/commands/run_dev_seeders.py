@@ -73,15 +73,20 @@ class Command(BaseCommand):
         self.stdout.write(self.style.NOTICE("Discovering and loading seeders..."))
         discovered = auto_discover_seeders()
         self.stdout.write(
-            self.style.NOTICE(f"Discovered {len(discovered)} seeder modules.")
+            self.style.NOTICE(f"Discovered {len(discovered)} seeder file...")
         )
 
         self.stdout.write(self.style.NOTICE("Executing SeedDevelopmentData runner..."))
         runner = SeedDevelopmentData()
-        runner.run()
+        instances = runner.run()
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                "Successfully completed development setup and seeded data."
+        if not instances:
+            self.stdout.write(
+                self.style.WARNING("Succesfull seeder run but no data seeded !!")
             )
-        )
+        else:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Successfully completed development setup and seeded data: {instances}"
+                )
+            )

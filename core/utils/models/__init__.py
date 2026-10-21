@@ -1,7 +1,6 @@
 from core.utils.models.base_models import (  # noqa: F401
     BaseLogModel,
     BaseModel,
-    BaseSemanaticVersionModel,
     BaseSemanticVersionModel,
     BaseTemplateModel,
     BaseUserModel,

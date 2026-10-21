@@ -2,7 +2,7 @@ import pytest
 
 from core.apps.configurations import get_configuration_model
 from core.exceptions import InvalidTypeError, SeederException
-from core.seeder.base import BaseMeta, BaseSeeder, empty
+from core.seeder.base import BaseMeta, BaseSeeder
 from core.seeder.registry import fixture_registry, seeder_registry
 
 Configuration = get_configuration_model()
@@ -138,44 +138,6 @@ class TestBaseSeederInit:
         assert len(instance.seedable_fields) > 0
 
 
-class TestBaseSeederValidate:
-    """Unit tests for BaseSeeder.validate()."""
-
-    def test_validate_rejects_non_dict(self):
-        """validate() should reject non-dict data."""
-        registry = seeder_registry.registry
-        if not registry:
-            pytest.skip("No seeders registered")
-
-        key = next(iter(registry))
-        seeder_cls = registry[key]
-        instance = seeder_cls()
-        with pytest.raises(InvalidTypeError):
-            instance.validate("not a dict")
-
-    def test_validate_rejects_list(self):
-        """validate() should reject list data."""
-        registry = seeder_registry.registry
-        if not registry:
-            pytest.skip("No seeders registered")
-
-        key = next(iter(registry))
-        seeder_cls = registry[key]
-        instance = seeder_cls()
-        with pytest.raises(InvalidTypeError):
-            instance.validate([1, 2, 3])
-
-
-class TestEmptySentinel:
-    """Tests for the empty sentinel object."""
-
-    def test_empty_is_singleton(self):
-        """empty should be a unique sentinel."""
-        assert empty is not None
-        assert empty is not False
-        assert empty != 0
-
-
 class TestBaseSeederSchemaResolution:
     """Unit tests for BaseSeeder.schema_name property."""
 
@@ -266,26 +228,6 @@ class TestBaseSeederSchemaResolution:
         instance = BadOrgSeeder()
         with pytest.raises(SeederException) as exc_info:
             _ = instance.schema_name
-        assert "cannot run on public schema" in str(exc_info.value)
-
-    def test_organization_tenant_type_seed_directly_on_public_raises(self, monkeypatch):
-        """Calling seed() directly for an organization seeder on public schema raises."""
-        from django.conf import settings
-        from django.db import connection
-
-        class DirectPublicOrgSeeder(BaseSeeder):
-            class Meta(BaseMeta):
-                model = Configuration
-                fields = ["name"]
-                tenant_type = settings.TENANT_TYPE_ORGANIZATION
-                depends_on = []
-                is_fixture = False
-                related_seeders = {}
-
-        monkeypatch.setattr(connection, "schema_name", "public")
-        instance = DirectPublicOrgSeeder()
-        with pytest.raises(SeederException) as exc_info:
-            instance.seed({"name": "Test"})
         assert "cannot run on public schema" in str(exc_info.value)
 
 

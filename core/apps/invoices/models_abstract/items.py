@@ -52,7 +52,7 @@ class AbstractInvoiceItemEntry(BaseModel):
 
     invoice: "AbstractInvoice" = models.ForeignKey(
         settings.INVOICES_INVOICE_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="item_entries",
         verbose_name=_("Invoice"),
     )
@@ -143,7 +143,7 @@ class AbstractInvoiceItemFee(BaseModel):
 
     item_entry: "AbstractInvoiceItemEntry" = models.ForeignKey(
         settings.INVOICES_INVOICE_ITEM_ENTRY_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="fees",
         verbose_name=_("Invoice Item Entry"),
     )

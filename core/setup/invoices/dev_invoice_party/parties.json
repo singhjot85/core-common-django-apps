@@ -1,30 +1,14 @@
 [
     {
-        "tenant_schema": "public",
-        "first_name": "Alice",
-        "last_name": "Public",
-        "party_type": "customer",
-        "linked_customer": "Alice Public"
-    },
-    {
-        "tenant_schema": "public",
-        "first_name": "Bob",
-        "last_name": "Public",
-        "party_type": "customer",
-        "linked_customer": "Bob Public"
-    },
-    {
-        "tenant_schema": "private",
         "first_name": "Charlie",
         "last_name": "Private",
         "party_type": "customer",
-        "linked_customer": "Charlie Private"
+        "customer__first_name": "Charlie"
     },
     {
-        "tenant_schema": "private",
         "first_name": "Diana",
         "last_name": "Private",
         "party_type": "customer",
-        "linked_customer": "Diana Private"
+        "customer__first_name": "Diana"
     }
 ]

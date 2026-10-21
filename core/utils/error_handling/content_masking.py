@@ -247,8 +247,7 @@ class ContentMaskingUtils:
 
         """
         if (
-            "@" in email
-            and len(email.split("@")) >= 2
+            "@" in email and len(email.split("@")) >= 2
             # and '.' in email
         ):
             return True
@@ -368,7 +367,6 @@ class ContentMaskingUtils:
         mask_value = mask_value or ContentMaskingUtils.mask_value
 
         for key, val in attributes.items():
-
             if matcher.is_sensitive(key):
                 filtered[key] = mask_value
             else:

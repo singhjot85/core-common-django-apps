@@ -1,0 +1,28 @@
+{# Customer Card Macro #}
+{% from "core/components/common/cards.jinja" import card %}
+{% from "core/components/common/badges.jinja" import badge %}
+{% macro customer_card(customer, extra_classes="") %}
+    {% set status_badge %}
+        <span class="badge badge-primary">{{ customer.get_customer_type_display() if customer.get_customer_type_display is callable else customer.customer_type }}</span>
+    {% endset %}
+    {% call card(title=customer.full_name or "Customer Profile", subtitle="ID: " ~ customer.id, header_actions=status_badge, extra_classes=extra_classes) %}
+        <div class="flex flex-col gap-sm">
+            <div class="flex justify-between">
+                <span class="text-muted">Status:</span>
+                <strong>{{ customer.get_status_display() if customer.get_status_display is callable else customer.status }}</strong>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted">Primary Phone:</span>
+                <span>{{ customer.primary_phone.phone if customer.primary_phone else '-' }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted">Primary Email:</span>
+                <span>{{ customer.primary_email.email if customer.primary_email else '-' }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-muted">Joined:</span>
+                <span>{{ format_date(customer.created) }}</span>
+            </div>
+        </div>
+    {% endcall %}
+{% endmacro %}
