@@ -128,7 +128,7 @@ mme: docker-django-makemigrations-empty
 # --------------------------
 # 	Pytest Targets
 # # --------------------------
-.PHONY: t, td, test
+.PHONY: t, td, tf, test
 
 docker-django-pytest:
 	@echo "⌛ Running tests...\n"
@@ -139,7 +139,7 @@ test: docker-django-pytest
 docker-django-pytest-filter:
 	@echo "⌛ Running tests...\n"
 	${TEMP_DJANGO_CONTAINER} pytest -k ${TEST_FILTER}
-t: docker-django-pytest
+tf: docker-django-pytest
 
 docker-django-pytest-debug:
 	@echo "⌛ Running tests with debugger...\n"
