@@ -127,6 +127,11 @@ hr {
   transition: margin-left var(--transition-base);
 }
 
+.app-shell:not(:has(.app-sidebar)) .app-main,
+.app-main.no-sidebar {
+  margin-left: 0;
+}
+
 /* Collapsed Sidebar State */
 .app-shell.sidebar-collapsed .app-sidebar {
   width: var(--sidebar-collapsed-width);

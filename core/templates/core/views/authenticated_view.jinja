@@ -11,26 +11,18 @@
 {% block title %}
     {{ page_title or (PROJECT_LABEL or 'Core Console') ~ ' - Tenant Access' }}
 {% endblock title %}
-{# Override global shell chrome to present a dedicated, centered authentication layout #}
-{% block sidebar %}
-{% endblock sidebar %}
-{% block header %}
-{% endblock header %}
-{% block footer %}
-{% endblock footer %}
-{% block content %}
+{# Override top-level app_shell to isolate the page from the dashboard sidebar & navbar chrome #}
+{% block app_shell %}
     <div class="auth-shell">
         <div class="auth-main">
             <div class="auth-container">
-                <!-- Brand Identity Header -->
+                <!-- Brand Identity Header: Logo and Title in Same Horizontal Line -->
                 <div class="auth-brand">
-                    <div class="inline-flex items-center justify-center mb-sm">
-                        <div class="brand-icon-wrapper p-sm bg-surface-sunken radius-lg border">
-                            {{ icon("rocket_launch", size=32, extra_classes="text-primary") }}
-                        </div>
+                    <div class="auth-brand-header">
+                        <div class="brand-icon-wrapper">{{ icon("rocket_launch", size=26, extra_classes="text-primary") }}</div>
+                        <h1 class="auth-brand-title">{{ PROJECT_LABEL or 'Core Console' }}</h1>
                     </div>
-                    <h1 class="font-size-2xl font-weight-bold tracking-tight mb-xs">{{ PROJECT_LABEL or 'Core Console' }}</h1>
-                    <p class="text-muted font-size-sm mb-0">Tenant Access Gateway</p>
+                    <p class="auth-brand-subtitle">Tenant Access Gateway</p>
                 </div>
                 <!-- Authentication Card -->
                 <div class="auth-card">
@@ -55,7 +47,7 @@
                             <span>Create Account</span>
                         </button>
                     </div>
-                    <div class="p-lg">
+                    <div class="auth-card-body">
                         <!-- Flash Messages & Alerts -->
                         {% if messages %}{{ message_list(messages) }}{% endif %}
                         <!-- ================= TAB 1: SIGN IN ================= -->
@@ -82,7 +74,7 @@
                                     <input type="hidden" name="auth_flow" value="password">
                                     {{ form_field_email("identity", label="Work Email or Tenant Identity", placeholder="name@company.com", required=True) }}
                                     {{ form_field_password("password", label="Password", placeholder="••••••••", required=True) }}
-                                    <div class="flex items-center justify-between mb-md">
+                                    <div class="auth-form-row">
                                         {{ form_field_checkbox("remember_me", label="Remember this device", checked=True) }}
                                         <a href="{{ forgot_password_url|default('#forgot') }}"
                                            class="font-size-xs text-primary">Forgot password?</a>
@@ -100,17 +92,17 @@
                                     {{ csrf_input }}
                                     <input type="hidden" name="auth_flow" value="otp">
                                     {{ form_field_text("otp_destination", label="Verified Phone or Email Channel", placeholder="+1 (555) 000-0000 or email@domain.com", required=True) }}
-                                    <div class="mb-md">
+                                    <div class="mb-lg">
                                         {{ button(label="Send Passcode", variant="outline", size="sm", type="button", extra_classes="w-full", id="btn_request_otp") }}
                                     </div>
                                     {{ form_field_otp("otp_code", label="6-Digit Challenge Key", digits=6, required=True) }}
-                                    <div class="mt-md">
+                                    <div class="mt-lg">
                                         {{ button(label="Verify & Authorize", variant="primary", type="submit", extra_classes="w-full") }}
                                     </div>
                                 </form>
                             </div>
                             <!-- Social SSO Divider -->
-                            <div class="divider text-muted font-size-xs my-md text-center">
+                            <div class="auth-divider">
                                 <span>Or Single Sign-On</span>
                             </div>
                             <!-- Social Auth Grid -->
@@ -119,7 +111,7 @@
                                    class="social-auth-btn"
                                    title="SSO with Google Workspace"
                                    aria-label="Sign in with Google">
-                                    <svg class="w-4 h-4" width="18" height="18" viewBox="0 0 24 24">
+                                    <svg width="20" height="20" viewBox="0 0 24 24">
                                         <path d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.3 8.9 5 12 5z" fill="#EA4335">
                                         </path>
                                         <path d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z" fill="#4285F4">
@@ -134,11 +126,7 @@
                                    class="social-auth-btn text-muted"
                                    title="SSO with Apple ID"
                                    aria-label="Sign in with Apple">
-                                    <svg class="w-4 h-4"
-                                         width="18"
-                                         height="18"
-                                         fill="currentColor"
-                                         viewBox="0 0 24 24">
+                                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.89c.66-.82 1.11-1.96.99-3.1-.96.04-2.12.64-2.8 1.44-.6.69-1.13 1.84-.99 2.95 1.07.08 2.15-.55 2.8-1.29z">
                                         </path>
                                     </svg>
@@ -147,11 +135,7 @@
                                    class="social-auth-btn"
                                    title="SSO with Meta Workplace"
                                    aria-label="Sign in with Meta">
-                                    <svg class="w-4 h-4"
-                                         width="18"
-                                         height="18"
-                                         fill="#1877F2"
-                                         viewBox="0 0 24 24">
+                                    <svg width="20" height="20" fill="#1877F2" viewBox="0 0 24 24">
                                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z">
                                         </path>
                                     </svg>
@@ -171,7 +155,7 @@
                                 {{ form_field_email("email", label="Corporate Email Address", placeholder="morgan.chen@tenant.io", required=True) }}
                                 {{ form_field_text("tenant_domain", label="Company & Tenant Domain", placeholder="acme-corp", required=True, hint="Workspace prefix: [subdomain].core.internal") }}
                                 {{ form_field_password("password", label="Root Credential Password", placeholder="Min. 12 chars with symbol & number", required=True) }}
-                                <div class="mb-md">
+                                <div class="mb-lg mt-sm">
                                     {{ form_field_checkbox("agree_terms", label="I agree to the Master Services Agreement, SLA, and cryptographic processing terms.", required=True) }}
                                 </div>
                                 {{ button(label="Provision Tenant Workspace", variant="primary", type="submit", extra_classes="w-full") }}
@@ -179,34 +163,7 @@
                         </div>
                     </div>
                 </div>
-                <!-- Footer Security Badges -->
-                <div class="auth-footer text-center mt-lg radius-lg border">
-                    <div class="flex items-center justify-center gap-md flex-wrap mb-xs font-size-xs">
-                        <span class="inline-flex items-center gap-xs">
-                            {{ icon("verified", size=16, extra_classes="text-success") }}
-                            <span>256-bit SSL Encrypted</span>
-                        </span>
-                        <span>•</span>
-                        <span class="inline-flex items-center gap-xs">
-                            {{ icon("domain", size=16, extra_classes="text-primary") }}
-                            <span>Enterprise Tenant Isolation</span>
-                        </span>
-                        <span>•</span>
-                        <span class="inline-flex items-center gap-xs">
-                            {{ icon("shield", size=16, extra_classes="text-warning") }}
-                            <span>PCI-DSS Level 1 Compliant</span>
-                        </span>
-                    </div>
-                    <div class="flex items-center justify-center gap-md font-size-xs text-muted">
-                        <a href="{{ privacy_url|default('#privacy') }}"
-                           class="text-muted hover:text-primary">Privacy Policy</a>
-                        <a href="{{ terms_url|default('#terms') }}"
-                           class="text-muted hover:text-primary">Terms of Service</a>
-                        <a href="{{ status_url|default('#status') }}"
-                           class="text-muted hover:text-primary">Platform Status</a>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
-{% endblock content %}
+{% endblock app_shell %}

@@ -37,39 +37,41 @@
         {% endblock extra_head %}
     </head>
     <body>
-        <div class="app-shell">
-            <!-- Sidebar -->
-            {% block sidebar %}
-                {% include "core/layout/sidebar.jinja" %}
+        {% block app_shell %}
+            <div class="app-shell">
+                <!-- Sidebar -->
+                {% block sidebar %}
+                    {% include "core/layout/sidebar.jinja" %}
 
-            {% endblock sidebar %}
-            <!-- Main Content Area -->
-            <div class="app-main">
-                <!-- Top Navbar -->
-                {% block header %}
-                    {% include "core/layout/navbar.jinja" %}
+                {% endblock sidebar %}
+                <!-- Main Content Area -->
+                <div class="app-main">
+                    <!-- Top Navbar -->
+                    {% block header %}
+                        {% include "core/layout/navbar.jinja" %}
 
-                {% endblock header %}
-                <!-- Content Container -->
-                <main class="app-content">
-                    <!-- Messages / Alerts -->
-                    {% block messages %}
-                        {% if messages %}
-                            {% from "core/components/feedback/alerts.jinja" import message_list %}
-                            {{ message_list(messages) }}
-                        {% endif %}
-                    {% endblock messages %}
-                    <!-- Main View Content -->
-                    {% block content %}
-                    {% endblock content %}
-                </main>
-                <!-- Footer -->
-                {% block footer %}
-                    {% include "core/layout/footer.jinja" %}
+                    {% endblock header %}
+                    <!-- Content Container -->
+                    <main class="app-content">
+                        <!-- Messages / Alerts -->
+                        {% block messages %}
+                            {% if messages %}
+                                {% from "core/components/feedback/alerts.jinja" import message_list %}
+                                {{ message_list(messages) }}
+                            {% endif %}
+                        {% endblock messages %}
+                        <!-- Main View Content -->
+                        {% block content %}
+                        {% endblock content %}
+                    </main>
+                    <!-- Footer -->
+                    {% block footer %}
+                        {% include "core/layout/footer.jinja" %}
 
-                {% endblock footer %}
+                    {% endblock footer %}
+                </div>
             </div>
-        </div>
+        {% endblock app_shell %}
         <!-- Core JavaScript Framework & Services -->
         <script src="{{ static('core/js/core.js') }}"></script>
         <script src="{{ static('core/js/service.js') }}"></script>

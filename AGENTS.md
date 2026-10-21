@@ -61,11 +61,40 @@ Explore in this order and stop as soon as you have enough context:
 8. **API surface (`api/serializers.py`, `api/views.py`, `urls.py`)**: endpoints, serializers, viewsets, permissions.
 9. **Templates & frontend (`core/templates/`, `<app>/templates/`)**: read `core/templates/Readme.md` before any template or frontend change (see 4.8).
 
-## 3. Four-Phase Development Lifecycle
+## 3. Development Workflows
 
-Plan all non-trivial logic additions and refactors across these phases, in order. Do not start a phase before the previous one is done.
+### Step 0: Triage (always first)
 
-### Phase 1: Analysis (the `What` phase)
+| Track                    | Use when                                                                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Bug-Fix Flow**         | Existing behavior is wrong and the fix stays inside current models, tasks, and interfaces (includes typos and small config fixes) |
+| **Four-Phase Lifecycle** | New feature, new or changed model/task/cron, behavior change, or a refactor                                                       |
+
+**Escalate to the Four-Phase Lifecycle.** Stop, say why, and wait for the user if any of these is true:
+
+- The fix needs a new or changed model, migration, task, cron, or setting.
+- It changes a public interface (signatures, API contract, serializer fields).
+- The root cause is a design flaw, or there are several reasonable fixes with trade-offs.
+- It spans more than one app or more than ~3 files.
+
+If you cannot reproduce the bug or find the root cause after a reasonable attempt, stop and report what you found. Do not guess-fix.
+
+### Bug-Fix Flow
+
+1. **Reproduce:** write a failing regression test first (factories, per Phase 4 test rules). The test proves the bug exists and later proves it's fixed.
+2. **Locate:** `graphify query` / `graphify explain` first, then read only the lines it points to. Grep every caller of the function you will touch.
+3. **Fix the root cause once**, in the shared code, not at the symptom. No drive-by refactors and no scope beyond the bug. Fail fast, query discipline, and `queue_task` rules from Phase 2 still apply to any code you write.
+4. **Verify:** the new test passes. Run the narrowest `make` target, then `make t DIR=<app>` for the touched app.
+5. **Close out:** `poetry run pre-commit run --all-files`, then `graphify update .`. Update the app `Readme.md` only if documented behavior changed.
+6. **Report in the final message:** root cause, the fix, the test added, what you did not check, and anything adjacent you noticed but deliberately left alone.
+
+All Phase 4 hard rules apply here too: make targets only, the stale migration/test DB protocol, no mocks in production code, and never bypass hooks.
+
+### Four-Phase Lifecycle
+
+Use for the Full-lifecycle track. Do not start a phase before the previous one is done.
+
+#### Phase 1: Analysis (the `What` phase)
 
 **Use:** the first phase for every new requirement, including plan mode and `/plan`.
 **Goal:** identify what needs to be built and which restrictions or blockers affect it.
@@ -107,7 +136,7 @@ Plan all non-trivial logic additions and refactors across these phases, in order
 
 **Done when:** every item above is answered (or marked N/A with a reason) and the user has approved the plan.
 
-### Phase 2: Logical Writing (the `How` phase)
+#### Phase 2: Logical Writing (the `How` phase)
 
 Start only after the Phase 1 plan is approved. If a requirement is missing or unclear, go back to Phase 1 instead of guessing. Write clean, self-contained logic for the approved plan and add no scope beyond it.
 
@@ -120,7 +149,7 @@ Start only after the Phase 1 plan is approved. If a requirement is missing or un
 
 **Done when:** the logic satisfies the approved plan, handles the failure cases decided in Phase 1, and runs without errors. Polish belongs to Phase 3.
 
-### Phase 3: Refactor
+#### Phase 3: Refactor
 
 Refactor only after the logic works. Behavior must not change: run the existing tests before and after, and add tests first if the code has none.
 
@@ -133,7 +162,7 @@ Refactor only after the logic works. Behavior must not change: run the existing 
 
 **Done when:** tests pass, no logic is duplicated, each function has one responsibility, and docstrings reflect final behavior.
 
-### Phase 4: Testing & Quality
+#### Phase 4: Testing & Quality
 
 Start only after Phase 3. Tests describe the behavior in the approved Phase 1 plan, including its failure cases.
 
@@ -175,6 +204,7 @@ Use the narrowest target while iterating, then the full suite before finishing.
 - Never bypass hooks (`--no-verify`, skipping hooks, disabling a lint rule). Fix the cause, or ask the user if a rule genuinely needs an exception.
 
 **Done when:**
+
 - all tests pass via the make targets, no mocks are used outside external API/I/O boundaries, pre-commit is clean, and the final report states what was tested, what was not, and any stale migration/DB issue waiting on the user.
 - `graphify update .` has been run after code changes (see section 6).
 
