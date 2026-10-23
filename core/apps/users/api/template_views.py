@@ -28,6 +28,14 @@ class BaseAuthTemplateView(BaseTemplateView):
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """
         Assemble template context for the authentication gateway.
+
+        Injects initial tab, method, and auth view flags into the context.
+
+        Args:
+            **kwargs: Keyword arguments passed to get_context_data.
+
+        Returns:
+            dict[str, Any]: Template context dictionary.
         """
         context: dict = super().get_context_data(social_urls=True, **kwargs)
 
@@ -74,6 +82,15 @@ class ForgotPasswordView(BaseAuthTemplateView):
     initial_method = "password"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """
+        Assemble template context with password reset display flag.
+
+        Args:
+            **kwargs: Keyword arguments passed to get_context_data.
+
+        Returns:
+            dict[str, Any]: Template context dictionary with ``show_forgot_password=True``.
+        """
         context = super().get_context_data(**kwargs)
         context["show_forgot_password"] = True
         return context

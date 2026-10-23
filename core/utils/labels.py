@@ -20,6 +20,9 @@ LOGGER = logging.getLogger(__name__)
 def get_current_ui_language() -> str:
     """
     Determine the project-wide UI language using settings.LANGUAGE_CODE.
+
+    Returns:
+        str: ISO language code string (e.g. 'en', 'es'). Defaults to 'en'.
     """
     return getattr(settings, "LANGUAGE_CODE", "en")
 
@@ -27,6 +30,13 @@ def get_current_ui_language() -> str:
 def extract_label_for_language(value: Any, language: str) -> Any:
     """
     Extract localized string from a language dict, falling back only to 'en'.
+
+    Args:
+        value (Any): Multilingual mapping dictionary or raw string.
+        language (str): Target language code.
+
+    Returns:
+        Any: Localized string, English fallback, or the original value.
     """
     if isinstance(value, dict):
         return value.get(language, value.get("en"))
@@ -39,10 +49,17 @@ def get_db_template_labels(
 ) -> dict[str, Any]:
     """
     Retrieve template labels from the Configuration database table or cache.
-    Extracts labels for the target language.
 
-    If database is unreachable, unmigrated, or configuration is not found,
-    smoothly falls back to an empty dictionary so humanized fallbacks apply.
+    Extracts labels for the target language. If the database is unreachable,
+    unmigrated, or configuration is not found, smoothly returns an empty dictionary
+    so humanized fallbacks apply without crashing page rendering.
+
+    Args:
+        interface_type (str, optional): Configuration interface key. Defaults to "users_template_label".
+        language (str, optional): Target language code. Defaults to None (resolved via get_current_ui_language).
+
+    Returns:
+        dict[str, Any]: Dictionary of label keys mapped to translated label strings.
     """
     if not language:
         language = get_current_ui_language()
@@ -83,6 +100,13 @@ class LabelDict(dict):
         backend_labels: dict[str, Any] | None = None,
         defaults: dict[str, Any] | None = None,
     ):
+        """
+        Initialize LabelDict with optional backend overrides and database defaults.
+
+        Args:
+            backend_labels (dict[str, Any] | None, optional): Explicit dictionary overrides.
+            defaults (dict[str, Any] | None, optional): Database-backed label defaults.
+        """
         super().__init__()
         self.defaults = defaults or {}
         if backend_labels:
@@ -92,6 +116,15 @@ class LabelDict(dict):
                 self.update({k: v for k, v in backend_labels.items() if v is not None})
 
     def __getitem__(self, key: str) -> Any:
+        """
+        Retrieve label by key with humanized title-case fallback.
+
+        Args:
+            key (str): Label identifier key.
+
+        Returns:
+            Any: Explicit override, database default, or title-cased fallback.
+        """
         if key in self:
             return super().__getitem__(key)
         if key in self.defaults:
@@ -99,9 +132,28 @@ class LabelDict(dict):
         return key.replace("_", " ").title()
 
     def __getattr__(self, key: str) -> Any:
+        """
+        Enable dot-notation attribute access for template rendering ease.
+
+        Args:
+            key (str): Label identifier key.
+
+        Returns:
+            Any: Resolved label value.
+        """
         return self[key]
 
     def get(self, key: str, default: Any = None) -> Any:
+        """
+        Retrieve label by key with custom default or humanized fallback.
+
+        Args:
+            key (str): Label identifier key.
+            default (Any, optional): Explicit default if key is not found.
+
+        Returns:
+            Any: Label string or default value.
+        """
         if key in self:
             return super().get(key)
         if key in self.defaults:
@@ -110,7 +162,15 @@ class LabelDict(dict):
 
 
 def get_default_labels(language: str | None = None) -> LabelDict:
-    """Return a fresh LabelDict with database defaults or humanized fallback."""
+    """
+    Return a fresh LabelDict with database defaults or humanized fallback.
+
+    Args:
+        language (str, optional): Target language code.
+
+    Returns:
+        LabelDict: Dynamic label dictionary.
+    """
     return resolve_labels(language=language)
 
 
@@ -120,10 +180,20 @@ def resolve_labels(
     language: str | None = None,
 ) -> LabelDict:
     """
-    Resolve template labels with the following priority:
-    1. Explicit backend view/context overrides (`backend_labels`).
-    2. Database-backed / cached `Configuration` (<module>_template_label) for the current language.
+    Resolve template labels with prioritized fallback layering.
+
+    Priority:
+    1. Explicit backend view/context overrides (``backend_labels``).
+    2. Database-backed / cached ``Configuration`` for the current language.
     3. Humanized fallback based on key name if not found.
+
+    Args:
+        backend_labels (Any, optional): Explicit dictionary of label overrides from view context.
+        interface_type (str, optional): Configuration interface key. Defaults to "users_template_label".
+        language (str, optional): Target language code. Defaults to None.
+
+    Returns:
+        LabelDict: Transparent dictionary resolving labels with fallbacks.
     """
     if isinstance(backend_labels, LabelDict):
         return backend_labels

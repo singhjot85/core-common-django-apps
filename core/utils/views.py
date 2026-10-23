@@ -1,3 +1,10 @@
+"""
+Base view classes and template helper utilities.
+
+Provides BaseTemplateView supplying standard routing context, branding variables,
+URL action endpoints, and centralized i18n template labels.
+"""
+
 from django.conf import settings
 from django.urls import NoReverseMatch, reverse
 from django.views.generic.base import TemplateView
@@ -23,7 +30,12 @@ def _safe_reverse(viewname: str, fallback: str) -> str:
 
 
 class BaseTemplateView(TemplateView):
-    """ """
+    """
+    Base TemplateView supplying standard contextual data for server-rendered UI pages.
+
+    Injects API action URLs, social SSO endpoints, legal links, branding assets,
+    and localized UI labels resolved from database configuration with humanized fallbacks.
+    """
 
     template_name = None
     template_label_interface_type: str = "users_template_label"
@@ -46,7 +58,11 @@ class BaseTemplateView(TemplateView):
 
     def add_url_context(self, social_urls: bool, context: dict):
         """
-        Set of urls to be present in all templates
+        Populate API action URLs and social authentication endpoints into context.
+
+        Args:
+            social_urls (bool): If True, resolves and injects third-party SSO endpoints.
+            context (dict): The template context dictionary to modify.
         """
         # Update default url mappings to context data
         for key, val in self.DEFAULT_URL_ACTION_MAP.items():
@@ -69,7 +85,12 @@ class BaseTemplateView(TemplateView):
             context.setdefault("sso_meta_url", "#meta")
 
     def add_branding_context(self, context: dict):
-        """ """
+        """
+        Inject project-level branding metadata and logo assets into context.
+
+        Args:
+            context (dict): The template context dictionary to modify.
+        """
         context.setdefault(
             "PROJECT_LABEL", getattr(settings, "PROJECT_LABEL", "[Project Label]")
         )
@@ -77,7 +98,10 @@ class BaseTemplateView(TemplateView):
 
     def add_routing_context(self, context: dict):
         """
-        Add UI side routing context, for swappable UI pages
+        Inject client-side routing endpoints and legal/status page links into context.
+
+        Args:
+            context (dict): The template context dictionary to modify.
         """
         # Legal & Status URLs
         context.setdefault("login_url", _safe_reverse("ui-login", "/#/login/"))
@@ -94,6 +118,9 @@ class BaseTemplateView(TemplateView):
     def add_labels_context(self, context: dict):
         """
         Inject template labels from database configuration with backend overrides.
+
+        Args:
+            context (dict): The template context dictionary to modify.
         """
         backend_labels = context.get("labels") or self.labels
         context["labels"] = resolve_labels(
@@ -102,7 +129,16 @@ class BaseTemplateView(TemplateView):
         )
 
     def get_context_data(self, social_urls: bool = False, **kwargs):
-        """ """
+        """
+        Assemble comprehensive template context with URLs, branding, routing, and labels.
+
+        Args:
+            social_urls (bool, optional): If True, include social login URLs. Defaults to False.
+            **kwargs: Additional keyword arguments passed from the dispatcher.
+
+        Returns:
+            dict: Enriched template context dictionary.
+        """
         context = super().get_context_data(**kwargs)
 
         self.add_url_context(social_urls, context)

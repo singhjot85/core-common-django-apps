@@ -31,34 +31,88 @@ class AuthLockoutService:
 
     @classmethod
     def _clean_identifier(cls, identifier: str) -> str:
+        """
+        Normalize identifier string for consistent cache key generation.
+
+        Args:
+            identifier (str): Username, email, or phone number.
+
+        Returns:
+            str: Stripped and lowercased string representation.
+        """
         return identifier.strip().lower()
 
     @classmethod
     def _attempts_key(cls, identifier: str) -> str:
+        """
+        Generate schema-isolated cache key for tracking failed authentication attempts.
+
+        Args:
+            identifier (str): User identifier (username, email, or phone).
+
+        Returns:
+            str: Cache key partitioned by tenant schema.
+        """
         clean = cls._clean_identifier(identifier)
         return f"{connection.schema_name}:auth_attempts:{clean}"
 
     @classmethod
     def _lockout_key(cls, identifier: str) -> str:
+        """
+        Generate schema-isolated cache key indicating locked status.
+
+        Args:
+            identifier (str): User identifier.
+
+        Returns:
+            str: Cache key partitioned by tenant schema.
+        """
         clean = cls._clean_identifier(identifier)
         return f"{connection.schema_name}:auth_locked:{clean}"
 
     @classmethod
     def _unlock_token_key(cls, token: str) -> str:
+        """
+        Generate schema-isolated cache key for account unlock token verification.
+
+        Args:
+            token (str): Random URL-safe unlock token.
+
+        Returns:
+            str: Cache key partitioned by tenant schema.
+        """
         return f"{connection.schema_name}:auth_unlock_token:{token}"
 
     @classmethod
     def get_max_attempts(cls) -> int:
+        """
+        Retrieve maximum failed attempts threshold before triggering lockout.
+
+        Returns:
+            int: Maximum allowed attempts. Defaults to 5.
+        """
         return getattr(app_settings, "OTP_MAX_ATTEMPTS", 5)
 
     @classmethod
     def get_attempt_timeout(cls) -> int:
+        """
+        Retrieve cache time-to-live in seconds for failed attempt tracking window.
+
+        Returns:
+            int: Expiry duration in seconds. Defaults to 300.
+        """
         return getattr(app_settings, "OTP_EXPIRY_SECONDS", 300)
 
     @classmethod
     def is_locked(cls, identifier: str) -> bool:
         """
-        Check if the identifier is marked as locked out in cache.
+        Check if the identifier is marked as locked out in the cache.
+
+        Args:
+            identifier (str): Username, email, or phone number.
+
+        Returns:
+            bool: True if lockout flag is active in cache, False otherwise.
         """
         clean = cls._clean_identifier(identifier)
         return bool(cache.get(cls._lockout_key(clean)))
@@ -66,7 +120,13 @@ class AuthLockoutService:
     @classmethod
     def _find_user(cls, identifier: str) -> typing.Optional["AbstractUser"]:
         """
-        Locate user by username, email, or phone number.
+        Locate user by username, email, or phone number without leaking existence.
+
+        Args:
+            identifier (str): Value to match against username, email, or phone.
+
+        Returns:
+            AbstractUser | None: Matched user instance or None if not found.
         """
         try:
             clean = cls._clean_identifier(identifier)
@@ -81,10 +141,22 @@ class AuthLockoutService:
     @classmethod
     def record_failed_attempt(cls, identifier: str) -> tuple[int, bool]:
         """
-        Record a failed authentication attempt.
+        Record a failed authentication attempt and lock account if limit exceeded.
+
+        Increments cache failure count within the sliding time window. If the limit
+        is exceeded, activates lockout in cache and triggers account deactivation
+        and unlock email dispatch.
+
+        Side effects:
+            - Updates or deletes attempt counter in cache.
+            - Sets lockout key in cache if limit reached.
+            - Triggers ``lock_account_and_dispatch_unlock`` on lockout.
+
+        Args:
+            identifier (str): User identifier (username, email, phone).
 
         Returns:
-            tuple[int, bool]: (remaining_attempts, is_locked)
+            tuple[int, bool]: Tuple of (remaining_attempts, is_locked).
         """
         clean = cls._clean_identifier(identifier)
         key = cls._attempts_key(clean)
@@ -104,7 +176,13 @@ class AuthLockoutService:
     @classmethod
     def clear_attempts(cls, identifier: str) -> None:
         """
-        Reset failed attempts upon successful authentication.
+        Reset failed attempt counters and lockout state upon successful authentication.
+
+        Side effects:
+            - Deletes attempt counter and lockout keys from cache.
+
+        Args:
+            identifier (str): User identifier.
         """
         clean = cls._clean_identifier(identifier)
         cache.delete(cls._attempts_key(clean))
@@ -113,7 +191,18 @@ class AuthLockoutService:
     @classmethod
     def lock_account_and_dispatch_unlock(cls, identifier: str) -> None:
         """
-        Invalidate OTP, lock user account if found, and send unlock email.
+        Invalidate cached OTP codes, deactivate user account, and queue unlock email.
+
+        Under zero-enumeration design, executes silently if the user does not exist.
+
+        Side effects:
+            - Evicts cached OTP and OTP attempts.
+            - Sets ``user.is_active = False`` in database if user exists.
+            - Stores one-time unlock token in cache.
+            - Queues asynchronous Celery task to send unlock email.
+
+        Args:
+            identifier (str): Target user identifier.
         """
         clean = cls._clean_identifier(identifier)
         # 1. Invalidate OTP cache
@@ -158,10 +247,18 @@ class AuthLockoutService:
     @classmethod
     def verify_and_unlock_account(cls, token: str) -> tuple[bool, str]:
         """
-        Verify the one-time unlock token and re-enable the user account.
+        Verify one-time unlock token and reactivate the user account.
+
+        Side effects:
+            - Sets ``user.is_active = True`` in database.
+            - Evicts unlock token from cache.
+            - Clears failed attempt counters across username, email, and phone.
+
+        Args:
+            token (str): URL-safe token supplied from unlock link.
 
         Returns:
-            tuple[bool, str]: (success, message)
+            tuple[bool, str]: Tuple of (success, message).
         """
         if not token or not token.strip():
             return False, str(_("Invalid or missing unlock token."))

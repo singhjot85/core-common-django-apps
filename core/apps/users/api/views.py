@@ -1,3 +1,10 @@
+"""
+API endpoints for user authentication, registration, OTP lifecycle, and lockout recovery.
+
+Implements zero-enumeration login, asynchronous OTP delivery via task queueing,
+and JWT token distribution into client cookies.
+"""
+
 import datetime
 import logging
 import secrets
@@ -36,8 +43,16 @@ User = get_user_model()
 
 def get_jwt_tokens_for_user(user: "AbstractUser") -> dict:
     """
-    Helper to generate SimpleJWT access and refresh tokens for a user.
-    Applies lifetime jitter between 65% and 75% of the configured lifetime.
+    Generate SimpleJWT access and refresh tokens for a user.
+
+    Applies lifetime jitter between 65% and 75% of the configured lifetime
+    to prevent synchronized token expiration stampedes.
+
+    Args:
+        user (AbstractUser): Authenticated user instance.
+
+    Returns:
+        dict: Dictionary containing ``access`` token, ``refresh`` token, and ``access_expires_in`` seconds.
     """
     refresh = RefreshToken.for_user(user)
 
@@ -55,7 +70,21 @@ def get_jwt_tokens_for_user(user: "AbstractUser") -> dict:
 
 
 def set_auth_cookies(response: Response, tokens: dict) -> Response:
-    """Helper to set access and refresh JWT tokens into browser cookies."""
+    """
+    Attach JWT authentication tokens to HTTP response cookies.
+
+    Sets ``core_access_token`` and HttpOnly ``core_refresh_token`` with SameSite=Lax.
+
+    Side effects:
+        - Modifies response headers with Set-Cookie directives.
+
+    Args:
+        response (Response): DRF Response instance.
+        tokens (dict): Token dictionary with ``access`` and ``refresh`` keys.
+
+    Returns:
+        Response: The modified response with cookie headers.
+    """
     max_age = tokens.get("access_expires_in", 3600)
     response.set_cookie(
         key="core_access_token",
@@ -86,6 +115,20 @@ class SignupView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        """
+        Register a new user account with validated credentials.
+
+        API details:
+        - POST ``/api/v1/auth/signup/``
+            - **201**: User created and authenticated; JWT cookies attached.
+            - **400**: Payload validation failed (e.g. invalid email format, weak password).
+
+        Args:
+            request (Request): DRF request with user registration payload.
+
+        Returns:
+            Response: Serialized user details, tokens, and redirect URL.
+        """
         serializer_class = app_settings.SIGNUP_SERIALIZER
         serializer = serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -114,6 +157,32 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        """
+        Authenticate user with username and password under zero-enumeration rules.
+
+        Tracks failed attempts and locks out excessive failures to mitigate brute-force attacks.
+
+        API details:
+        - POST ``/api/v1/auth/login/``
+            - **200**: Successfully authenticated; JWT cookies attached.
+            - **400**: Missing credentials or incorrect username/password combination.
+            - **403**: Password login disabled by configuration.
+            - **423**: Account temporarily locked due to excessive failed attempts.
+
+        Side effects:
+            - Increments failed attempt counters in cache on invalid credentials.
+            - Triggers lockout notification email and generates unlock token when lockout threshold is met.
+            - Resets failed attempt counter on successful login.
+
+        Args:
+            request (Request): DRF request with ``username`` and ``password``.
+
+        Returns:
+            Response: Auth tokens, user details, and redirect URL on success; error message otherwise.
+
+        Raises:
+            PermissionDenied: If password login is disabled in application settings.
+        """
         if not app_settings.ENABLE_PASSWORD_LOGIN:
             raise PermissionDenied(
                 _("Password-based authentication is currently disabled.")
@@ -192,6 +261,30 @@ class OTPSendView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        """
+        Dispatch an OTP verification code to the given identifier asynchronously.
+
+        Always returns 202 Accepted to prevent user enumeration regardless of
+        whether the identifier exists in the database.
+
+        API details:
+        - POST ``/api/v1/auth/otp/send/``
+            - **202**: Request accepted and dispatched to background queue.
+            - **400**: Invalid identifier syntax or channel parameters.
+            - **403**: OTP authentication is disabled by configuration.
+
+        Side effects:
+            - Queues ``send_otp_task`` Celery job for asynchronous code generation and delivery.
+
+        Args:
+            request (Request): DRF request containing ``identifier``, ``channel``, and ``purpose``.
+
+        Returns:
+            Response: HTTP 202 status with generic confirmation message.
+
+        Raises:
+            PermissionDenied: If OTP login is disabled in application settings.
+        """
         if not app_settings.ENABLE_OTP_LOGIN:
             raise PermissionDenied(_("OTP authentication is currently disabled."))
 
@@ -230,6 +323,32 @@ class OTPVerifyView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        """
+        Verify submitted OTP code and authenticate or provision the user.
+
+        API details:
+        - POST ``/api/v1/auth/otp/verify/``
+            - **200**: OTP verified; existing user authenticated.
+            - **201**: OTP verified; new user provisioned and authenticated.
+            - **400**: Invalid OTP, expired OTP, or auto-registration disabled.
+            - **403**: OTP authentication disabled by configuration.
+            - **423**: Identity temporarily locked due to excessive failed verification attempts.
+
+        Side effects:
+            - Increments failed verification counter in cache on incorrect code.
+            - Resets failed attempt counter on successful verification.
+            - May create a new user record if auto-registration is enabled.
+            - Updates ``is_phone_verified`` or ``is_email_verified`` flags on user.
+
+        Args:
+            request (Request): DRF request containing ``identifier``, ``code``, and ``channel``.
+
+        Returns:
+            Response: Auth tokens, user profile, created flag, and redirect URL.
+
+        Raises:
+            PermissionDenied: If OTP login is disabled in application settings.
+        """
         if not app_settings.ENABLE_OTP_LOGIN:
             raise PermissionDenied(_("OTP authentication is currently disabled."))
 
@@ -348,6 +467,29 @@ class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        """
+        Authenticate or register a user using a Google OAuth2 ID token.
+
+        API details:
+        - POST ``/api/v1/auth/google/``
+            - **200**: Google token verified; existing user authenticated.
+            - **201**: Google token verified; new user created and authenticated.
+            - **400**: Invalid or expired Google ID token.
+            - **403**: Social authentication disabled by configuration.
+
+        Side effects:
+            - Validates ID token against Google's verification endpoint.
+            - Creates user record and social auth link if first-time signin.
+
+        Args:
+            request (Request): DRF request with ``id_token``.
+
+        Returns:
+            Response: Auth tokens, user details, created flag, and redirect URL.
+
+        Raises:
+            PermissionDenied: If social login is disabled in application settings.
+        """
         if not app_settings.ENABLE_SOCIAL_LOGIN:
             raise PermissionDenied(_("Social authentication is currently disabled."))
 
@@ -383,6 +525,24 @@ class AccountUnlockView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
+        """
+        Verify an account unlock token and clear lockout status.
+
+        API details:
+        - GET ``/api/v1/auth/unlock/?token={token}``
+            - **200**: Account successfully unlocked.
+            - **400**: Unlock token is invalid, expired, or already used.
+
+        Side effects:
+            - Removes lockout state and failure counters from cache.
+            - Deletes used unlock token from cache.
+
+        Args:
+            request (Request): DRF request with ``token`` query parameter.
+
+        Returns:
+            Response: JSON payload indicating success and unlock status.
+        """
         token = request.query_params.get("token", "")
         success, message = AuthLockoutService.verify_and_unlock_account(token)
         if success:
