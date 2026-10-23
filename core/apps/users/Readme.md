@@ -143,15 +143,29 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 
 ---
 
-## 7. UI Template Views (`core/apps/users/api/template_views.py`)
+## 7. UI Template Architecture & Session Shell
 
-In addition to headless JSON API endpoints, the users app provides server-rendered UI views backed by `authenticated_view.jinja`:
+The users app provides modular templates under `core/templates/core/views/`:
 
-| View | Route | Tab | Description |
-| :--- | :--- | :--- | :--- |
-| **`LoginView`** | `/` (root), `/login/` | `signin` | Multi-channel sign-in gateway (password credentials and 6-digit OTP verification). |
-| **`SignupView`** | `/signup/` | `signup` | Tenant workspace administrator registration flow. |
-| **`RegisterView`** | `/register/` | `signup` | Semantic alias for `SignupView`. |
-| **`ForgotPasswordView`** | `/forgot-password/` | `signin` | Password reset initiation flow. |
+| Template / View | Role & Responsibility |
+| :--- | :--- |
+| **`core/views/authenticated_view.jinja`** | Base layout shell for all authenticated views. Manages JWT cookies (`core_access_token`, `core_refresh_token`), watches token expiry, blocks the page with a modal overlay on session timeout, and routes back to login. |
+| **`core/views/core_login_template.jinja`** | Gateway login page hosting a top-level switcher between **Password** and **OTP** methods, housing toast messages and security badges. |
+| **`core/views/auth/username_login.jinja`** | Username & password login form + signup tab, live remaining attempt warnings, and social SSO buttons. |
+| **`core/views/auth/otp_login.jinja`** | Phone/email OTP dispatch (with readonly freeze), 6-digit box auto-advance with clipboard suggestion, and verified phone signup. |
 
-All template views supply default action targets resolved from the URL configuration, brand metadata from settings, and declarative data attributes for seamless client interactivity.
+### Security & Token Dynamics
+
+- **JWT Lifetime Jitter**: SimpleJWT access tokens are issued with a randomized lifetime between **65% and 75%** of `ACCESS_TOKEN_LIFETIME` (e.g. 100 mins base $\rightarrow$ 65 to 75 mins) to prevent synchronized expiration stampedes.
+- **Zero-Enumeration Security**: Failed logins always return generic errors (`"Username or password combination is incorrect."` or `"Incorrect OTP."`) with remaining attempt counts without disclosing user existence.
+- **Account Lockout & Unlock**: After exhausting attempts, OTP cache is invalidated, the account is locked, and an async task dispatches a secure 24-hour one-time unlock link email (`/api/users/v1/auth/unlock/?token=...`).
+- **Database `<module>_template_label` Configuration & Multi-Language Fixtures**: Form labels across all auth templates (`Email`, `Password`, `First Name`, `Last Name`, buttons, tabs) are managed by `core/utils/labels.py` backed by the core `Configuration` model (`interface_type="users_template_label"`). Priority is:
+  1. Backend-provided labels (passed via view `labels = {...}` or context `labels={...}`).
+  2. Database-backed / cached `Configuration` (`users_template_label`) extracting the project's current UI language (`settings.UI_LANGUAGE` or `LANGUAGE_CODE`).
+  3. Static centralized i18n template defaults (`DEFAULT_AUTH_LABELS`) if DB configuration is unmigrated, missing, or unreachable.
+  4. Automatic humanized title-case fallback for unregistered keys.
+- **Fixtures & Seeders**:
+  - Production Fixture: `core/apps/configurations/fixtures/configuration/users_template_label.json` containing multi-language mapped labels (`en`, `es`, `fr`).
+  - Production Fixture Seeder: `UsersTemplateLabelFixtureSeeder` in `core/apps/configurations/fixtures/seeders.py` (`is_fixture = True`).
+  - Development Seeder: `DevUsersTemplateLabelSeeder` in `core/setup/users/seeders.py` (`is_fixture = False`).
+  - Enforces `set_cache=False` during persistence to prevent cache stampedes.

@@ -218,6 +218,9 @@ Use the narrowest target while iterating, then the full suite before finishing.
   - Public apps register admin on `public_admin_site`.
   - Tenant apps register admin on `private_admin_site`.
 - Keep imports at module level. Use inline imports only to break an unavoidable circular dependency.
+- **Class-level attributes:** always declare class-level configuration attributes at the very top of class definitions, before `__init__`, methods, and lifecycle hooks.
+- **No unnecessary fallback ladders or defensive `getattr()` anti-patterns:** use single definitive configuration keys (e.g. `settings.LANGUAGE_CODE`). Do not construct multi-tier fallback chains (`getattr(a, 'x', getattr(b, 'y', ...))`) or defensive `getattr(self, 'declared_attr', default)` calls for attributes already declared on the class or expected in standard dictionaries.
+
 
 ### 4.2 Models (`models_abstract.py` & `models.py`)
 

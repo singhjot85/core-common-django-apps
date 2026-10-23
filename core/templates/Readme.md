@@ -79,6 +79,7 @@ core/
 │       ├── environment.py         # Jinja2 environment factory
 │       ├── filters/               # Modular filters (dates.py, currency.py)
 │       └── globals/               # Modular globals (urls.py)
+│   └── labels.py                  # Centralized i18n translations & LabelDict proxy
 └── apps/
     ├── crm/
     │   └── templates/

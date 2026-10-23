@@ -1,195 +1,36 @@
 {% extends "core/base.jinja" %}
 
-{% from "core/components/common/buttons.jinja" import button %}
 {% from "core/components/common/icons.jinja" import icon %}
-{% from "core/components/feedback/alerts.jinja" import message_list %}
-{% from "core/forms/form_field_text.jinja" import form_field_text %}
-{% from "core/forms/form_field_email.jinja" import form_field_email %}
-{% from "core/forms/form_field_password.jinja" import form_field_password %}
-{% from "core/forms/form_field_otp.jinja" import form_field_otp %}
-{% from "core/forms/form_field_checkbox.jinja" import form_field_checkbox %}
 {% block title %}
-    {{ page_title or (PROJECT_LABEL or 'Core Console') ~ ' - Tenant Access' }}
+    {{ page_title or (PROJECT_LABEL or 'Core Console') ~ ' - Protected Area' }}
 {% endblock title %}
-{# Override top-level app_shell to isolate the page from the dashboard sidebar & navbar chrome #}
+{# Override top-level app_shell: renders either the login template or the authenticated view shell #}
 {% block app_shell %}
-    <div class="auth-shell">
-        <div class="auth-main">
-            <div class="auth-container">
-                <!-- Brand Identity Header: Logo and Title in Same Horizontal Line -->
-                <div class="auth-brand">
-                    <div class="auth-brand-header">
-                        <div class="brand-icon-wrapper">{{ icon("rocket_launch", size=26, extra_classes="text-primary") }}</div>
-                        <h1 class="auth-brand-title">{{ PROJECT_LABEL or 'Core Console' }}</h1>
-                    </div>
-                    <p class="auth-brand-subtitle">Tenant Access Gateway</p>
-                </div>
-                <!-- Authentication Card -->
-                <div class="auth-card">
-                    <!-- Mode Switcher Tabs -->
-                    <div class="auth-tabs" role="tablist">
-                        <button type="button"
-                                class="auth-tab-btn active"
-                                data-auth-tab="signin"
-                                role="tab"
-                                aria-selected="true"
-                                aria-controls="auth_section_signin">
-                            {{ icon("login", size=18) }}
-                            <span>Sign In</span>
-                        </button>
-                        <button type="button"
-                                class="auth-tab-btn"
-                                data-auth-tab="signup"
-                                role="tab"
-                                aria-selected="false"
-                                aria-controls="auth_section_signup">
-                            {{ icon("person_add", size=18) }}
-                            <span>Create Account</span>
-                        </button>
-                    </div>
-                    <div class="auth-card-body">
-                        <!-- Flash Messages & Alerts -->
-                        {% if messages %}{{ message_list(messages) }}{% endif %}
-                        <!-- ================= TAB 1: SIGN IN ================= -->
-                        <div id="auth_section_signin" data-auth-tab-content="signin">
-                            <!-- Sub-method Switcher: Password vs OTP -->
-                            <div class="auth-method-switcher">
-                                <button type="button"
-                                        class="auth-method-btn active"
-                                        data-auth-method="password">
-                                    {{ icon("password", size=16) }}
-                                    <span>Password</span>
-                                </button>
-                                <button type="button" class="auth-method-btn" data-auth-method="otp">
-                                    {{ icon("pin", size=16) }}
-                                    <span>One-Time Code (OTP)</span>
-                                </button>
-                            </div>
-                            <!-- Form A: Password Auth -->
-                            <div id="auth_form_password" data-auth-method-content="password">
-                                <form method="post"
-                                      action="{{ signin_action|default('') }}"
-                                      id="form_password_signin">
-                                    {{ csrf_input }}
-                                    <input type="hidden" name="auth_flow" value="password">
-                                    {{ form_field_email("identity", label="Work Email or Tenant Identity", placeholder="name@company.com", required=True) }}
-                                    {{ form_field_password("password", label="Password", placeholder="••••••••", required=True) }}
-                                    <div class="auth-form-row">
-                                        {{ form_field_checkbox("remember_me", label="Remember this device", checked=True) }}
-                                        <a href="{{ forgot_password_url|default('#forgot') }}"
-                                           class="font-size-xs text-primary">Forgot password?</a>
-                                    </div>
-                                    {{ button(label="Sign In", variant="primary", type="submit", extra_classes="w-full") }}
-                                </form>
-                            </div>
-                            <!-- Form B: OTP Auth -->
-                            <div id="auth_form_otp"
-                                 data-auth-method-content="otp"
-                                 style="display: none">
-                                <form method="post"
-                                      action="{{ otp_action|default('') }}"
-                                      id="form_otp_signin">
-                                    {{ csrf_input }}
-                                    <input type="hidden" name="auth_flow" value="otp">
-                                    {{ form_field_text("otp_destination", label="Verified Phone or Email Channel", placeholder="+1 (555) 000-0000 or email@domain.com", required=True) }}
-                                    <div class="mb-lg">
-                                        {{ button(label="Send Passcode", variant="outline", size="sm", type="button", extra_classes="w-full", id="btn_request_otp") }}
-                                    </div>
-                                    {{ form_field_otp("otp_code", label="6-Digit Challenge Key", digits=6, required=True) }}
-                                    <div class="mt-lg">
-                                        {{ button(label="Verify & Authorize", variant="primary", type="submit", extra_classes="w-full") }}
-                                    </div>
-                                </form>
-                            </div>
-                            <!-- Social SSO Divider -->
-                            <div class="auth-divider">
-                                <span>Or Single Sign-On</span>
-                            </div>
-                            <!-- Social Auth Grid -->
-                            <div class="social-auth-grid">
-                                <a href="{{ sso_google_url|default('#google') }}"
-                                   class="social-auth-btn"
-                                   title="SSO with Google Workspace"
-                                   aria-label="Sign in with Google">
-                                    <svg width="20" height="20" viewBox="0 0 24 24">
-                                        <path d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.3 8.9 5 12 5z" fill="#EA4335">
-                                        </path>
-                                        <path d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z" fill="#4285F4">
-                                        </path>
-                                        <path d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.7s.1-2 .4-2.7L1.6 6.4C.6 8.3 0 10.1 0 12s.6 3.7 1.6 5.6l3.7-2.9z" fill="#FBBC05">
-                                        </path>
-                                        <path d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.3-6.7-5.3L1.6 16C3.5 19.8 7.4 23 12 23z" fill="#34A853">
-                                        </path>
-                                    </svg>
-                                </a>
-                                <a href="{{ sso_apple_url|default('#apple') }}"
-                                   class="social-auth-btn text-muted"
-                                   title="SSO with Apple ID"
-                                   aria-label="Sign in with Apple">
-                                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.89c.66-.82 1.11-1.96.99-3.1-.96.04-2.12.64-2.8 1.44-.6.69-1.13 1.84-.99 2.95 1.07.08 2.15-.55 2.8-1.29z">
-                                        </path>
-                                    </svg>
-                                </a>
-                                <a href="{{ sso_meta_url|default('#meta') }}"
-                                   class="social-auth-btn"
-                                   title="SSO with Meta Workplace"
-                                   aria-label="Sign in with Meta">
-                                    <svg width="20" height="20" fill="#1877F2" viewBox="0 0 24 24">
-                                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z">
-                                        </path>
-                                    </svg>
-                                </a>
-                            </div>
-                        </div>
-                        <!-- ================= TAB 2: CREATE ACCOUNT ================= -->
-                        <div id="auth_section_signup"
-                             data-auth-tab-content="signup"
-                             style="display: none">
-                            <form method="post"
-                                  action="{{ signup_action|default('') }}"
-                                  id="form_signup">
-                                {{ csrf_input }}
-                                <input type="hidden" name="auth_flow" value="signup">
-                                {{ form_field_text("full_name", label="Lead Administrator Full Name", placeholder="Morgan Chen", required=True) }}
-                                {{ form_field_email("email", label="Corporate Email Address", placeholder="morgan.chen@tenant.io", required=True) }}
-                                {{ form_field_text("tenant_domain", label="Company & Tenant Domain", placeholder="acme-corp", required=True, hint="Workspace prefix: [subdomain].core.internal") }}
-                                {{ form_field_password("password", label="Root Credential Password", placeholder="Min. 12 chars with symbol & number", required=True) }}
-                                <div class="mb-lg mt-sm">
-                                    {{ form_field_checkbox("agree_terms", label="I agree to the Master Services Agreement, SLA, and cryptographic processing terms.", required=True) }}
-                                </div>
-                                {{ button(label="Provision Tenant Workspace", variant="primary", type="submit", extra_classes="w-full") }}
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                <!-- Footer Security Badges -->
-                <div class="auth-footer text-center mt-lg radius-lg border">
-                    <div class="flex items-center justify-center gap-md flex-wrap mb-xs font-size-xs">
-                        <span class="inline-flex items-center gap-xs">
-                            {{ icon("verified", size=16, extra_classes="text-success") }}
-                            <span>256-bit SSL Encrypted</span>
-                        </span>
-                        <span>•</span>
-                        <span class="inline-flex items-center gap-xs">
-                            {{ icon("domain", size=16, extra_classes="text-primary") }}
-                            <span>Enterprise Tenant Isolation</span>
-                        </span>
-                        <span>•</span>
-                        <span class="inline-flex items-center gap-xs">
-                            {{ icon("shield", size=16, extra_classes="text-warning") }}
-                            <span>PCI-DSS Level 1 Compliant</span>
-                        </span>
-                    </div>
-                    <div class="flex items-center justify-center gap-md font-size-xs text-muted">
-                        <a href="{{ privacy_url|default('#privacy') }}"
-                           class="text-muted hover:text-primary">Privacy Policy</a>
-                        <a href="{{ terms_url|default('#terms') }}"
-                           class="text-muted hover:text-primary">Terms of Service</a>
-                        <a href="{{ status_url|default('#status') }}"
-                           class="text-muted hover:text-primary">Platform Status</a>
-                    </div>
-                </div>
+    {% if is_login_view|default(true) and not (request.user and request.user.is_authenticated and not force_login_view|default(false)) %}
+        {# Render modular gateway login template #}
+        {% include "core/views/core_login_template.jinja" %}
+
+    {% else %}
+        {# Standard authenticated dashboard app shell #}
+        {{ super() }}
+    {% endif %}
+    {# Global Session Expiration Blocking Overlay & Modal Dialog #}
+    {% set labels = resolve_labels(labels) if resolve_labels is defined else (labels or {}) %}
+    <div id="session_timeout_overlay"
+         class="session-timeout-overlay"
+         style="display: none"
+         role="alertdialog"
+         aria-modal="true"
+         aria-labelledby="session_timeout_title"
+         aria-describedby="session_timeout_desc">
+        <div class="session-timeout-modal">
+            <div class="session-timeout-icon">{{ icon("timer_off", size=48, extra_classes="text-warning") }}</div>
+            <h3 id="session_timeout_title" class="session-timeout-title">{{ labels.session_expired }}</h3>
+            <p id="session_timeout_desc" class="session-timeout-message">{{ labels.session_expired_message }}</p>
+            <div class="session-timeout-actions">
+                <a href="{{ login_url|default("/login/") }}?next={{ request.path|urlencode if request else '/' }}"
+                   id="btn_session_timeout_login"
+                   class="btn btn-primary w-full">{{ labels.return_to_login }}</a>
             </div>
         </div>
     </div>

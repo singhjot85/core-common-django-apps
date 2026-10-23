@@ -8,6 +8,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
 from core.apps.users.api.views import (
+    AccountUnlockView,
     GoogleLoginView,
     LoginView,
     OTPSendView,
@@ -19,6 +20,7 @@ urlpatterns = [
     # Registration & Login
     path("auth/signup/", SignupView.as_view(), name="user-signup"),
     path("auth/login/", LoginView.as_view(), name="user-login"),
+    path("auth/unlock/", AccountUnlockView.as_view(), name="user-unlock"),
     path("auth/user/", UserDetailsView.as_view(), name="user-details"),
     # JWT Tokens
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),

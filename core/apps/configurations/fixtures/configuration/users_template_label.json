@@ -1,0 +1,166 @@
+{
+    "name": "Users Template Labels",
+    "interface_type": "users_template_label",
+    "details": {
+        "sign_in": {
+            "en": "Sign In",
+            "es": "Iniciar sesión",
+            "fr": "Se connecter"
+        },
+        "sign_up": {
+            "en": "Create Account",
+            "es": "Crear cuenta",
+            "fr": "Créer un compte"
+        },
+        "create_account": {
+            "en": "Create Account",
+            "es": "Crear cuenta",
+            "fr": "Créer un compte"
+        },
+        "email": {
+            "en": "Email",
+            "es": "Correo electrónico",
+            "fr": "E-mail"
+        },
+        "username": {
+            "en": "Username",
+            "es": "Nombre de usuario",
+            "fr": "Nom d'utilisateur"
+        },
+        "password": {
+            "en": "Password",
+            "es": "Contraseña",
+            "fr": "Mot de passe"
+        },
+        "phone": {
+            "en": "Phone Number",
+            "es": "Número de teléfono",
+            "fr": "Numéro de téléphone"
+        },
+        "phone_number": {
+            "en": "Phone Number",
+            "es": "Número de teléfono",
+            "fr": "Numéro de téléphone"
+        },
+        "phone_or_email": {
+            "en": "Phone or Email",
+            "es": "Teléfono o correo",
+            "fr": "Téléphone ou e-mail"
+        },
+        "username_or_email": {
+            "en": "Email or Username",
+            "es": "Correo o nombre de usuario",
+            "fr": "E-mail ou nom d'utilisateur"
+        },
+        "first_name": {
+            "en": "First Name",
+            "es": "Nombre",
+            "fr": "Prénom"
+        },
+        "last_name": {
+            "en": "Last Name",
+            "es": "Apellido",
+            "fr": "Nom de famille"
+        },
+        "full_name": {
+            "en": "Full Name",
+            "es": "Nombre completo",
+            "fr": "Nom complet"
+        },
+        "otp_code": {
+            "en": "Verification Code",
+            "es": "Código de verificación",
+            "fr": "Code de vérification"
+        },
+        "phone_otp_code": {
+            "en": "Verification Code",
+            "es": "Código de verificación",
+            "fr": "Code de vérification"
+        },
+        "send_code": {
+            "en": "Send Code",
+            "es": "Enviar código",
+            "fr": "Envoyer le code"
+        },
+        "verify_phone": {
+            "en": "Verify Phone",
+            "es": "Verificar teléfono",
+            "fr": "Vérifier le téléphone"
+        },
+        "verify_and_sign_in": {
+            "en": "Verify & Sign In",
+            "es": "Verificar e iniciar sesión",
+            "fr": "Vérifier et se connecter"
+        },
+        "remember_me": {
+            "en": "Remember this device",
+            "es": "Recordar este dispositivo",
+            "fr": "Se souvenir de cet appareil"
+        },
+        "forgot_password": {
+            "en": "Forgot password?",
+            "es": "¿Olvidó su contraseña?",
+            "fr": "Mot de passe oublié ?"
+        },
+        "resend_code": {
+            "en": "Resend code",
+            "es": "Reenviar código",
+            "fr": "Renvoyer le code"
+        },
+        "agree_terms": {
+            "en": "I agree to the Terms of Service and Privacy Policy",
+            "es": "Acepto los Términos de servicio y la Política de privacidad",
+            "fr": "J'accepte les conditions d'utilisation et la politique de confidentialité"
+        },
+        "password_login": {
+            "en": "Password Login",
+            "es": "Acceso con contraseña",
+            "fr": "Connexion par mot de passe"
+        },
+        "otp_login": {
+            "en": "One-Time Code (OTP)",
+            "es": "Código de un solo uso (OTP)",
+            "fr": "Code à usage unique (OTP)"
+        },
+        "subtitle": {
+            "en": "Access Gateway",
+            "es": "Pasarela de acceso",
+            "fr": "Passerelle d'accès"
+        },
+        "or_sso": {
+            "en": "Or Single Sign-On",
+            "es": "O inicio de sesión único",
+            "fr": "Ou authentification unique"
+        },
+        "privacy_policy": {
+            "en": "Privacy Policy",
+            "es": "Política de privacidad",
+            "fr": "Politique de confidentialité"
+        },
+        "terms_of_service": {
+            "en": "Terms of Service",
+            "es": "Términos del servicio",
+            "fr": "Conditions d'utilisation"
+        },
+        "platform_status": {
+            "en": "Platform Status",
+            "es": "Estado de la plataforma",
+            "fr": "État de la plateforme"
+        },
+        "session_expired": {
+            "en": "Session Expired",
+            "es": "Sesión expirada",
+            "fr": "Session expirée"
+        },
+        "session_expired_message": {
+            "en": "Your secure session has timed out due to token expiration. Please sign in again to continue working.",
+            "es": "Su sesión segura ha expirado debido al vencimiento del token. Por favor inicie sesión de nuevo.",
+            "fr": "Votre session sécurisée a expiré en raison de l'expiration du jeton. Veuillez vous reconnecter pour continuer."
+        },
+        "return_to_login": {
+            "en": "Return to Login",
+            "es": "Volver a iniciar sesión",
+            "fr": "Retour à la connexion"
+        }
+    }
+}
