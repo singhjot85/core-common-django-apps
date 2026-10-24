@@ -3,7 +3,7 @@ import typing
 
 from django.conf import settings
 
-SENSITIVE_CONTENT_PHRASES = settings.SENSITIVE_PHRASES or [
+DEFAULT_SENSITIVE_CONTENT_PHRASES = [
     "password",
     "pass",
     "id",
@@ -12,6 +12,7 @@ SENSITIVE_CONTENT_PHRASES = settings.SENSITIVE_PHRASES or [
     "secret",
     "key",
     "api_key",
+    "secret_key",
     "auth",
     "credential",
     "authorization",
@@ -40,6 +41,23 @@ SENSITIVE_CONTENT_PHRASES = settings.SENSITIVE_PHRASES or [
     "old_password",
     "new_password",
 ]
+
+
+def get_sensitive_content_phrases() -> list[str]:
+    """
+    Return configured sensitive content phrases from settings or defaults.
+
+    Returns:
+        list[str]: Sensitive phrases list.
+    """
+    if settings.configured:
+        configured_phrases = getattr(settings, "SENSITIVE_PHRASES", None)
+        if configured_phrases:
+            return configured_phrases
+    return DEFAULT_SENSITIVE_CONTENT_PHRASES
+
+
+SENSITIVE_CONTENT_PHRASES = DEFAULT_SENSITIVE_CONTENT_PHRASES
 
 
 class PatternMatcher:
@@ -74,7 +92,7 @@ class PatternMatcher:
             case_sensitive (bool, optional): Case sensitive search or exact pattern search.
                 False by default, bcz we want a case insensitive search, i.e. we want to find both ``Pass`` and ``pass`` for given phrase ``pass``
         """
-        self.phrases = phrases or SENSITIVE_CONTENT_PHRASES
+        self.phrases = phrases or get_sensitive_content_phrases()
         self.case_sensitive = case_sensitive
         self._compiled_patterns = None
         self._optimized_phrases = None
@@ -82,43 +100,16 @@ class PatternMatcher:
 
     def _optimize_phrases(self) -> list[str]:
         """
-        Remove redundant phrases.
-        If 'password' is present, remove 'pass' to avoid false positives.
+        Deduplicate phrases and sort by length descending.
+
+        Ensures longer, more specific phrases are evaluated first
+        during pattern matching without hardcoding phrase-specific rules.
+
+        Returns:
+            list[str]: Deduplicated phrases sorted descending by length.
         """
-        phrases = set(self.phrases)
-        phrases = {p.lower() for p in phrases if p}
-
-        to_remove = set()
-        for phrase in phrases:
-            for other in phrases:
-                if phrase != other and phrase in other:
-                    # If phrase is a substring of another, keep the longer one
-                    # unless the longer one is just adding common prefixes/suffixes
-                    if len(other) - len(phrase) > 3:
-                        # Check if it's just adding common prefixes/suffixes
-                        common_prefixes = self.COMMON_PREFIXES
-                        common_suffixes = self.COMMON_SUFFIXES
-
-                        is_common_extension = False
-                        for prefix in common_prefixes:
-                            if other.startswith(prefix + phrase):
-                                is_common_extension = True
-                                break
-                        for suffix in common_suffixes:
-                            if other.endswith(phrase + suffix):
-                                is_common_extension = True
-                                break
-
-                        if not is_common_extension:
-                            to_remove.add(phrase)
-
-        # Remove duplicates that are just common variations
-        optimized = [p for p in phrases if p not in to_remove]
-
-        # Sort by length descending to match most specific first
-        optimized.sort(key=len, reverse=True)
-
-        return optimized
+        phrases = {p.strip().lower() for p in self.phrases if p and p.strip()}
+        return sorted(phrases, key=len, reverse=True)
 
     def _compile_patterns(self):
         """
@@ -128,18 +119,12 @@ class PatternMatcher:
 
         patterns = []
         for phrase in self._optimized_phrases:
-            escaped = re.escape(phrase)  # Escape special regex characters
-
-            # Use word boundaries to match whole words
-            # Also handle underscore and dot separators (common in variable names)
-            pattern = r"(?<![a-zA-Z0-9_.-])" + escaped + r"(?![a-zA-Z0-9_.-])"
+            escaped = re.escape(phrase)
+            # Use boundaries that allow underscore, dot, and hyphen separators in variable names
+            pattern = r"(?<![a-zA-Z0-9])" + escaped + r"(?![a-zA-Z0-9])"
             patterns.append(pattern)
 
-        # Combine all patterns into a single regex with OR
-        # Use (?:...) for non-capturing group
         combined_pattern = "|".join(patterns)
-
-        # Compile with appropriate flags
         flags = 0 if self.case_sensitive else re.IGNORECASE
         self._compiled_patterns = re.compile(combined_pattern, flags)
 
@@ -188,6 +173,9 @@ class PatternMatcher:
             return mask
 
         return self._compiled_patterns.sub(replace_match, text)
+
+
+_SENSITIVE_MATCHER: typing.Optional[PatternMatcher] = None
 
 
 def get_sensitive_matcher() -> PatternMatcher:
@@ -369,25 +357,39 @@ class ContentMaskingUtils:
         for key, val in attributes.items():
             if matcher.is_sensitive(key):
                 filtered[key] = mask_value
-            else:
-                if deep_search:
-                    if isinstance(val, dict):
-                        filtered[key] = ContentMaskingUtils.filter_sensitive_content(
-                            stringified=False, mask_value=mask_value, **val
+
+            elif isinstance(val, str):
+                filtered[key] = ContentMaskingUtils.filter_value(val, matcher)
+
+            elif deep_search and isinstance(val, dict):
+                filtered[key] = ContentMaskingUtils.filter_sensitive_content(
+                    stringified=False,
+                    deep_search=deep_search,
+                    mask_value=mask_value,
+                    **val,
+                )
+
+            elif deep_search and isinstance(val, list):
+                filtered[key] = [
+                    (
+                        ContentMaskingUtils.filter_sensitive_content(
+                            stringified=False,
+                            deep_search=deep_search,
+                            mask_value=mask_value,
+                            **item,
                         )
-                    elif isinstance(val, list):
-                        filtered[key] = [
-                            (
-                                ContentMaskingUtils.filter_sensitive_content(
-                                    stringified=False, mask_value=mask_value, **val
-                                )
-                                if isinstance(item, dict)
-                                else ContentMaskingUtils.filter_value(item, matcher)
-                            )
-                            for item in val
-                        ]
-                    else:
-                        filtered[key] = ContentMaskingUtils.filter_value(val, matcher)
+                        if isinstance(item, dict)
+                        else (
+                            ContentMaskingUtils.filter_value(item, matcher)
+                            if isinstance(item, str)
+                            else item
+                        )
+                    )
+                    for item in val
+                ]
+
+            else:
+                filtered[key] = val
 
         if stringified:
             return stringify_dict(filtered, flat=True)
