@@ -6,7 +6,6 @@ import os
 
 from django.conf import settings
 
-from core.apps.configurations.fixtures.seeders import UsersTemplateLabelFixtureSeeder
 from core.apps.users import get_user_model
 from core.seeder.base import BaseMeta, BaseSeeder
 from core.seeder.datasource import FileDataSource
@@ -44,13 +43,3 @@ class DevUserSeeder(BaseSeeder):
         # Before exiting restore original method, as one seeder object is shared by mutiple runs
         self.creation_method = getattr(self._meta, "object_create_method")
         return instance
-
-
-class DevUsersTemplateLabelSeeder(UsersTemplateLabelFixtureSeeder):
-    """
-    Development seeder for users template labels configuration.
-    Inherits data source and creation logic with is_fixture=False.
-    """
-
-    class Meta(UsersTemplateLabelFixtureSeeder.Meta):
-        is_fixture = False

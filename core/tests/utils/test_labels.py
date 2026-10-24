@@ -7,10 +7,10 @@ from unittest.mock import MagicMock, patch
 from django.test import RequestFactory, override_settings
 
 from core.apps.configurations import get_configuration_model
-from core.apps.configurations.fixtures.seeders import UsersTemplateLabelFixtureSeeder
+from core.apps.configurations.fixtures.seeders import ConfigurationSeeder
 from core.apps.users.api.template_views import LoginView
 from core.seeder.registry import fixture_registry, seeder_registry
-from core.setup.users.seeders import DevUsersTemplateLabelSeeder
+from core.setup.configurations.seeders import DevUsersTemplateLabelSeeder
 from core.utils.labels import (
     LabelDict,
     extract_label_for_language,
@@ -178,27 +178,22 @@ class TestDatabaseLabelConfigurationAndLanguageMapping:
 
 
 class TestUsersTemplateLabelSeeders:
-    """Tests for UsersTemplateLabelFixtureSeeder and DevUsersTemplateLabelSeeder."""
+    """Tests for ConfigurationSeeder and DevUsersTemplateLabelSeeder."""
 
     def test_seeder_registry_memberships(self):
-        assert (
-            fixture_registry.get("users_template_label_fixture_seeder")
-            is UsersTemplateLabelFixtureSeeder
-        )
+        assert fixture_registry.get("configuration_seeder") is ConfigurationSeeder
         assert (
             seeder_registry.get("dev_users_template_label_seeder")
             is DevUsersTemplateLabelSeeder
         )
 
     def test_fixture_seeder_meta_properties(self):
-        assert UsersTemplateLabelFixtureSeeder.Meta.is_fixture is True
-        assert UsersTemplateLabelFixtureSeeder.Meta.model == Configuration
-        assert (
-            UsersTemplateLabelFixtureSeeder.Meta.data_source.load_method == "individual"
-        )
+        assert ConfigurationSeeder.Meta.is_fixture is True
+        assert ConfigurationSeeder.Meta.model == Configuration
+        assert ConfigurationSeeder.Meta.data_source.load_method == "individual"
         assert (
             "configurations/fixtures/configuration"
-            in UsersTemplateLabelFixtureSeeder.Meta.data_source.file_path
+            in ConfigurationSeeder.Meta.data_source.file_path
         )
 
     def test_dev_seeder_inherits_with_fixture_false(self):
@@ -206,7 +201,7 @@ class TestUsersTemplateLabelSeeders:
         assert DevUsersTemplateLabelSeeder.Meta.model == Configuration
 
     def test_seeder_create_uses_set_config_without_cache(self):
-        seeder = UsersTemplateLabelFixtureSeeder()
+        seeder = ConfigurationSeeder()
         sample_data = {
             "name": "Users Template Labels",
             "interface_type": "users_template_label",
@@ -225,7 +220,7 @@ class TestUsersTemplateLabelSeeders:
             )
 
     def test_fixture_file_contents_valid_json(self):
-        seeder = UsersTemplateLabelFixtureSeeder()
+        seeder = ConfigurationSeeder()
         data = seeder.seed_data
         assert isinstance(data, list)
         assert len(data) >= 1

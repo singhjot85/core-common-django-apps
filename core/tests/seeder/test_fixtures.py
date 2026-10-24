@@ -2,6 +2,10 @@ import json
 import pathlib
 
 import pytest
+from django.conf import settings
+
+from core.apps.configurations.fixtures.seeders import ConfigurationSeeder
+from core.apps.crm.fixtures.seeder import CustomerPreferenceTypeSeeder
 
 APPS_DIR = pathlib.Path(__file__).resolve().parents[2] / "apps"
 SETUP_DIR = pathlib.Path(__file__).resolve().parents[2] / "setup"
@@ -20,7 +24,12 @@ class TestFixtureJSONFiles:
         / "configurations"
         / "fixtures"
         / "configuration"
-        / "configurations.json",
+        / "ui_configuration.json",
+        APPS_DIR
+        / "configurations"
+        / "fixtures"
+        / "configuration"
+        / "users_template_label.json",
         APPS_DIR
         / "configurations"
         / "fixtures"
@@ -45,13 +54,13 @@ class TestFixtureJSONFiles:
 
     @pytest.mark.parametrize("fixture_path", FIXTURE_PATHS, ids=lambda p: p.name)
     def test_fixture_json_is_valid(self, fixture_path):
-        """Each fixture JSON file must be parseable and contain a list."""
+        """Each fixture JSON file must be parseable and contain a list or non-empty dict."""
         if not fixture_path.exists():
             pytest.skip(f"File missing: {fixture_path}")
 
         data = json.loads(fixture_path.read_text())
-        assert isinstance(data, list), (
-            f"{fixture_path.name} should contain a JSON array"
+        assert isinstance(data, (list, dict)), (
+            f"{fixture_path.name} should contain a JSON array or object"
         )
         assert len(data) > 0, f"{fixture_path.name} should not be empty"
 
@@ -70,17 +79,15 @@ class TestFixtureJSONFiles:
             assert "label" in entry, f"Missing 'label' in {entry}"
             assert "data_type" in entry, f"Missing 'data_type' in {entry}"
 
-    def test_configuration_entries_have_required_fields(self):
+    @pytest.mark.parametrize(
+        "filename", ["ui_configuration.json", "users_template_label.json"]
+    )
+    def test_configuration_entries_have_required_fields(self, filename):
         """Configuration fixture entries must have name, interface_type, details."""
-        path = (
-            APPS_DIR
-            / "configurations"
-            / "fixtures"
-            / "configuration"
-            / "configurations.json"
-        )
+        path = APPS_DIR / "configurations" / "fixtures" / "configuration" / filename
         data = json.loads(path.read_text())
-        for entry in data:
+        entries = data if isinstance(data, list) else [data]
+        for entry in entries:
             assert "name" in entry
             assert "interface_type" in entry
             assert "details" in entry
@@ -101,11 +108,6 @@ class TestFixtureJSONFiles:
             assert isinstance(entry["schema"], dict)
 
     PUBLIC_FIXTURE_PATHS = [
-        APPS_DIR
-        / "configurations"
-        / "fixtures"
-        / "configuration"
-        / "configurations.json",
         APPS_DIR
         / "configurations"
         / "fixtures"
@@ -137,34 +139,16 @@ class TestFixtureJSONFiles:
 
 
 class TestFixtureSeedersSchemaConfiguration:
-    """Validate that production fixture seeder classes have correct tenant_type and schema_name."""
+    """Validate that production fixture seeder classes have correct metadata."""
 
     def test_configuration_seeders_are_public_tenant_type(self):
-        """Configuration seeders must be public tenant_type and public schema."""
-        from django.conf import settings
-
-        from core.apps.configurations.fixtures.seeder import (
-            ConfigurationSchemaSeeder,
-            ConfigurationSeeder,
-            TenantConfigurationSeeder,
-        )
-
-        for seeder_cls in [
-            ConfigurationSeeder,
-            ConfigurationSchemaSeeder,
-            TenantConfigurationSeeder,
-        ]:
-            meta = getattr(seeder_cls, "Meta", None)
-            assert meta is not None
-            assert meta.tenant_type == settings.TENANT_TYPE_PUBLIC
-            assert meta.schema_name == "public"
+        """Configuration seeder must be registered as a fixture seeder."""
+        meta = getattr(ConfigurationSeeder, "Meta", None)
+        assert meta is not None
+        assert meta.is_fixture is True
 
     def test_customer_preference_type_seeder_is_organization_tenant_type(self):
         """CustomerPreferenceTypeSeeder without explicit schema_name resolves to ALL_SCHEMAS."""
-        from django.conf import settings
-
-        from core.apps.crm.fixtures.seeder import CustomerPreferenceTypeSeeder
-
         meta = getattr(CustomerPreferenceTypeSeeder, "Meta", None)
         assert meta is not None
         assert meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION

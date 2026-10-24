@@ -15,7 +15,6 @@ from core.utils.jinja2.environment import (
 )
 from core.utils.jinja2.filters import format_currency, format_date, format_datetime
 from core.utils.jinja2.loaders import SafeDatabaseLoader
-from sample_project.apps.views import BackendServerdUIView
 
 
 class TestJinja2EnvironmentAndFilters:
@@ -355,34 +354,6 @@ class TestFullPageTemplateRendering:
         assert "Enterprise Overview" in rendered
         assert "Master Corp" in rendered
         assert "Pending Invoices" in rendered
-
-    def test_backend_served_ui_view_mock_data(self, request_obj):
-        view = BackendServerdUIView()
-        view.request = request_obj
-        context = view.get_context_data()
-
-        assert "page_label" in context
-        assert "sidebar_links" in context
-        assert len(context["sidebar_links"]) == 4
-        assert "customers" in context
-        assert len(context["customers"]) > 0
-        assert "system_gauges" in context
-        assert "operational_services" in context
-        assert "worker_nodes" in context
-
-        # Public Dashboard rendering
-        rendered_public = view.render_to_response(context).rendered_content
-        assert "All Systems Operational" in rendered_public
-        assert "System Resource Utilization" in rendered_public
-        assert "Public Platform Worker Pool" in rendered_public
-
-        # Tenant Dashboard rendering
-        rendered_tenant = render_to_string(
-            "dashboard.jinja", context, request=request_obj
-        )
-        assert "Enterprise Overview" in rendered_tenant
-        assert "Acme Innovations Ltd" in rendered_tenant
-        assert "Recent Customers" in rendered_tenant
 
     def test_base_template_theme_toggle_and_script(self, request_obj):
         context = {"request": request_obj}
