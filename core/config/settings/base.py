@@ -272,7 +272,7 @@ REST_FRAMEWORK = {
 #  django-mail TODO: Work on email backends
 # ------------------
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "")
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "core.utils.backends.email.console.CoreConsoleEmailBackend"
 
 # ------------------
 #  django-constance

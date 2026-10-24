@@ -5,7 +5,6 @@ Management command alias: `seed_data` (delegates to `dev_setup`).
 import json
 import logging
 import os
-import traceback
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -93,5 +92,4 @@ class Command(BaseCommand):
                     self.style.SUCCESS(f"Successfully seeded tenants: {tenants}")
                 )
         except Exception as e:
-            print(traceback.format_exc())  # noqa: T201
             self.stdout.write(self.style.ERROR(f"Failed Seeding tenants: {e}"))

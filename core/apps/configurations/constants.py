@@ -6,6 +6,13 @@ from core.utils.lazy_objects import LazyDynamicChoiceTypes
 InterfaceTypeChoices = LazyDynamicChoiceTypes()
 
 
+def get_interface_type_choices():
+    """
+    Return dynamic choices from InterfaceTypeChoices for model fields.
+    """
+    return InterfaceTypeChoices.choices
+
+
 class DefaultConfigurationInterfaceTypeChoices(TextChoices):
     """
     Default configuration Interface choices shipped with core

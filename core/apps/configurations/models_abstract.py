@@ -6,7 +6,10 @@ from django.db import connection, models
 from django_tenants.utils import schema_context
 from rest_framework.exceptions import ValidationError
 
-from core.apps.configurations.constants import InterfaceTypeChoices
+from core.apps.configurations.constants import (
+    InterfaceTypeChoices,
+    get_interface_type_choices,
+)
 from core.apps.tenants import get_tenant_model
 from core.utils.checks import is_multi_tenant
 from core.utils.models import BaseModel, BaseSemanticVersionModel
@@ -19,7 +22,7 @@ class AbstractConfiguration(BaseSemanticVersionModel):
 
     name = models.CharField(max_length=124, null=True, blank=True)
     interface_type = models.CharField(
-        null=False, blank=False, choices=InterfaceTypeChoices.choices
+        null=False, blank=False, choices=get_interface_type_choices
     )
 
     details = models.JSONField(blank=True, default=dict, encoder=DjangoJSONEncoder)
@@ -101,7 +104,7 @@ class AbstractConfigurationSchema(BaseModel):
     """
 
     interface_type = models.CharField(
-        null=False, blank=False, choices=InterfaceTypeChoices.choices
+        null=False, blank=False, choices=get_interface_type_choices
     )
     schema = models.JSONField(blank=True, default=dict, encoder=DjangoJSONEncoder)
 
@@ -138,8 +141,6 @@ if is_multi_tenant():
             Validations for JSON saved in details.
             TODO: Implement JSONSchema Validators and avoid this pattern going forward.
             """
-            from core.apps.configurations.constants import InterfaceTypeChoices
-
             if not self.details:
                 raise ValidationError("Tenant Configuration cannot be empty.")
 
@@ -175,7 +176,9 @@ if is_multi_tenant():
             tenant = Tenant.objects.get(schema_name=schema_name)
 
             def create_config() -> dict:
-                from core.apps.configurations import get_configuration_model
+                from core.apps.configurations import (  # noqa: PLC0415
+                    get_configuration_model,
+                )
 
                 Configuration = get_configuration_model()
 

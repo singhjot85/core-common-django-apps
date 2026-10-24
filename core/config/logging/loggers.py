@@ -11,7 +11,7 @@ from core.config.logging import APP_LOG_LEVEL
 from core.config.logging.handlers import CoreLoggingHandlers
 
 CONFIGURED_LOGGERS = [
-    "django",
+    # "django",
     "django.request",
     "django.db.backends",
     "django.security",
