@@ -16,7 +16,6 @@ from core.utils.labels import (
     extract_label_for_language,
     get_current_ui_language,
     get_db_template_labels,
-    get_default_labels,
     resolve_labels,
 )
 
@@ -26,21 +25,12 @@ Configuration = get_configuration_model()
 class TestLabelsAndLabelDict:
     """Test suite for LabelDict proxy and label resolution."""
 
-    def test_default_labels_contain_core_keys(self):
-        labels = get_default_labels()
-        assert labels.email == "Email"
-        assert labels["email"] == "Email"
-        assert labels.password == "Password"  # pragma: allowlist secret
-        assert labels["password"] == "Password"  # pragma: allowlist secret
-        assert labels.sign_in == "Sign In"
-        assert labels.create_account == "Create Account"
-
     def test_backend_override_priority(self):
         backend_labels = {
             "email": "Company Email",
             "sign_in": "Log In Now",
         }
-        labels = resolve_labels(backend_labels)
+        labels = resolve_labels("users_template_label", backend_labels)
 
         # Overridden keys return backend values
         assert labels.email == "Company Email"
@@ -53,21 +43,22 @@ class TestLabelsAndLabelDict:
         assert labels.create_account == "Create Account"
 
     def test_unregistered_key_humanized_fallback(self):
-        labels = resolve_labels()
+        labels = resolve_labels("users_template_label")
         assert labels.billing_zip_code == "Billing Zip Code"
         assert labels["shipping_address"] == "Shipping Address"
         assert labels.get("vat_number") == "Vat Number"
 
     def test_none_values_in_backend_dict_do_not_override_defaults(self):
         labels = resolve_labels(
-            {"email": None, "password": "Custom Password"}  # pragma: allowlist secret
+            "users_template_label",
+            {"email": None, "password": "Custom Password"},  # pragma: allowlist secret
         )
         assert labels.email == "Email"
         assert labels.password == "Custom Password"  # pragma: allowlist secret
 
     def test_resolve_labels_idempotent(self):
         initial = LabelDict({"email": "Test Email"})
-        resolved = resolve_labels(initial)
+        resolved = resolve_labels("users_template_label", initial)
         assert resolved is initial
         assert resolved.email == "Test Email"
 

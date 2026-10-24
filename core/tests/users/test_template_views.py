@@ -5,12 +5,6 @@ Unit tests for User Authentication Template Views.
 from django.test import RequestFactory
 from django.urls import reverse
 
-from core.apps.users.api.template_view import (
-    ForgotPasswordView as AliasForgotPasswordView,
-    LoginView as AliasLoginView,
-    RegisterView as AliasRegisterView,
-    SignupView as AliasSignupView,
-)
 from core.apps.users.api.template_views import (
     ForgotPasswordView,
     LoginView,
@@ -21,13 +15,6 @@ from core.apps.users.api.template_views import (
 
 class TestAuthTemplateViews:
     """Test suite for LoginView, SignupView, RegisterView, and ForgotPasswordView."""
-
-    def test_compatibility_alias_imports(self):
-        """Verify template_view.py aliases match template_views.py classes."""
-        assert LoginView is AliasLoginView
-        assert SignupView is AliasSignupView
-        assert RegisterView is AliasRegisterView
-        assert ForgotPasswordView is AliasForgotPasswordView
 
     def test_login_view_context_and_rendering(self):
         """Verify LoginView sets signin initial tab and renders HTTP 200."""

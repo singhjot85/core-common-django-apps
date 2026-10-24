@@ -31,7 +31,7 @@ class ConfigurationSeeder(BaseSeeder):
         """
         Persist configuration with set_cache=False to prevent cache stampedes during seeding.
         """
-        interface_type = data.get("interface_type", "users_template_label")
+        interface_type = data.get("interface_type", None)
         details = data.get("details", {})
         name = data.get("name", "Users Template Labels")
 

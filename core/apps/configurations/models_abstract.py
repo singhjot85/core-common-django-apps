@@ -86,11 +86,11 @@ class AbstractConfiguration(BaseSemanticVersionModel):
         if config_details is None:
             config = cls.objects.latest_qs(interface_type=interface_type).first()
             if not config:
-                ImproperlyConfigured(
+                raise ImproperlyConfigured(
                     f"Cannot find any configuration for: {interface_type}"
                 )
 
-            config_details = config.details
+            config_details = config.details or {}
             cache.set(
                 cache_key, config_details, timeout=settings.CACHE_LARGE_LARGE_TIMEOUT
             )

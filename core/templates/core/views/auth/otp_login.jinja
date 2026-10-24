@@ -1,5 +1,5 @@
 {# Phone & Email OTP Login / Signup Component #}
-{% set labels = resolve_labels(labels) if resolve_labels is defined else (labels or {}) %}
+{% set labels = resolve_labels("users_template_label", labels) if resolve_labels is defined else (labels or {}) %}
 {% from "core/components/common/buttons.jinja" import button %}
 {% from "core/components/common/icons.jinja" import icon %}
 {% from "core/forms/form_field_text.jinja" import form_field_text %}

@@ -15,7 +15,7 @@
         {{ super() }}
     {% endif %}
     {# Global Session Expiration Blocking Overlay & Modal Dialog #}
-    {% set labels = resolve_labels(labels) if resolve_labels is defined else (labels or {}) %}
+    {% set labels = resolve_labels("users_template_label", labels) if resolve_labels is defined else (labels or {}) %}
     <div id="session_timeout_overlay"
          class="session-timeout-overlay"
          style="display: none"

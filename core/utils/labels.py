@@ -44,7 +44,7 @@ def extract_label_for_language(value: Any, language: str) -> Any:
 
 
 def get_db_template_labels(
-    interface_type: str = "users_template_label",
+    interface_type: str,
     language: str | None = None,
 ) -> dict[str, Any]:
     """
@@ -55,7 +55,7 @@ def get_db_template_labels(
     so humanized fallbacks apply without crashing page rendering.
 
     Args:
-        interface_type (str, optional): Configuration interface key. Defaults to "users_template_label".
+        interface_type (str, optional): Configuration interface key.
         language (str, optional): Target language code. Defaults to None (resolved via get_current_ui_language).
 
     Returns:
@@ -161,22 +161,9 @@ class LabelDict(dict):
         return default if default is not None else key.replace("_", " ").title()
 
 
-def get_default_labels(language: str | None = None) -> LabelDict:
-    """
-    Return a fresh LabelDict with database defaults or humanized fallback.
-
-    Args:
-        language (str, optional): Target language code.
-
-    Returns:
-        LabelDict: Dynamic label dictionary.
-    """
-    return resolve_labels(language=language)
-
-
 def resolve_labels(
+    interface_type: str,
     backend_labels: Any = None,
-    interface_type: str = "users_template_label",
     language: str | None = None,
 ) -> LabelDict:
     """
@@ -188,8 +175,8 @@ def resolve_labels(
     3. Humanized fallback based on key name if not found.
 
     Args:
+        interface_type (str, optional): Configuration interface key
         backend_labels (Any, optional): Explicit dictionary of label overrides from view context.
-        interface_type (str, optional): Configuration interface key. Defaults to "users_template_label".
         language (str, optional): Target language code. Defaults to None.
 
     Returns:
