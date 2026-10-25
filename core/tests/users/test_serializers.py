@@ -1,8 +1,11 @@
 from unittest.mock import patch
 
+import pytest
+
 from core.apps.users import get_user_model
 from core.apps.users.api.serializers import (
     GoogleLoginSerializer,
+    LoginSerializer,
     OTPSendSerializer,
     OTPVerifySerializer,
     SignupSerializer,
@@ -120,3 +123,108 @@ class TestGoogleLoginSerializer:
         data = {"id_token": ""}
         serializer = GoogleLoginSerializer(data=data)
         assert not serializer.is_valid()
+
+
+@pytest.mark.django_db
+class TestLoginSerializer:
+    """Tests for LoginSerializer credentials verification, whitespace preservation, and zero enumeration."""
+
+    def test_login_serializer_valid_credentials(self):
+        """Active user with correct credentials validates successfully."""
+        user = User.objects.create_user(
+            username="valid_login_user",
+            email="valid@example.com",
+            password="MyPassword123!",  # pragma: allowlist secret
+            is_active=True,
+        )
+        serializer = LoginSerializer(
+            data={
+                "username": "valid_login_user",
+                "password": "MyPassword123!",  # pragma: allowlist secret
+            }
+        )
+        assert serializer.is_valid()
+        assert serializer.validated_data["user"] == user
+
+    def test_login_serializer_trims_password_whitespace(self):
+        """Password containing whitespace is trimmed to authenticate against trimmed password."""
+        user = User.objects.create_user(
+            username="space_login_user",
+            password="SpacePass123!",  # pragma: allowlist secret
+            is_active=True,
+        )
+        serializer = LoginSerializer(
+            data={"username": "space_login_user", "password": "  SpacePass123!  "}
+        )
+        assert serializer.is_valid()
+        assert serializer.validated_data["user"] == user
+
+    def test_login_serializer_blank_fields_raise_flat_error(self):
+        """Blank username and password should raise flat error messages without nested dicts."""
+        serializer = LoginSerializer(data={"username": "   ", "password": ""})
+        assert not serializer.is_valid()
+        errors = serializer.errors
+        assert "username" in errors
+        assert "password" in errors
+        # Ensure errors are flat list/string, not nested dict
+        assert not isinstance(errors["username"][0], dict)
+        assert not isinstance(errors["password"][0], dict)
+
+    def test_login_serializer_wrong_password_returns_generic_error(self):
+        """Incorrect password returns generic error message."""
+        User.objects.create_user(
+            username="wrong_pass_user",
+            password="CorrectPassword123!",  # pragma: allowlist secret
+            is_active=True,
+        )
+        serializer = LoginSerializer(
+            data={
+                "username": "wrong_pass_user",
+                "password": "BadPassword",  # pragma: allowlist secret
+            }
+        )
+        assert not serializer.is_valid()
+        assert (
+            LoginSerializer.USER_NOT_FOUND_ERROR
+            in serializer.errors["non_field_errors"]
+        )
+
+    def test_login_serializer_inactive_user_with_wrong_password_does_not_leak_status(
+        self,
+    ):
+        """Inactive user with incorrect password receives generic error (no account enumeration)."""
+        User.objects.create_user(
+            username="disabled_user",
+            password="CorrectPassword123!",  # pragma: allowlist secret
+            is_active=False,
+        )
+        serializer = LoginSerializer(
+            data={
+                "username": "disabled_user",
+                "password": "WrongPassword",  # pragma: allowlist secret
+            }
+        )
+        assert not serializer.is_valid()
+        # Must return generic error, NOT "This account is disabled."
+        assert (
+            LoginSerializer.USER_NOT_FOUND_ERROR
+            in serializer.errors["non_field_errors"]
+        )
+
+    def test_login_serializer_inactive_user_with_correct_password_reports_disabled(
+        self,
+    ):
+        """Inactive user with correct password reports that the account is disabled."""
+        User.objects.create_user(
+            username="disabled_user_auth",
+            password="CorrectPassword123!",  # pragma: allowlist secret
+            is_active=False,
+        )
+        serializer = LoginSerializer(
+            data={
+                "username": "disabled_user_auth",
+                "password": "CorrectPassword123!",  # pragma: allowlist secret
+            }
+        )
+        assert not serializer.is_valid()
+        assert "disabled" in str(serializer.errors["non_field_errors"][0]).lower()

@@ -18,10 +18,10 @@ from core.apps.users.api.views import (
     LoginView,
     OTPVerifyView,
     get_jwt_tokens_for_user,
-    set_auth_cookies,
 )
 from core.apps.users.constants import OTPChannelChoices
 from core.apps.users.services.auth_lockout import AuthLockoutService
+from core.utils.middleware import JWTCookieAuthenticationMiddleware
 
 User = get_user_model()
 
@@ -60,15 +60,15 @@ class TestJWTJitterAndCookies:
             "access_expires_in": 1800,
         }
         response = Response({"success": True})
-        set_auth_cookies(response, tokens)
+        JWTCookieAuthenticationMiddleware.set_auth_cookies(response, tokens)
 
-        assert "core_access_token" in response.cookies
-        assert response.cookies["core_access_token"].value == "mock-access-token"
-        assert response.cookies["core_access_token"]["samesite"] == "Lax"
+        assert "access_token" in response.cookies
+        assert response.cookies["access_token"].value == "mock-access-token"
+        assert response.cookies["access_token"]["samesite"] == "Lax"
 
-        assert "core_refresh_token" in response.cookies
-        assert response.cookies["core_refresh_token"].value == "mock-refresh-token"
-        assert response.cookies["core_refresh_token"]["httponly"] is True
+        assert "refresh_token" in response.cookies
+        assert response.cookies["refresh_token"].value == "mock-refresh-token"
+        assert response.cookies["refresh_token"]["httponly"] is True
 
 
 class TestAuthLockoutService:

@@ -91,7 +91,7 @@ docker-rebuild:
 	@echo "⌛ Putting down containers build process...\n"
 	${COMPOSE_COMMAND} down
 	make build
-	make run
+	make rund
 rebuild: docker-rebuild
 
 docker-clean-project:

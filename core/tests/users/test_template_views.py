@@ -2,6 +2,9 @@
 Unit tests for User Authentication Template Views.
 """
 
+from unittest.mock import MagicMock
+
+from constance.test import override_config
 from django.test import RequestFactory
 from django.urls import reverse
 
@@ -71,3 +74,52 @@ class TestAuthTemplateViews:
         assert reverse("ui-signup") == "/signup/"
         assert reverse("ui-register") == "/register/"
         assert reverse("ui-forgot-password") == "/forgot-password/"
+
+    def test_login_view_authenticated_user_redirects_safely(self):
+        """Authenticated users visiting /login/ should be safely redirected."""
+        factory = RequestFactory()
+        request = factory.get("/login/?next=/dashboard/")
+        mock_user = MagicMock()
+        mock_user.is_authenticated = True
+        request.user = mock_user
+
+        response = LoginView.as_view()(request)
+        assert response.status_code == 302
+        assert response.url == "/dashboard/"
+
+    def test_login_view_authenticated_user_rejects_open_redirect(self):
+        """Authenticated users with external redirect target should fall back to safe default."""
+
+        factory = RequestFactory()
+        mock_user = MagicMock()
+        mock_user.is_authenticated = True
+
+        # External host rejected
+        request = factory.get("/login/?next=https://evil.com/phishing")
+        request.user = mock_user
+        response = LoginView.as_view()(request)
+        assert response.status_code == 302
+        assert response.url == "/"
+
+        # Scheme-relative URL rejected
+        request_proto = factory.get("/login/?next=//evil.com/phishing")
+        request_proto.user = mock_user
+        response_proto = LoginView.as_view()(request_proto)
+        assert response_proto.status_code == 302
+        assert response_proto.url == "/"
+
+        # In-app host allowed
+        request_inapp = factory.get("/login/?next=http://testserver/dashboard/")
+        request_inapp.user = mock_user
+        response_inapp = LoginView.as_view()(request_inapp)
+        assert response_inapp.status_code == 302
+        assert response_inapp.url == "http://testserver/dashboard/"
+
+    def test_login_view_otp_only_mode(self):
+        """When password login is disabled, auth_mode defaults to otp_only."""
+        factory = RequestFactory()
+        request = factory.get("/login/")
+        with override_config(CORE_USERS_ENABLE_PASSWORD_LOGIN=False):
+            response = LoginView.as_view()(request)
+            assert response.status_code == 200
+            assert response.context_data["auth_mode"] == "otp_only"

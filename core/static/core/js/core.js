@@ -238,7 +238,7 @@
         document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax";
       },
       getToken: function () {
-        return Core.authSession.getCookie("core_access_token");
+        return Core.authSession.getCookie("access_token");
       },
       parseJWT: function (token) {
         try {
@@ -681,12 +681,12 @@
 
           if (res.ok) {
             if (data.access) {
-              Core.authSession.setCookie("core_access_token", data.access, data.access_expires_in || 3600);
+              Core.authSession.setCookie("access_token", data.access, data.access_expires_in || 3600);
             }
             if (data.refresh) {
-              Core.authSession.setCookie("core_refresh_token", data.refresh, 86400 * 7);
+              Core.authSession.setCookie("refresh_token", data.refresh, 86400 * 7);
             }
-            window.location.href = data.redirect_url || usernameForm.dataset.redirectUrl || "/landing/";
+            window.location.href = data.redirect_url || usernameForm.dataset.redirectUrl || "/";
           } else {
             Core.auth.showToast(data.detail || "Authentication failed.");
             if (typeof data.remaining_attempts !== "undefined") {
@@ -736,12 +736,12 @@
 
           if (res.ok) {
             if (data.access) {
-              Core.authSession.setCookie("core_access_token", data.access, data.access_expires_in || 3600);
+              Core.authSession.setCookie("access_token", data.access, data.access_expires_in || 3600);
             }
             if (data.refresh) {
-              Core.authSession.setCookie("core_refresh_token", data.refresh, 86400 * 7);
+              Core.authSession.setCookie("refresh_token", data.refresh, 86400 * 7);
             }
-            window.location.href = data.redirect_url || otpForm.dataset.redirectUrl || "/landing/";
+            window.location.href = data.redirect_url || otpForm.dataset.redirectUrl || "/";
           } else {
             Core.auth.showToast(data.detail || data.code || "Verification failed.");
             if (typeof data.remaining_attempts !== "undefined") {
@@ -760,6 +760,63 @@
           }
         } catch (err) {
           Core.auth.showToast("Network error during OTP verification.");
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+    }
+
+    const otpSignupForm = document.getElementById("form_otp_signup");
+    if (otpSignupForm) {
+      otpSignupForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const submitBtn = document.getElementById("btn_otp_signup_submit");
+        if (submitBtn) submitBtn.disabled = true;
+
+        const phoneInput = document.getElementById("otp_signup_phone");
+        const hiddenOtp =
+          otpSignupForm.querySelector('input[name="signup_otp_code"]') ||
+          otpSignupForm.querySelector('input[name="otp_code"]');
+        const identifier = phoneInput ? phoneInput.value.trim() : "";
+        const code = hiddenOtp ? hiddenOtp.value.trim() : "";
+        const channel = identifier.includes("@") ? "email" : "phone";
+
+        if (!identifier || !code) {
+          Core.auth.showToast("Please enter phone number and 6-digit verification code.");
+          if (submitBtn) submitBtn.disabled = false;
+          return;
+        }
+
+        try {
+          const actionAttr = otpSignupForm.getAttribute("action");
+          const endpoint =
+            actionAttr && !actionAttr.endsWith("/auth/signup/")
+              ? actionAttr
+              : "/api/users/v1/auth/otp/verify/";
+
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": Core.getCSRFToken(),
+            },
+            body: JSON.stringify({ identifier: identifier, code: code, channel: channel }),
+          });
+          const data = await res.json();
+
+          if (res.ok) {
+            if (data.access) {
+              Core.authSession.setCookie("access_token", data.access, data.access_expires_in || 3600);
+            }
+            if (data.refresh) {
+              Core.authSession.setCookie("refresh_token", data.refresh, 86400 * 7);
+            }
+            window.location.href = data.redirect_url || otpSignupForm.dataset.redirectUrl || "/";
+          } else {
+            Core.auth.showToast(data.detail || data.code || "Verification failed.");
+            if (submitBtn) submitBtn.disabled = false;
+          }
+        } catch (err) {
+          Core.auth.showToast("Network error during verification. Please try again.");
           if (submitBtn) submitBtn.disabled = false;
         }
       });

@@ -1,7 +1,7 @@
+import logging
 import re
 import typing
 
-from django.contrib.auth import authenticate
 from django.core.validators import EmailValidator
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
@@ -13,6 +13,7 @@ if typing.TYPE_CHECKING:
     from core.apps.users.models_abstract import AbstractUser
 
 User = get_user_model()
+LOGGER = logging.getLogger(__name__)
 
 
 class UserDetailsSerializer(serializers.ModelSerializer):
@@ -132,55 +133,88 @@ class SignupSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     """
     Serializer for username and password login.
-    Checks that the user possesses a usable password.
+
+    Validates credentials and ensures the user account is active before issuing tokens.
     """
+
+    USER_NOT_FOUND_ERROR = _("Username or password combination is incorrect.")
 
     username = serializers.CharField(required=True)
     password = serializers.CharField(
         write_only=True, required=True, style={"input_type": "password"}
     )
 
+    def validate_username(self, value: str) -> str:
+        """
+        Validate that the username is not empty after trimming whitespace.
+
+        Args:
+            value (str): Raw username string from payload.
+
+        Returns:
+            str: Trimmed username.
+
+        Raises:
+            ValidationError: If value is blank.
+        """
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError(_("Username is required."))
+
+        return value
+
+    def validate_password(self, value: str) -> str:
+        """
+        Validate that the password is not empty after trimming whitespace.
+
+        Args:
+            value (str): Raw password string.
+
+        Returns:
+            str: The trimmed password.
+
+        Raises:
+            ValidationError: If value is blank.
+        """
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError(_("Password is required."))
+
+        return value
+
     def validate(self, attrs: dict) -> dict:
-        username = attrs.get("username", "").strip()
-        password = attrs.get("password", "")
+        """
+        Authenticate credentials and verify the user account status.
 
-        # Check if login identifier is email or phone number
+        Verifies username and password using secure password checking. Ensures
+        inactive account details are not disclosed without valid credentials to
+        prevent account enumeration.
+
+        Args:
+            attrs (dict): Validated field attributes including username and password.
+
+        Returns:
+            dict: Attribute dictionary updated with verified 'user' instance.
+
+        Raises:
+            ValidationError: If credentials fail or the account is disabled.
+        """
+        username = attrs.get("username")
+        password = attrs.get("password")
+
         user = None
-        if "@" in username:
-            user = User.objects.filter(email__iexact=username).first()
-        elif re.sub(r"\D", "", username) and len(re.sub(r"\D", "", username)) >= 7:
-            user = User.objects.filter(phone_number=username).first()
+        try:
+            user: "AbstractUser" = User.objects.get(username=username)
+        except (User.DoesNotExist, User.MultipleObjectsReturned):
+            LOGGER.debug(f"User not found for username: {username}")
 
-        actual_username = user.username if user else username
+        if user and user.check_password(password):
+            if not user.is_active:
+                raise serializers.ValidationError(_("This account is disabled."))
+            attrs["user"] = user
+            return attrs
 
-        user = authenticate(username=actual_username, password=password)
-
-        if not user:
-            # Check if user exists but has no usable password
-            target_user = (
-                user
-                or User.objects.filter(username__iexact=actual_username).first()
-                or (
-                    User.objects.filter(email__iexact=username).first()
-                    if "@" in username
-                    else None
-                )
-            )
-            if target_user and not target_user.has_usable_password():
-                raise serializers.ValidationError(
-                    _(
-                        "This account does not have a password configured. Please log in with a different method."
-                    )
-                )
-            raise serializers.ValidationError(
-                _("Unable to log in with provided credentials.")
-            )
-
-        if not user.is_active:
-            raise serializers.ValidationError(_("User account is disabled."))
-
-        attrs["user"] = user
-        return attrs
+        raise serializers.ValidationError(self.USER_NOT_FOUND_ERROR)
 
 
 class OTPSendSerializer(serializers.Serializer):

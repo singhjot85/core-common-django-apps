@@ -10,12 +10,13 @@ import logging
 import secrets
 import typing
 
-from django.conf import settings
+from django.contrib.auth import login
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.serializers import ValidationError as DRFValidationError
 from rest_framework.views import APIView
 from rest_framework_simplejwt.settings import api_settings as jwt_settings
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -32,6 +33,7 @@ from core.apps.users.services.auth_lockout import AuthLockoutService
 from core.apps.users.services.otp import OTPServiceFactory
 from core.apps.users.services.social import SocialAuthServiceFactory
 from core.apps.users.tasks import send_otp_task
+from core.apps.users.utils import get_auth_redirect_url
 from core.utils.tasks import queue_task
 
 if typing.TYPE_CHECKING:
@@ -54,57 +56,24 @@ def get_jwt_tokens_for_user(user: "AbstractUser") -> dict:
     Returns:
         dict: Dictionary containing ``access`` token, ``refresh`` token, and ``access_expires_in`` seconds.
     """
-    refresh = RefreshToken.for_user(user)
 
-    # Random jitter: 65% to 75% of configured lifetime
-    base_lifetime = jwt_settings.ACCESS_TOKEN_LIFETIME
-    jitter_factor = secrets.SystemRandom().uniform(0.65, 0.75)
-    jittered_seconds = max(60, int(base_lifetime.total_seconds() * jitter_factor))
-    refresh.access_token.set_exp(lifetime=datetime.timedelta(seconds=jittered_seconds))
+    def get_jitter_expiry():
+        # Random jitter: 65% to 75% of configured lifetime
+        base_lifetime = jwt_settings.ACCESS_TOKEN_LIFETIME
+        jitter_factor = secrets.SystemRandom().uniform(0.65, 0.75)
+        return max(60, int(base_lifetime.total_seconds() * jitter_factor))
+
+    refresh = RefreshToken.for_user(user)
+    token_expiry = get_jitter_expiry()
+    # TODO: Figure out a better way to do this, currently this only send wrong expiry to user
+    # In database the expiry is still the one issued by RefreshToken.from_user(...)
+    refresh.access_token.set_exp(lifetime=datetime.timedelta(seconds=token_expiry))
 
     return {
         "access": str(refresh.access_token),
         "refresh": str(refresh),
-        "access_expires_in": jittered_seconds,
+        "access_expires_in": token_expiry,
     }
-
-
-def set_auth_cookies(response: Response, tokens: dict) -> Response:
-    """
-    Attach JWT authentication tokens to HTTP response cookies.
-
-    Sets ``core_access_token`` and HttpOnly ``core_refresh_token`` with SameSite=Lax.
-
-    Side effects:
-        - Modifies response headers with Set-Cookie directives.
-
-    Args:
-        response (Response): DRF Response instance.
-        tokens (dict): Token dictionary with ``access`` and ``refresh`` keys.
-
-    Returns:
-        Response: The modified response with cookie headers.
-    """
-    max_age = tokens.get("access_expires_in", 3600)
-    response.set_cookie(
-        key="core_access_token",
-        value=tokens["access"],
-        max_age=max_age,
-        httponly=False,  # Accessible to client JS for api calls and expiry tracking
-        samesite="Lax",
-        secure=not getattr(settings, "DEBUG", False),
-        path="/",
-    )
-    response.set_cookie(
-        key="core_refresh_token",
-        value=tokens["refresh"],
-        max_age=86400 * 7,
-        httponly=True,
-        samesite="Lax",
-        secure=not getattr(settings, "DEBUG", False),
-        path="/",
-    )
-    return response
 
 
 class SignupView(APIView):
@@ -129,24 +98,26 @@ class SignupView(APIView):
         Returns:
             Response: Serialized user details, tokens, and redirect URL.
         """
-        serializer_class = app_settings.SIGNUP_SERIALIZER
-        serializer = serializer_class(data=request.data)
+        SingupSerializer = app_settings.SIGNUP_SERIALIZER
+        serializer = SingupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        tokens = get_jwt_tokens_for_user(user)
-        user_serializer_class = app_settings.USER_DETAILS_SERIALIZER
-        user_data = user_serializer_class(user).data
+        if hasattr(request, "session"):
+            login(getattr(request, "_request", request), user)
 
-        response = Response(
+        tokens = get_jwt_tokens_for_user(user)
+        UserDetailSerializer = app_settings.USER_DETAILS_SERIALIZER
+        user_data = UserDetailSerializer(user).data
+
+        return Response(
             {
                 **tokens,
                 "user": user_data,
-                "redirect_url": getattr(settings, "LOGIN_REDIRECT_URL", "/landing/"),
+                "redirect_url": get_auth_redirect_url(request),
             },
             status=status.HTTP_201_CREATED,
         )
-        return set_auth_cookies(response, tokens)
 
 
 class LoginView(APIView):
@@ -189,7 +160,7 @@ class LoginView(APIView):
             )
 
         username = request.data.get("username", "").strip()
-        password = request.data.get("password", "")
+        password = request.data.get("password", "").strip()
 
         if not username or not password:
             return Response(
@@ -211,14 +182,15 @@ class LoginView(APIView):
             )
 
         serializer = LoginSerializer(data=request.data)
-        if not serializer.is_valid():
+        try:
+            serializer.is_valid(raise_exception=True)
+        except DRFValidationError as e:
+            LOGGER.warning(f"Login failed for username {username}: {e}")
             remaining, is_locked = AuthLockoutService.record_failed_attempt(username)
             if is_locked:
                 return Response(
                     {
-                        "detail": _(
-                            "Account locked due to too many failed attempts. If an account is associated with this identity, an unlock link has been emailed to you."
-                        ),
+                        "detail": _("Account locked due to too many failed attempts."),
                         "remaining_attempts": 0,
                         "is_locked": True,
                     },
@@ -226,7 +198,7 @@ class LoginView(APIView):
                 )
             return Response(
                 {
-                    "detail": _("Username or password combination is incorrect."),
+                    "detail": LoginSerializer.USER_NOT_FOUND_ERROR,
                     "remaining_attempts": remaining,
                     "is_locked": False,
                 },
@@ -236,19 +208,21 @@ class LoginView(APIView):
         user = serializer.validated_data["user"]
         AuthLockoutService.clear_attempts(username)
 
-        tokens = get_jwt_tokens_for_user(user)
-        user_serializer_class = app_settings.USER_DETAILS_SERIALIZER
-        user_data = user_serializer_class(user).data
+        if hasattr(request, "session"):
+            login(getattr(request, "_request", request), user)
 
-        response = Response(
+        tokens = get_jwt_tokens_for_user(user)
+        UserDetailSerializer = app_settings.USER_DETAILS_SERIALIZER
+        user_data = UserDetailSerializer(user).data
+
+        return Response(
             {
                 **tokens,
                 "user": user_data,
-                "redirect_url": getattr(settings, "LOGIN_REDIRECT_URL", "/landing/"),
+                "redirect_url": get_auth_redirect_url(request),
             },
             status=status.HTTP_200_OK,
         )
-        return set_auth_cookies(response, tokens)
 
 
 class OTPSendView(APIView):
@@ -363,9 +337,7 @@ class OTPVerifyView(APIView):
         if AuthLockoutService.is_locked(identifier):
             return Response(
                 {
-                    "detail": _(
-                        "Account locked due to too many failed attempts. If an account is associated with this identity, an unlock link has been emailed to you."
-                    ),
+                    "detail": _("Account locked due to too many failed attempts."),
                     "remaining_attempts": 0,
                     "is_locked": True,
                 },
@@ -377,13 +349,12 @@ class OTPVerifyView(APIView):
         )
 
         if not is_valid:
+            LOGGER.warning(f"OTP login failed for {identifier}: {otp_msg}")
             remaining, is_locked = AuthLockoutService.record_failed_attempt(identifier)
             if is_locked:
                 return Response(
                     {
-                        "detail": _(
-                            "Account locked due to too many failed attempts. If an account is associated with this identity, an unlock link has been emailed to you."
-                        ),
+                        "detail": _("Account locked due to too many failed attempts."),
                         "remaining_attempts": 0,
                         "is_locked": True,
                     },
@@ -444,19 +415,21 @@ class OTPVerifyView(APIView):
                 user.save(update_fields=update_fields)
 
         tokens = get_jwt_tokens_for_user(user)
-        user_serializer_class = app_settings.USER_DETAILS_SERIALIZER
-        user_data = user_serializer_class(user).data
+        UserDetailSerializer = app_settings.USER_DETAILS_SERIALIZER
+        user_data = UserDetailSerializer(user).data
 
-        response = Response(
+        if hasattr(request, "session"):
+            login(getattr(request, "_request", request), user)
+
+        return Response(
             {
                 **tokens,
                 "user": user_data,
                 "created": created,
-                "redirect_url": getattr(settings, "LOGIN_REDIRECT_URL", "/landing/"),
+                "redirect_url": get_auth_redirect_url(request),
             },
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
-        return set_auth_cookies(response, tokens)
 
 
 class GoogleLoginView(APIView):
@@ -502,19 +475,21 @@ class GoogleLoginView(APIView):
         )
 
         tokens = get_jwt_tokens_for_user(user)
-        user_serializer_class = app_settings.USER_DETAILS_SERIALIZER
-        user_data = user_serializer_class(user).data
+        UserDetailSerializer = app_settings.USER_DETAILS_SERIALIZER
+        user_data = UserDetailSerializer(user).data
 
-        response = Response(
+        if hasattr(request, "session"):
+            login(getattr(request, "_request", request), user)
+
+        return Response(
             {
                 **tokens,
                 "user": user_data,
                 "created": created,
-                "redirect_url": getattr(settings, "LOGIN_REDIRECT_URL", "/landing/"),
+                "redirect_url": get_auth_redirect_url(request),
             },
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
-        return set_auth_cookies(response, tokens)
 
 
 class AccountUnlockView(APIView):

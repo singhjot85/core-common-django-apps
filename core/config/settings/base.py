@@ -60,7 +60,7 @@ if not SECRET_KEY:
 LOGGING = get_logging_config(LOGGING_CONFIG_PATH)
 
 STATIC_URL = "/static/"
-ROOT_URLCONF = "config.urls"
+ROOT_URLCONF = "core.config.urls"
 PUBLIC_SCHEMA_URLCONF = "config.public_urls"
 
 TENANT_TYPE_PUBLIC = "public"
@@ -211,6 +211,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.utils.middleware.JWTCookieAuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # "backend.config.middlewares.RequestLoggingMiddleware",
@@ -246,7 +247,7 @@ REST_AUTH = {
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=2),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
@@ -254,6 +255,17 @@ SIMPLE_JWT = {
 
 # TODO: Encrypt and put these in database
 GOOGLE_AUTH_CLIENT_ID = os.getenv("GOOGLE_AUTH_CLIENT_ID", "")
+
+
+# ---------------------------------
+#  Custom Authentication Settings
+# ---------------------------------
+LOGIN_URL = "/login/"
+DEFAULT_REDIRECT = os.getenv("DEFAULT_REDIRECT", "")
+LOGIN_REDIRECT_URL = DEFAULT_REDIRECT if DEFAULT_REDIRECT else "/"
+ACCESS_TOKEN_COOKIE_NAME = "access_token"
+REFRESH_TOKEN_COOKIE_NAME = "refresh_token"
+
 
 # ------------------
 #  drf settings
@@ -264,7 +276,7 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
     ],
 }
 
