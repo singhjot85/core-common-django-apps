@@ -25,14 +25,7 @@
         <link rel="stylesheet" href="{{ static('core/css/base.css') }}">
         <link rel="stylesheet" href="{{ static('core/css/components.css') }}">
         <!-- Theme Preference Script (FOUC Prevention) -->
-        <script>
-            (function() {
-                try {
-                    var theme = localStorage.getItem('core_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-                    if (theme) document.documentElement.setAttribute('data-theme', theme);
-                } catch (e) {}
-            })();
-        </script>
+        <script src="{{ static('core/js/theme_init.js') }}"></script>
         {% block extra_head %}
         {% endblock extra_head %}
     </head>
@@ -73,7 +66,15 @@
             </div>
         {% endblock app_shell %}
         <!-- Core JavaScript Framework & Services -->
-        <script src="{{ static('core/js/core.js') }}"></script>
+        <script src="{{ static('core/js/common.js') }}"></script>
+        <script src="{{ static('core/js/components/theme.js') }}"></script>
+        <script src="{{ static('core/js/components/sidebar.js') }}"></script>
+        <script src="{{ static('core/js/components/modal.js') }}"></script>
+        <script src="{{ static('core/js/components/alert.js') }}"></script>
+        <script src="{{ static('core/js/components/toast.js') }}"></script>
+        <script src="{{ static('core/js/views/auth_tabs.js') }}"></script>
+        <script src="{{ static('core/js/views/otp_input.js') }}"></script>
+        <script src="{{ static('core/js/views/login.js') }}"></script>
         <script src="{{ static('core/js/service.js') }}"></script>
         {% block extra_scripts %}
         {% endblock extra_scripts %}

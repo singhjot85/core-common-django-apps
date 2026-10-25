@@ -35,27 +35,5 @@
         </div>
     </div>
     {# Client-side JWT auth detection: auto-reload if client cookie exists on unauthenticated SSR #}
-    {% if not (request.user and request.user.is_authenticated) %}
-        <script>
-            (function() {
-                try {
-                    var match = document.cookie.match(/(^|;\s*)(access_token)=([^;]*)/);
-                    if (match && match[3]) {
-                        if (!sessionStorage.getItem("jwt_auth_synced")) {
-                            sessionStorage.setItem("jwt_auth_synced", "1");
-                            window.location.reload();
-                        }
-                    } else {
-                        sessionStorage.removeItem("jwt_auth_synced");
-                    }
-                } catch (e) {}
-            })();
-        </script>
-    {% else %}
-        <script>
-            try {
-                sessionStorage.removeItem("jwt_auth_synced");
-            } catch (e) {}
-        </script>
-    {% endif %}
+    <script src="{{ static('core/js/session_sync.js') }}"></script>
 {% endblock app_shell %}
