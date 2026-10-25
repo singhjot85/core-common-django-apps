@@ -65,6 +65,7 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 - **`SMS_BACKEND`** (`SettingsType.IMPORT`): Adapter class responsible for SMS dispatch (default: `"core.utils.backends.sms.console.ConsoleSMSBackend"`).
 - **`USERNAME_GENERATOR`** (`SettingsType.IMPORT`): Strategy callable for generating unique usernames when omitted during signup (default: `"core.utils.generators.username.generate_unique_username"` backed by `core.utils.generators.UsernameGenerator`).
 - **`SYSTEM_USER_USERNAME`** (`str`, default: `"system"`): Username used for the internal audit system user provisioned via `post_migrate`.
+- **`LOCKOUT_TOKEN_TIMEOUT`** (`int`, default: `86400`): Cache validity timeout (in seconds) for account lockout unlock tokens.
 
 ### Constance Runtime Flags
 
@@ -123,6 +124,21 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 - The actual user existence lookup, OTP code generation, Redis TTL caching, and SMS/Email dispatch are processed in a Celery background task via `core.utils.tasks.queue_task`.
 - Under no circumstance should external delivery calls (SMS/Email) execute directly on the main HTTP request thread; if queuing fails, the error is logged without executing blocking external calls synchronously.
 
+### 4. Server-Side Cookie Authentication & Middleware (`JWTCookieAuthenticationMiddleware`)
+- **Location**: `core.utils.middleware.JWTCookieAuthenticationMiddleware`
+- **Request Authentication**:
+  - Automatically inspects incoming `request.COOKIES` for the access token (`access_token`, configurable via `settings.ACCESS_TOKEN_COOKIE_NAME`).
+  - If valid and active, sets `request.user` to the authenticated user instance.
+  - If expired or invalid on non-exempt routes, terminates request processing immediately with `404 Not Found` and deletes the expired cookies.
+  - On exempt routes (`settings.JWT_AUTH_EXEMPT_PATHS`, defaulting to `/login/`, `/signup/`, `/register/`, `/api/users/v1/auth/`, `/static/`, `/favicon.ico`), permits access to the unauthenticated handler and attaches deletion headers to the response so stale cookies are evicted by the browser.
+- **Outgoing Response Delegation**:
+  - When authentication views complete (e.g. `LoginView`, `SignupView`, `OTPVerifyView`, `GoogleLoginView`), the middleware detects issued tokens from `response.data` or `request._auth_tokens`.
+  - Sets client-readable `access_token` and HttpOnly `refresh_token` (`settings.REFRESH_TOKEN_COOKIE_NAME`) cookies with `SameSite=Lax`.
+- **Safe In-App Redirects**:
+  - Validates `next` parameters across query parameters and JSON/form bodies using `url_has_allowed_host_and_scheme` to prevent open redirects.
+  - When `app_settings.ONLY_ALLOW_IN_APP_REDIRECTS` is enabled (default `True`), redirects are restricted strictly to in-app endpoints hosted by the application.
+  - Falls back directly to `settings.LOGIN_REDIRECT_URL` (or `"/"`).
+
 ---
 
 ## 6. API Surface & Endpoints
@@ -149,7 +165,7 @@ The users app provides modular templates under `core/templates/core/views/`:
 
 | Template / View | Role & Responsibility |
 | :--- | :--- |
-| **`core/views/authenticated_view.jinja`** | Base layout shell for all authenticated views. Manages JWT cookies (`core_access_token`, `core_refresh_token`), watches token expiry, blocks the page with a modal overlay on session timeout, and routes back to login. |
+| **`core/views/authenticated_view.jinja`** | Base layout shell for all authenticated views. Manages JWT cookies (`access_token`, `refresh_token`), watches token expiry, blocks the page with a modal overlay on session timeout, and routes back to login. |
 | **`core/views/core_login_template.jinja`** | Gateway login page hosting a top-level switcher between **Password** and **OTP** methods, housing toast messages and security badges. |
 | **`core/views/auth/username_login.jinja`** | Username & password login form + signup tab, live remaining attempt warnings, and social SSO buttons. |
 | **`core/views/auth/otp_login.jinja`** | Phone/email OTP dispatch (with readonly freeze), 6-digit box auto-advance with clipboard suggestion, and verified phone signup. |

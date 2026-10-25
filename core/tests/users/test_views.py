@@ -1,14 +1,17 @@
 from unittest.mock import patch
 
+import pytest
 from rest_framework import status
 from rest_framework.test import APIRequestFactory
 
 from core.apps.users import get_user_model
 from core.apps.users.api.views import (
     GoogleLoginView,
+    LoginView,
     OTPSendView,
     OTPVerifyView,
     SignupView,
+    get_auth_redirect_url,
 )
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
 
@@ -132,4 +135,81 @@ class TestUsersViews:
         response = view(request)
         assert response.status_code == status.HTTP_200_OK
         assert "access" in response.data
+        assert response.data["created"] is False
+
+    def test_get_auth_redirect_url_safe_and_fallback(self):
+        """get_auth_redirect_url returns safe relative or in-app url and rejects malicious external targets."""
+        req_safe = self.factory.get("/api/v1/auth/login/?next=/orders/")
+        assert get_auth_redirect_url(req_safe) == "/orders/"
+
+        req_in_app_host = self.factory.get(
+            "/api/v1/auth/login/?next=http://testserver/orders/"
+        )
+        assert get_auth_redirect_url(req_in_app_host) == "http://testserver/orders/"
+
+        req_unsafe = self.factory.get(
+            "/api/v1/auth/login/?next=https://attacker.com/evil"
+        )
+        assert get_auth_redirect_url(req_unsafe) == "/"
+
+        req_proto_relative = self.factory.get(
+            "/api/v1/auth/login/?next=//attacker.com/evil"
+        )
+        assert get_auth_redirect_url(req_proto_relative) == "/"
+
+        req_payload = self.factory.post(
+            "/api/v1/auth/login/",
+            {"next": "/profile/"},
+            format="json",
+        )
+        assert get_auth_redirect_url(req_payload) == "/profile/"
+
+    @pytest.mark.django_db
+    def test_login_view_trims_password_whitespace(self):
+        """Password containing leading and trailing spaces is trimmed during login."""
+        User.objects.create_user(
+            username="spaced_password_user",
+            email="spaced@example.com",
+            password="SecretPass123!",  # pragma: allowlist secret
+            is_active=True,
+        )
+
+        view = LoginView.as_view()
+        request = self.factory.post(
+            "/api/users/v1/auth/login/",
+            {
+                "username": "spaced_password_user",
+                "password": "  SecretPass123!  ",  # pragma: allowlist secret
+            },
+            format="json",
+        )
+        response = view(request)
+        assert response.status_code == status.HTTP_200_OK
+        assert "access" in response.data
+        assert response.data["user"]["username"] == "spaced_password_user"
+
+    @pytest.mark.django_db
+    @patch("core.apps.users.api.views.OTPServiceFactory.verify_otp")
+    def test_otp_verify_view_case_insensitive_email(self, mock_verify):
+        """OTPVerifyView matches registered email case-insensitively."""
+        mock_verify.return_value = (True, "OTP verified")
+        user = User.objects.create_user(
+            username="mixed_case_user",
+            email="john.doe@example.com",
+            is_active=True,
+        )
+
+        view = OTPVerifyView.as_view()
+        request = self.factory.post(
+            "/api/users/v1/auth/otp/verify/",
+            {
+                "identifier": "JOHN.DOE@EXAMPLE.COM",
+                "code": "123456",
+                "channel": OTPChannelChoices.EMAIL,
+            },
+            format="json",
+        )
+        response = view(request)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["user"]["id"] == str(user.pk)
         assert response.data["created"] is False

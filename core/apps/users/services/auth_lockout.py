@@ -27,7 +27,18 @@ class AuthLockoutService:
     exhaustion, and dispatching one-time unlock links via email.
     """
 
-    LOCKOUT_TOKEN_TIMEOUT: int = 86400  # 24 hours
+    LOCKOUT_TOKEN_TIMEOUT: int = app_settings.LOCKOUT_TOKEN_TIMEOUT
+    DEFAULT_UNLOCK_FAILURE_MSG = _("The unlock link is invalid or has expired.")
+
+    @classmethod
+    def get_lockout_token_timeout(cls) -> int:
+        """
+        Return the configured cache validity timeout for unlock tokens.
+
+        Returns:
+            int: Timeout duration in seconds.
+        """
+        return getattr(app_settings, "LOCKOUT_TOKEN_TIMEOUT", cls.LOCKOUT_TOKEN_TIMEOUT)
 
     @classmethod
     def _clean_identifier(cls, identifier: str) -> str:
@@ -226,7 +237,7 @@ class AuthLockoutService:
                 cache.set(
                     cls._unlock_token_key(token),
                     str(user.pk),
-                    timeout=cls.LOCKOUT_TOKEN_TIMEOUT,
+                    timeout=cls.get_lockout_token_timeout(),
                 )
 
                 # Dispatch unlock email task via queue_task
@@ -266,11 +277,12 @@ class AuthLockoutService:
         token_key = cls._unlock_token_key(token.strip())
         user_id = cache.get(token_key)
         if not user_id:
-            return False, str(_("The unlock link is invalid or has expired."))
+            return False, str(cls.DEFAULT_UNLOCK_FAILURE_MSG)
 
         user = User.objects.filter(pk=user_id).first()
         if not user:
-            return False, str(_("User account not found."))
+            LOGGER.error(f"User not found for given user_id: {user_id}")
+            return False, str(cls.DEFAULT_UNLOCK_FAILURE_MSG)
 
         user.is_active = True
         user.save(update_fields=["is_active"])

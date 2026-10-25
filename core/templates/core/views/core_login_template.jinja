@@ -16,40 +16,44 @@
             <!-- Master Authentication Card -->
             <div class="auth-card">
                 <!-- Method Switcher: Username & Password vs OTP Code -->
-                <div class="auth-method-switcher" role="tablist">
-                    <button type="button"
-                            class="auth-method-btn active"
-                            data-auth-method="username"
-                            role="tab"
-                            aria-selected="true"
-                            aria-controls="auth_method_username_wrapper">
-                        {{ icon("password", size=16) }}
-                        <span>{{ labels.password_login }}</span>
-                    </button>
-                    <button type="button"
-                            class="auth-method-btn"
-                            data-auth-method="otp"
-                            role="tab"
-                            aria-selected="false"
-                            aria-controls="auth_method_otp_wrapper">
-                        {{ icon("pin", size=16) }}
-                        <span>{{ labels.otp_login }}</span>
-                    </button>
-                </div>
+                {% if auth_mode|default('all') != 'otp_only' and (ENABLE_PASSWORD_LOGIN is not defined or ENABLE_PASSWORD_LOGIN) %}
+                    <div class="auth-method-switcher" role="tablist">
+                        <button type="button"
+                                class="auth-method-btn active"
+                                data-auth-method="username"
+                                role="tab"
+                                aria-selected="true"
+                                aria-controls="auth_method_username_wrapper">
+                            {{ icon("password", size=16) }}
+                            <span>{{ labels.password_login }}</span>
+                        </button>
+                        <button type="button"
+                                class="auth-method-btn"
+                                data-auth-method="otp"
+                                role="tab"
+                                aria-selected="false"
+                                aria-controls="auth_method_otp_wrapper">
+                            {{ icon("pin", size=16) }}
+                            <span>{{ labels.otp_login }}</span>
+                        </button>
+                    </div>
+                {% endif %}
                 <!-- Flash Messages & Dynamic Snack Container -->
                 {% if messages %}{{ message_list(messages) }}{% endif %}
                 <div id="auth_toast_container"
                      class="auth-toast-container"
                      aria-live="polite"></div>
                 <!-- Method 1: Username & Password Flow -->
-                <div id="auth_method_username_wrapper" data-auth-method-content="username">
-                    {% include "core/views/auth/username_login.jinja" %}
+                {% if auth_mode|default('all') != 'otp_only' and (ENABLE_PASSWORD_LOGIN is not defined or ENABLE_PASSWORD_LOGIN) %}
+                    <div id="auth_method_username_wrapper" data-auth-method-content="username">
+                        {% include "core/views/auth/username_login.jinja" %}
 
-                </div>
+                    </div>
+                {% endif %}
                 <!-- Method 2: OTP Flow -->
                 <div id="auth_method_otp_wrapper"
                      data-auth-method-content="otp"
-                     style="display: none">
+                     {% if auth_mode|default('all') != 'otp_only' and (ENABLE_PASSWORD_LOGIN is not defined or ENABLE_PASSWORD_LOGIN) %}style="display: none"{% endif %}>
                     {% include "core/views/auth/otp_login.jinja" %}
 
                 </div>

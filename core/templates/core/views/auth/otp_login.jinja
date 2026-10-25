@@ -36,7 +36,7 @@
                   action="{{ otp_verify_action|default('/api/users/v1/auth/otp/verify/') }}"
                   id="form_otp_login"
                   data-auth-api="otp-login"
-                  data-redirect-url="{{ redirect_url|default(landing_page_url|default('/landing/') ) }}">
+                  data-redirect-url="{{ redirect_url|default(landing_page_url|default('/') ) }}">
                 {{ csrf_input }}
                 <input type="hidden" name="auth_flow" value="otp">
                 <!-- Channel Identifier Input & Send OTP Button -->
@@ -88,10 +88,10 @@
              data-otp-tab-content="signup"
              style="display: none">
             <form method="post"
-                  action="{{ signup_action|default('/api/users/v1/auth/signup/') }}"
+                  action="{{ otp_verify_action|default(signup_action|default('/api/users/v1/auth/otp/verify/') ) }}"
                   id="form_otp_signup"
                   data-auth-api="otp-signup"
-                  data-redirect-url="{{ redirect_url|default(landing_page_url|default('/landing/') ) }}">
+                  data-redirect-url="{{ redirect_url|default(landing_page_url|default('/') ) }}">
                 {{ csrf_input }}
                 <input type="hidden" name="auth_flow" value="otp_signup">
                 <div class="grid grid-cols-2 gap-md mb-md">
