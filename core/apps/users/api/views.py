@@ -394,9 +394,16 @@ class OTPVerifyView(APIView):
             if channel == OTPChannelChoices.PHONE:
                 create_kwargs["phone_number"] = identifier
                 create_kwargs["is_phone_verified"] = True
+                if serializer.validated_data.get("email"):
+                    create_kwargs["email"] = serializer.validated_data["email"].lower()
             elif channel == OTPChannelChoices.EMAIL:
                 create_kwargs["email"] = identifier.lower()
                 create_kwargs["is_email_verified"] = True
+
+            if serializer.validated_data.get("first_name"):
+                create_kwargs["first_name"] = serializer.validated_data["first_name"]
+            if serializer.validated_data.get("last_name"):
+                create_kwargs["last_name"] = serializer.validated_data["last_name"]
 
             user = User.objects.create_user(**create_kwargs)
             created = True

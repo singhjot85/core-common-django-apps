@@ -152,13 +152,32 @@
               ? actionAttr
               : "/api/users/v1/auth/otp/verify/";
 
+          const firstNameInput = otpSignupForm.querySelector('input[name="first_name"]');
+          const lastNameInput = otpSignupForm.querySelector('input[name="last_name"]');
+          const emailInput = otpSignupForm.querySelector('input[name="email"]');
+
+          const payload = {
+            identifier: identifier,
+            code: code,
+            channel: channel,
+          };
+          if (firstNameInput && firstNameInput.value.trim()) {
+            payload.first_name = firstNameInput.value.trim();
+          }
+          if (lastNameInput && lastNameInput.value.trim()) {
+            payload.last_name = lastNameInput.value.trim();
+          }
+          if (emailInput && emailInput.value.trim()) {
+            payload.email = emailInput.value.trim();
+          }
+
           const res = await fetch(endpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "X-CSRFToken": Core.getCSRFToken ? Core.getCSRFToken() : "",
             },
-            body: JSON.stringify({ identifier: identifier, code: code, channel: channel }),
+            body: JSON.stringify(payload),
           });
           const data = await res.json();
 
@@ -179,6 +198,54 @@
         } catch (err) {
           if (Core.auth && Core.auth.showToast) {
             Core.auth.showToast("Network error during verification. Please try again.");
+          }
+          if (submitBtn) submitBtn.disabled = false;
+        }
+      });
+    }
+
+    const usernameSignupForm = document.getElementById("form_username_signup");
+    if (usernameSignupForm) {
+      usernameSignupForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const submitBtn = usernameSignupForm.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+
+        const formData = new FormData(usernameSignupForm);
+        const payload = Object.fromEntries(formData.entries());
+
+        try {
+          const res = await fetch(usernameSignupForm.action, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": Core.getCSRFToken ? Core.getCSRFToken() : "",
+            },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+
+          if (res.ok) {
+            if (data.access && Core.authSession) {
+              Core.authSession.setCookie("access_token", data.access, data.access_expires_in || 3600);
+            }
+            if (data.refresh && Core.authSession) {
+              Core.authSession.setCookie("refresh_token", data.refresh, 86400 * 7);
+            }
+            window.location.href = data.redirect_url || usernameSignupForm.dataset.redirectUrl || "/";
+          } else {
+            if (Core.auth && Core.auth.showToast) {
+              let msg = data.detail;
+              if (!msg && typeof data === "object") {
+                msg = Object.values(data).flat().join(" ");
+              }
+              Core.auth.showToast(msg || "Signup failed.");
+            }
+            if (submitBtn) submitBtn.disabled = false;
+          }
+        } catch (err) {
+          if (Core.auth && Core.auth.showToast) {
+            Core.auth.showToast("Network error during signup. Please try again.");
           }
           if (submitBtn) submitBtn.disabled = false;
         }

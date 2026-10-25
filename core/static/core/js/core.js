@@ -557,6 +557,14 @@
         const identifier = targetInput.value.trim();
         const channel = identifier.includes("@") ? "email" : "phone";
 
+        // Resolve purpose from button data-purpose or parent form
+        const form = btn.closest("form");
+        const purpose =
+          btn.getAttribute("data-purpose") ||
+          (form && (form.id === "form_otp_signup" || form.getAttribute("data-auth-api") === "otp-signup")
+            ? "signup"
+            : "login");
+
         btn.disabled = true;
         btn.textContent = "Sending...";
 
@@ -567,7 +575,7 @@
               "Content-Type": "application/json",
               "X-CSRFToken": Core.getCSRFToken(),
             },
-            body: JSON.stringify({ identifier: identifier, channel: channel, purpose: "login" }),
+            body: JSON.stringify({ identifier: identifier, channel: channel, purpose: purpose }),
           });
           const data = await res.json();
 
@@ -793,13 +801,32 @@
               ? actionAttr
               : "/api/users/v1/auth/otp/verify/";
 
+          const firstNameInput = otpSignupForm.querySelector('input[name="first_name"]');
+          const lastNameInput = otpSignupForm.querySelector('input[name="last_name"]');
+          const emailInput = otpSignupForm.querySelector('input[name="email"]');
+
+          const payload = {
+            identifier: identifier,
+            code: code,
+            channel: channel,
+          };
+          if (firstNameInput && firstNameInput.value.trim()) {
+            payload.first_name = firstNameInput.value.trim();
+          }
+          if (lastNameInput && lastNameInput.value.trim()) {
+            payload.last_name = lastNameInput.value.trim();
+          }
+          if (emailInput && emailInput.value.trim()) {
+            payload.email = emailInput.value.trim();
+          }
+
           const res = await fetch(endpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "X-CSRFToken": Core.getCSRFToken(),
             },
-            body: JSON.stringify({ identifier: identifier, code: code, channel: channel }),
+            body: JSON.stringify(payload),
           });
           const data = await res.json();
 

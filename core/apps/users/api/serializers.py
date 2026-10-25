@@ -266,10 +266,16 @@ class OTPVerifySerializer(serializers.Serializer):
         choices=OTPChannelChoices.choices,
         default=OTPChannelChoices.PHONE,
     )
+    first_name = serializers.CharField(required=False, allow_blank=True, default="")
+    last_name = serializers.CharField(required=False, allow_blank=True, default="")
+    email = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate(self, attrs: dict) -> dict:
         attrs["identifier"] = attrs.get("identifier", "").strip()
         attrs["code"] = attrs.get("code", "").strip()
+        attrs["first_name"] = attrs.get("first_name", "").strip()
+        attrs["last_name"] = attrs.get("last_name", "").strip()
+        attrs["email"] = attrs.get("email", "").strip()
         return attrs
 
 
