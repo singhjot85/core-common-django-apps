@@ -14,6 +14,16 @@ TEST_FILTER ?=
 CMD ?= 		# Generic Variable to be used as override for commands
 POETRY_COMMAND ?= install --no-root
 DEFAULT_TENANT_SCHEMA ?=
+# Agents Symlink Variables (paths relative to root)
+CURRENT_COMMON_MK_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
+SCRIPTS_DIR ?= $(CURRENT_COMMON_MK_DIR)
+SUBMODULE_DIR ?= $(or $(patsubst %/scripts,%,$(SCRIPTS_DIR)),backend/core-common-django-apps)
+SUBMODULE_AGENTS_DIR ?= $(or $(SUBMODULE_SKILLS_DIR),$(if $(filter-out scripts,$(SCRIPTS_DIR)),$(SUBMODULE_DIR)/.agents,.agents))
+PARENT_AGENTS_DIR ?= $(or $(PARENT_SKILLS_DIR),.agents)
+CATEGORY ?=
+ITEM ?=
+SKILL ?=
+FORCE ?= 0
 
 COMPOSE_COMMAND = docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(or $(COMPOSE_YAML),$(DEV_YAML_PATH))
 DJANGO_CONTAINER_COMMAND = docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(DJANGO_SERVICE)
@@ -46,10 +56,24 @@ docker-seed-tenants:
 	$(TEMP_DJANGO_CONTAINER) python ${PATH_TO_MANAGE} add_dev_tenants
 seed-tenants: docker-seed-tenants
 
-docker-dev-setup:
+docker-seed-models:
 	@echo "⌛ Running development setup and seeders...\n"
 	$(TEMP_DJANGO_CONTAINER) python ${PATH_TO_MANAGE} run_dev_seeders
-dev-setup: docker-dev-setup
+seed-models: docker-seed-models
+
+docker-dev-setup:
+	@echo "⌛ Running complete development setup...\n"
+	make rund
+	make m
+	make seed-tenants
+	make seed-models
+setup: docker-dev-setup
+
+docker-dev-clean-setup:
+	@echo "⚠️ Cleaning exisiting database...\n"
+	make db-destroy
+	make setup
+clean-setup: docker-dev-clean-setup
 
 
 # --------------------------
@@ -171,10 +195,10 @@ docker-django-tenant-shell:
 	${TEMP_DJANGO_CONTAINER} python ${PATH_TO_MANAGE} tenant_command shell --schema=${DEFAULT_TENANT_SCHEMA}
 ts: docker-django-tenant-shell
 
-docker-django-tenant-shell:
-	@echo "⌛ Launching Django Tenant shell...\n"
+docker-django-tenant-shell-debug:
+	@echo "⌛ Launching Django Tenant shell with debugpy...\n"
 	${DEBUGPY_TEMP_DJANGO_CONTAINER} ${PATH_TO_MANAGE} tenant_command shell --schema=${DEFAULT_TENANT_SCHEMA}
-tsd: docker-django-tenant-shell
+tsd: docker-django-tenant-shell-debug
 
 docker-django-tenant-shell-plus:
 	@echo "⌛ Launching Django Tenant shell plus...\n"
@@ -206,3 +230,27 @@ docker-poetry:
 	@echo "⌛ Executing poetry command $(if $(CMD),$(CMD),$(POETRY_COMMAND))..."
 	${TEMP_DJANGO_CONTAINER} poetry $(if $(CMD),$(CMD),$(POETRY_COMMAND))
 poetry: docker-poetry
+
+# --------------------------
+# 	Agents Management
+# --------------------------
+.PHONY: symlink-agents, link-agents, unlink-agents, remove-agents-links, list-agents, status-agents
+.PHONY: symlink-skills, link-skills, unlink-skills, remove-skills-links, list-skills, status-skills
+
+symlink-agents:
+	@bash $(SCRIPTS_DIR)/link_agents.sh "$(SUBMODULE_AGENTS_DIR)" "$(PARENT_AGENTS_DIR)" "$(CATEGORY)" "$(if $(ITEM),$(ITEM),$(SKILL))" "$(FORCE)"
+link-agents: symlink-agents
+symlink-skills: symlink-agents
+link-skills: symlink-agents
+
+unlink-agents:
+	@bash $(SCRIPTS_DIR)/unlink_agents.sh "$(SUBMODULE_AGENTS_DIR)" "$(PARENT_AGENTS_DIR)" "$(CATEGORY)" "$(if $(ITEM),$(ITEM),$(SKILL))"
+remove-agents-links: unlink-agents
+unlink-skills: unlink-agents
+remove-skills-links: unlink-agents
+
+list-agents:
+	@bash $(SCRIPTS_DIR)/list_agents.sh "$(SUBMODULE_AGENTS_DIR)" "$(PARENT_AGENTS_DIR)" "$(CATEGORY)"
+status-agents: list-agents
+list-skills: list-agents
+status-skills: list-agents

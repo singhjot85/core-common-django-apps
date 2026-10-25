@@ -60,8 +60,8 @@ if not SECRET_KEY:
 LOGGING = get_logging_config(LOGGING_CONFIG_PATH)
 
 STATIC_URL = "/static/"
-ROOT_URLCONF = "core.config.urls"
-PUBLIC_SCHEMA_URLCONF = "core.config.public_urls"
+ROOT_URLCONF = "config.urls"
+PUBLIC_SCHEMA_URLCONF = "config.public_urls"
 
 TENANT_TYPE_PUBLIC = "public"
 TENANT_TYPE_ORGANIZATION = "organization"
