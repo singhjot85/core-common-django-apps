@@ -2,9 +2,12 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
-from .base_models import *
-from .databases import *
-from .task_queues import *
+from django.core.exceptions import ImproperlyConfigured
+
+from core.config.logging import get_logging_config
+from core.config.settings.base_models import *
+from core.config.settings.databases import *
+from core.config.settings.task_queues import *
 
 # ------------------
 #  Custom Settings
@@ -13,6 +16,7 @@ APP_NAME = "apps"
 PROJECT_NAME = os.getenv("PROJECT_NAME")
 PROJECT_LABEL = os.getenv("PROJECT_LABEL")
 DJANGO_ENV = os.getenv("DJANGO_ENV", "dev")
+LOGGING_CONFIG_PATH = "config.logs"
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # Path to /backend
 APP_DIR = os.path.join(BASE_DIR, APP_NAME)  # Path to /backend/apps
@@ -31,9 +35,6 @@ SANDBOX_TEMPLATES_DIRS = [
 
 SENSITIVE_PHRASES = os.getenv("SENSITIVE_PHRASES", [])
 APPLICATION_TIMEZONE = os.getenv("TIME_ZONE", "UTC")
-SECRET_KEY = os.getenv(
-    "SECRET_KEY", "django-insecure-core-common-apps-secret-key-default"
-)
 PROJECT_MIGRATION_PATH = f"{PROJECT_NAME}.db_migrations"
 
 
@@ -50,7 +51,13 @@ ALLOWED_HOSTS = []
 
 TIME_ZONE = APPLICATION_TIMEZONE
 TEMPLATES_DIR = os.path.join(BASE_DIR, "django_templates", "templates")
-SECRET_KEY = os.getenv("DJANGO_SECRETE_KEY", "")
+SECRET_KEY = os.getenv("SECRET_KEY", None)
+if not SECRET_KEY:
+    if DJANGO_ENV == "production":
+        raise ImproperlyConfigured("Secret key not defined for app")
+    SECRET_KEY = "django-insecure-core-common-apps-secret-key-default"  # pragma: allowlist secret
+
+LOGGING = get_logging_config(LOGGING_CONFIG_PATH)
 
 STATIC_URL = "/static/"
 ROOT_URLCONF = "core.config.urls"
@@ -265,7 +272,7 @@ REST_FRAMEWORK = {
 #  django-mail TODO: Work on email backends
 # ------------------
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "")
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "core.utils.backends.email.console.CoreConsoleEmailBackend"
 
 # ------------------
 #  django-constance

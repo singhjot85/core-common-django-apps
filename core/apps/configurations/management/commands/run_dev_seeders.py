@@ -87,6 +87,6 @@ class Command(BaseCommand):
         else:
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"Successfully completed development setup and seeded data: {instances}"
+                    "Successfully completed development setup and seeded data..."
                 )
             )

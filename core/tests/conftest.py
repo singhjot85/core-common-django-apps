@@ -15,34 +15,39 @@ if typing.TYPE_CHECKING:
 tenant_schema_name = getattr(settings, "TENANT_SCHEMA_NAME", "test_schema")
 
 
-@pytest.fixture
-def setup_test_tenant(db):
+@pytest.fixture(scope="session")
+def django_db_setup(django_test_environment, django_db_blocker):
     """
-    Create and provision the multi-tenant db schema for tests.
+    Session-scoped DB setup: provision the test tenant and schema exactly once
+    per pytest session.
+
+    Runs outside any per-test transaction, so the DDL issued by ``create_schema``
+    (CREATE SCHEMA IF NOT EXISTS …) never competes with the savepoint-rollback
+    mechanism that pytest-django uses between tests. This eliminates the
+    deadlock on ``tenants_tenants_schema_name_key`` that occurs when DDL is
+    executed inside a per-test transaction boundary.
     """
     Tenant: type["AbstractTenants"] = get_tenant_model()
     Domain: type["AbstractDomain"] = get_tenant_domain_model()
 
-    with schema_context(get_public_schema_name()):
-        tenant, _ = Tenant.objects.get_or_create(
-            schema_name=tenant_schema_name,
-            defaults={
-                "label": " ".join(tenant_schema_name.split("_")).title(),
-                "is_active": True,
-                "status": "ready",
-            },
-        )
-        if tenant.status != "ready":
-            tenant.status = "ready"
-            tenant.save(update_fields=["status"])
-        Domain.objects.get_or_create(
-            tenant=tenant,
-            domain="localhost",
-            defaults={"is_primary": True},
-        )
-        tenant.create_schema(check_if_exists=True, sync_schema=True, verbosity=0)
-
-    return tenant
+    with django_db_blocker.unblock():
+        with schema_context(get_public_schema_name()):
+            tenant, _ = Tenant.objects.get_or_create(
+                schema_name=tenant_schema_name,
+                defaults={
+                    "label": " ".join(tenant_schema_name.split("_")).title(),
+                    "is_active": True,
+                    "status": "ready",
+                },
+            )
+            if tenant.status != "ready":
+                tenant.status = "ready"
+                tenant.save(update_fields=["status"])
+            Domain.objects.update_or_create(
+                domain="localhost",
+                defaults={"tenant": tenant, "is_primary": True},
+            )
+            tenant.create_schema(check_if_exists=True, sync_schema=True, verbosity=0)
 
 
 @pytest.fixture
@@ -58,7 +63,6 @@ def public_schema(db):
 def tenant_schema(request):
     """Switch execution context to the test tenant schema for database tests."""
     if "django_db" in request.keywords or "db" in request.fixturenames:
-        request.getfixturevalue("setup_test_tenant")
         with schema_context(tenant_schema_name):
             yield
     else:

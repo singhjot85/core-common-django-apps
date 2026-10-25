@@ -24,7 +24,7 @@ class TestSeederRegistry:
         expected_keys = {
             "customer_preference_type_seeder",
             "configuration_seeder",
-            "configuration_schema_seeder",
+            "tenant_configuration_seeder",
         }
         registered_keys = set(registry.keys())
         assert expected_keys.issubset(registered_keys), (

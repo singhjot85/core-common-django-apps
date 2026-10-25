@@ -19,6 +19,7 @@ from core.seeder.constants import (
     ManagerRelation,
     ReverseSingularRelation,
 )
+from core.seeder.datasource import FileDataSource
 from core.seeder.registry import fixture_registry, seeder_registry
 from core.utils.checks import is_model, is_multi_tenant
 from core.utils.database import get_public_schema_name
@@ -226,8 +227,6 @@ class BaseSeeder:
 
         file_path = getattr(self._meta, "file_path", None)
         if file_path:
-            from core.seeder.datasource import FileDataSource
-
             return FileDataSource(file_path)
 
         return None
@@ -332,7 +331,26 @@ class BaseSeeder:
     def get_related_instance(
         self, field_name: str, field_val: typing.Any, related_unique_attr: str
     ):
-        """ """
+        """
+        Resolve and return a relationship wrapper for the specified field.
+
+        Supports resolving existing related instances by attribute lookup or
+        instantiating and seeding related instances recursively via a configured
+        related seeder. Returns an appropriate relation descriptor (ForwardSingularRelation,
+        ReverseSingularRelation, or ManagerRelation).
+
+        Args:
+            field_name (str): Name of the relation field on the current model.
+            field_val (typing.Any): Attribute value for lookup, or dict payload for nested seeding.
+            related_unique_attr (str, optional): Unique field name on the related model to query against.
+
+        Returns:
+            ForwardSingularRelation | ReverseSingularRelation | ManagerRelation | None:
+                Relation container ready to be linked to the parent instance, or None.
+
+        Raises:
+            django.core.exceptions.ObjectDoesNotExist: If unique attribute lookup yields no record.
+        """
         field: models.ForeignObjectRel = self._model._meta.get_field(field_name)
 
         def seed_related_instance() -> models.Model:
@@ -345,7 +363,15 @@ class BaseSeeder:
             return None
 
         def retrieve_related_instance() -> models.Model:
-            """ """
+            """
+            Retrieve an existing related model instance using the unique attribute.
+
+            Returns:
+                models.Model: The matched related model instance from the database.
+
+            Raises:
+                django.core.exceptions.ObjectDoesNotExist: If no record matches the lookup.
+            """
             RelatedModel = (
                 field.field.model  # Reverse 1-1 need this special access route for the realted model
                 if field.one_to_one and field.auto_created
@@ -385,7 +411,15 @@ class BaseSeeder:
                 )
 
     def _filter_seedable_fields(self, data: dict):
-        """ """
+        """
+        Filter incoming dictionary data to retain seedable fields.
+
+        Args:
+            data (dict): Raw dictionary containing field keys and values.
+
+        Returns:
+            dict: Dictionary with entries preserved for seeding.
+        """
         seedable_data = {}
         # Filter out fields that are not declared seedable
         for key, val in data.items():
@@ -411,7 +445,24 @@ class BaseSeeder:
 
     def seed(self, data: dict) -> models.Model:
         """
-        Seed the data
+        Seed a single record into the database within an atomic transaction.
+
+        Filters declared fields, applies validation hooks, converts incoming payload
+        to model field representations, resolves relations, and persists the record.
+
+        Side effects:
+            - Inserts or updates a database row for the configured model.
+            - Recursively seeds related model records if nested seeders are invoked.
+            - Associates foreign keys, many-to-many, and one-to-one relations post-creation.
+
+        Args:
+            data (dict): Mapping of field names to values or nested relation payloads.
+
+        Returns:
+            models.Model: The created or retrieved model instance.
+
+        Raises:
+            SeederException: If validation fails, model creation errors, or a relation cannot be linked.
         """
         try:
             filtered_data = self._filter_seedable_fields(data)
@@ -427,7 +478,23 @@ class BaseSeeder:
             ) from e
 
     def create(self, data: dict) -> models.Model:
-        """ """
+        """
+        Create the model instance and link deferred relationships.
+
+        Injects non-null forward foreign keys prior to invocation of the creation method,
+        executes the configured object creation callable (defaults to ``get_or_create``),
+        and applies post-creation relation linkages for reverse relations and many-to-many fields.
+
+        Side effects:
+            - Executes database insertion via the creation method.
+            - Modifies relational junction tables or related foreign keys.
+
+        Args:
+            data (dict): Internal field values prepared for model instantiation.
+
+        Returns:
+            models.Model: The persisted model instance.
+        """
 
         required_relations = []  # These are needed to prevent not-null constaints
         for related_data in self._related_data:

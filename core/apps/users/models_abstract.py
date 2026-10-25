@@ -1,3 +1,10 @@
+"""
+Abstract base models for authentication, identity linking, and OTP auditing.
+
+Provides AbstractUser (inheriting Django auth and BaseModel soft-delete / timestamps),
+AbstractSocialAccount for third-party SSO bindings, and AbstractOTPLog for delivery auditing.
+"""
+
 import logging
 import typing
 
@@ -61,14 +68,27 @@ class AbstractUser(DjangoAbstractUser, BaseUserModel):
 
     @property
     def has_password(self) -> bool:
-        """Check if user has an active, usable password set."""
+        """
+        Check if user has an active, usable password set.
+
+        Returns:
+            bool: True if password is set and usable, False if unusable (e.g. OTP/SSO only).
+        """
         return self.has_usable_password()
 
     @classmethod
     def create_system_user(cls) -> "AbstractUser":
         """
         Create or retrieve the system user without a usable password.
-        This account is reserved for internal auditing and system actions.
+
+        Reserved for internal auditing, automated workers, and system actions.
+
+        Side effects:
+            - Inserts or updates system user record in database.
+            - Sets an unusable password on the user.
+
+        Returns:
+            AbstractUser: The system user instance.
         """
         username = app_settings.SYSTEM_USER_USERNAME
         user = cls.objects.all_objects().filter(username=username).first()
@@ -114,13 +134,26 @@ class AbstractUser(DjangoAbstractUser, BaseUserModel):
 
     @classmethod
     def system_user(cls) -> typing.Optional["AbstractUser"]:
-        """Alias for get_system_user()."""
+        """
+        Retrieve the cached or persisted system user instance.
+
+        Returns:
+            AbstractUser | None: The system user instance if found or created.
+        """
         return cls.get_system_user()
 
 
 class AbstractSocialAccount(BaseModel):
     """
     Abstract model linking third-party identity providers to a user.
+
+    Relations:
+        user (ForeignKey): Target user associated with the social credential.
+
+    Attributes:
+        provider (str): Social provider identifier (e.g. google, apple, meta).
+        uid (str): Unique subject or account identifier assigned by the provider.
+        extra_data (dict): JSON payload of claims and profile data from the provider.
     """
 
     user = models.ForeignKey(
@@ -156,6 +189,12 @@ class AbstractSocialAccount(BaseModel):
 class AbstractOTPLog(BaseLogModel):
     """
     Audit log for one-time password (OTP) dispatch and verification events.
+
+    Attributes:
+        recipient (str): Destination phone number or email address.
+        channel (str): Delivery medium (sms, email, whatsapp).
+        purpose (str): Functional purpose of the OTP (login, verification, password reset).
+        status (str): Delivery lifecycle status (pending, sent, delivered, failed).
     """
 
     STATUS = OTPDeliveryStatusChoices.choices

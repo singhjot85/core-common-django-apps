@@ -15,7 +15,6 @@ from core.utils.jinja2.environment import (
 )
 from core.utils.jinja2.filters import format_currency, format_date, format_datetime
 from core.utils.jinja2.loaders import SafeDatabaseLoader
-from sample_project.apps.views import BackendServerdUIView
 
 
 class TestJinja2EnvironmentAndFilters:
@@ -356,34 +355,6 @@ class TestFullPageTemplateRendering:
         assert "Master Corp" in rendered
         assert "Pending Invoices" in rendered
 
-    def test_backend_served_ui_view_mock_data(self, request_obj):
-        view = BackendServerdUIView()
-        view.request = request_obj
-        context = view.get_context_data()
-
-        assert "page_label" in context
-        assert "sidebar_links" in context
-        assert len(context["sidebar_links"]) == 4
-        assert "customers" in context
-        assert len(context["customers"]) > 0
-        assert "system_gauges" in context
-        assert "operational_services" in context
-        assert "worker_nodes" in context
-
-        # Public Dashboard rendering
-        rendered_public = view.render_to_response(context).rendered_content
-        assert "All Systems Operational" in rendered_public
-        assert "System Resource Utilization" in rendered_public
-        assert "Public Platform Worker Pool" in rendered_public
-
-        # Tenant Dashboard rendering
-        rendered_tenant = render_to_string(
-            "dashboard.jinja", context, request=request_obj
-        )
-        assert "Enterprise Overview" in rendered_tenant
-        assert "Acme Innovations Ltd" in rendered_tenant
-        assert "Recent Customers" in rendered_tenant
-
     def test_base_template_theme_toggle_and_script(self, request_obj):
         context = {"request": request_obj}
         rendered = render_to_string("core/base.jinja", context, request=request_obj)
@@ -413,10 +384,81 @@ class TestFullPageTemplateRendering:
         assert "data-auth-method" in rendered
         assert "data-password-toggle" in rendered
         assert "data-otp-box" in rendered
-        assert "Provision Tenant Workspace" in rendered
-        assert "256-bit SSL Encrypted" in rendered
-        assert "Enterprise Tenant Isolation" in rendered
-        assert "PCI-DSS Level 1 Compliant" in rendered
+        assert "Create Account" in rendered
+        assert "session_timeout_overlay" in rendered
+        assert "Session Expired" in rendered
+
+    def test_username_login_template_renders(self):
+        factory = RequestFactory()
+        request_obj = factory.get("/login/")
+        rendered = render_to_string(
+            "core/views/auth/username_login.jinja",
+            {"request": request_obj, "login_action": "/api/users/v1/auth/login/"},
+            request=request_obj,
+        )
+        assert "data-username-tab" in rendered
+        assert "username_login_attempts_warning" in rendered
+        assert "btn_username_submit" in rendered
+        assert 'name="username"' in rendered
+        assert 'name="password"' in rendered
+        assert "Sign In" in rendered
+        assert "Email" in rendered
+
+    def test_username_login_template_backend_labels_override(self):
+        factory = RequestFactory()
+        request_obj = factory.get("/login/")
+        rendered = render_to_string(
+            "core/views/auth/username_login.jinja",
+            {
+                "request": request_obj,
+                "login_action": "/api/users/v1/auth/login/",
+                "labels": {
+                    "email": "Corporate ID",
+                    "sign_in": "Authenticate Now",
+                },
+            },
+            request=request_obj,
+        )
+        assert "Corporate ID" in rendered
+        assert "Authenticate Now" in rendered
+        # Password still falls back to default i18n label
+        assert "Password" in rendered
+        assert 'name="first_name"' in rendered
+        assert 'name="last_name"' in rendered
+
+    def test_otp_login_template_renders(self):
+        factory = RequestFactory()
+        request_obj = factory.get("/login/")
+        rendered = render_to_string(
+            "core/views/auth/otp_login.jinja",
+            {
+                "request": request_obj,
+                "otp_verify_action": "/api/users/v1/auth/otp/verify/",
+            },
+            request=request_obj,
+        )
+        assert "data-otp-tab" in rendered
+        assert "btn_send_login_otp" in rendered
+        assert "data-otp-box" in rendered
+        assert "btn_otp_submit" in rendered
+        assert "otp_login_attempts_warning" in rendered
+        assert "Phone" in rendered
+
+    def test_core_login_template_renders(self):
+        factory = RequestFactory()
+        request_obj = factory.get("/login/")
+        rendered = render_to_string(
+            "core/views/core_login_template.jinja",
+            {"request": request_obj, "PROJECT_LABEL": "ACME Core"},
+            request=request_obj,
+        )
+        assert "ACME Core" in rendered
+        assert 'data-auth-method="username"' in rendered
+        assert 'data-auth-method="otp"' in rendered
+        assert "Privacy Policy" in rendered
+        assert "Terms" in rendered
+        assert "Platform Status" in rendered
+        assert "auth_toast_container" in rendered
 
 
 class TestCoreFormTemplates:

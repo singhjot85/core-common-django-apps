@@ -33,11 +33,14 @@ def jinja2_environment(**options) -> Environment:
     Returns:
         A fully configured Jinja2 Environment instance for application UI rendering.
     """
+    from core.utils.labels import resolve_labels  # noqa: PLC0415
+
     env = Environment(**options)
 
     # Register global functions & filters from modular subpackages
     env.globals.update(CORE_GLOBALS)
     env.filters.update(CORE_FILTERS)
+    env.globals.update({"resolve_labels": resolve_labels})
 
     return env
 
