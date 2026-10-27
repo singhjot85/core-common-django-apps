@@ -12,8 +12,8 @@ EmailTemplate = get_email_template_model()
 
 @admin.register(EmailLog, site=private_admin_site)
 class EmailLogAdmin(admin.ModelAdmin):
-    list_display = ("id", "recipient", "subject", "status", "backend_used", "created")
-    list_filter = ("status", "backend_used")
+    list_display = ("id", "recipient", "subject", "status", "backend", "created")
+    list_filter = ("status", "backend")
     search_fields = ("recipient", "subject")
 
 

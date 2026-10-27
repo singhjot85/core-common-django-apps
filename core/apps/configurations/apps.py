@@ -7,7 +7,7 @@ class ConfigurationsConfig(AppConfig):
     label = "configurations"
 
     def ready(self):
-        from core.apps.configurations.constants import (
+        from core.apps.configurations.constants import (  # noqa: PLC0415
             DefaultConfigurationInterfaceTypeChoices,
             InterfaceTypeChoices,
         )

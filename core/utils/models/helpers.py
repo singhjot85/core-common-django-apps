@@ -3,12 +3,13 @@ import logging
 from django.db import models
 from model_utils.models import SoftDeletableModel
 
+from core.exceptions import ObjectNotFound
+
 LOGGER = logging.getLogger(__name__)
 
 
 def get_object_or_raise(model: type[models.Model], **lookup_kwargs):
     """Get object or raise ObjectNotFound with context"""
-    from core.exceptions import ObjectNotFound
 
     try:
         if isinstance(model, SoftDeletableModel):
@@ -26,7 +27,6 @@ def safe_get_object_or_raise(model: type["models.Model"], **lookup_kwargs):
     and re-query the db for single instance based on model's ``DEFAULT_ORDERING``
     if no such attribute found fallback to ``-pk``
     """
-    from core.exceptions import ObjectNotFound
 
     try:
         if isinstance(model, SoftDeletableModel):
@@ -48,8 +48,6 @@ def filter_objects_or_raise(
     model: type["models.Model"], **lookup_kwargs
 ) -> "models.QuerySet":
     """Filter for a queryset or raise ObjectNotFound"""
-    from core.exceptions import ObjectNotFound
-
     qs = None
 
     if isinstance(model, SoftDeletableModel):

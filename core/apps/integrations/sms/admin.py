@@ -9,8 +9,8 @@ SMSTemplate = get_sms_template_model()
 
 @admin.register(SMSLog, site=private_admin_site)
 class SMSLogAdmin(admin.ModelAdmin):
-    list_display = ("id", "recipient", "status", "backend_used", "created")
-    list_filter = ("status", "backend_used")
+    list_display = ("id", "recipient", "status", "backend", "created")
+    list_filter = ("status", "backend")
     search_fields = ("recipient",)
 
 

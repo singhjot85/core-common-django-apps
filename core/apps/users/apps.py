@@ -9,6 +9,6 @@ class UsersConfig(AppConfig):
     verbose_name = "User Management & Authentication"
 
     def ready(self):
-        from core.apps.users.signals import create_system_user_callback
+        from core.apps.users.signals import create_system_user_callback  # noqa: PLC0415
 
         post_migrate.connect(create_system_user_callback, sender=self)

@@ -3,8 +3,6 @@ import logging
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
-from django.db import connection
-
 from core.apps.integrations.payments import app_settings
 from core.apps.integrations.payments.constants import PaymentLogStatusChoices
 from core.apps.integrations.payments.tasks import log_payment_dispatch
@@ -52,11 +50,9 @@ class BasePaymentService(abc.ABC):
             traceback_str = str(exc)
             return {"success": False, "error": error_msg}
         finally:
-            schema_name = getattr(connection, "schema_name", "public")
             gateway_name = self.get_gateway_name()
             queue_task(
                 log_payment_dispatch,
-                schema_name=schema_name,
                 transaction_id=tx_id,
                 amount=str(amount),
                 currency=currency,
@@ -98,11 +94,9 @@ class BasePaymentService(abc.ABC):
             traceback_str = str(exc)
             return {"success": False, "error": error_msg}
         finally:
-            schema_name = getattr(connection, "schema_name", "public")
             gateway_name = self.get_gateway_name()
             queue_task(
                 log_payment_dispatch,
-                schema_name=schema_name,
                 transaction_id=transaction_id,
                 amount=str(amount or Decimal("0.00")),
                 currency=app_settings.DEFAULT_CURRENCY,

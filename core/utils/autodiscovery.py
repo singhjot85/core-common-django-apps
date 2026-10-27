@@ -13,6 +13,8 @@ import typing
 from functools import cached_property
 from pathlib import Path
 
+from django.conf import settings
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -99,8 +101,6 @@ class AutoDiscoveryMixin:
         if root_path:
             path_obj = Path(root_path)
             if not path_obj.is_absolute():
-                from django.conf import settings
-
                 core_base = getattr(settings, "CORE_BASE_DIR", None)
                 base_dir = getattr(settings, "BASE_DIR", None)
 
@@ -181,8 +181,6 @@ class AutoDiscoveryMixin:
 
         path_obj = Path(root_path)
         if not path_obj.is_absolute():
-            from django.conf import settings
-
             core_base = getattr(settings, "CORE_BASE_DIR", None)
             base_dir = getattr(settings, "BASE_DIR", None)
 
@@ -202,8 +200,6 @@ class AutoDiscoveryMixin:
             path_obj = resolved
 
         if not path_obj.exists():
-            from django.conf import settings
-
             core_base = getattr(settings, "CORE_BASE_DIR", None)
             base_dir = getattr(settings, "BASE_DIR", None)
             raise AutoDiscoveryError(
@@ -224,8 +220,6 @@ class AutoDiscoveryMixin:
             AutoDiscoveryError: If module cannot be resolved.
         """
         file_resolved = file.resolve()
-
-        from django.conf import settings
 
         core_base = getattr(settings, "CORE_BASE_DIR", None)
         if core_base:

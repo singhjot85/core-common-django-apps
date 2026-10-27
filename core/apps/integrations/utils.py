@@ -11,13 +11,12 @@ def send_email(
     context: Optional[Dict[str, Any]] = None,
     plain_body: Optional[str] = None,
     html_body: Optional[str] = None,
-    integration=None,
     **kwargs: Any,
 ) -> bool:
     """
     Unified facade to dispatch an email via the active email integration service.
     """
-    service = get_email_service(integration=integration)
+    service = get_email_service()
     return service.send(
         to=to,
         template=template,
@@ -34,13 +33,12 @@ def send_sms(
     message: Optional[str] = None,
     template: Optional[str] = None,
     context: Optional[Dict[str, Any]] = None,
-    integration=None,
     **kwargs: Any,
 ) -> bool:
     """
     Unified facade to dispatch an SMS via the active SMS integration service.
     """
-    service = get_sms_service(integration=integration)
+    service = get_sms_service()
     return service.send(
         to=to,
         message=message,

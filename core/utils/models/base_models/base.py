@@ -32,6 +32,6 @@ class BaseModel(UUIDModel, TimeStampedModel, DeletionTrackingModel):
         Raises:
             ObjectNotFound
         """
-        from core.utils.models.helpers import safe_get_object_or_raise
+        from core.utils.models.helpers import safe_get_object_or_raise  # noqa: PLC0415
 
         return safe_get_object_or_raise(cls, **unique_filters)
