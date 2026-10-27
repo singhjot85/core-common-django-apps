@@ -74,8 +74,6 @@ class CustomerAddressSerializer(serializers.ModelSerializer):
             "state",
             "postal_code",
             "country",
-            "latitude",
-            "longitude",
             "full_address",
             "created",
             "modified",

@@ -77,6 +77,7 @@ SHARED_EXTRA_DEPENDENCIES = [
     "rest_framework_simplejwt.token_blacklist",
     "dj_rest_auth",
     "constance",
+    "drf_spectacular",
 ]
 PUBLIC_ONLY_EXTRA_DEPENDENCIES = [
     "django_celery_results",

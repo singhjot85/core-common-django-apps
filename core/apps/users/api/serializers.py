@@ -219,7 +219,12 @@ class LoginSerializer(serializers.Serializer):
 
 class OTPSendSerializer(serializers.Serializer):
     """
-    Serializer for requesting an OTP code via phone SMS or Email.
+    Validate parameters for requesting an OTP code via SMS or Email.
+
+    Fields:
+    - ``identifier`` (CharField): Phone number (minimum 7 digits) or valid email address.
+    - ``channel`` (ChoiceField): Delivery channel, either ``"phone"`` or ``"email"``. Defaults to ``"phone"``.
+    - ``purpose`` (ChoiceField): Purpose of the OTP (``"login"``, ``"verification"``, ``"reset_password"``). Defaults to ``"login"``.
     """
 
     identifier = serializers.CharField(required=True)
@@ -257,7 +262,12 @@ class OTPSendSerializer(serializers.Serializer):
 
 class OTPVerifySerializer(serializers.Serializer):
     """
-    Serializer for verifying an OTP code.
+    Validate parameters for verifying a submitted OTP code.
+
+    Fields:
+    - ``identifier`` (CharField): Phone number or email address that received the OTP.
+    - ``code`` (CharField): One-time verification passcode (max length 10).
+    - ``channel`` (ChoiceField): Delivery channel, either ``"phone"`` or ``"email"``. Defaults to ``"phone"``.
     """
 
     identifier = serializers.CharField(required=True)
