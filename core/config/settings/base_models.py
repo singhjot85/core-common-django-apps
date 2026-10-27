@@ -54,6 +54,23 @@ USERS_USER_MODEL = "users.User"
 USERS_SOCIAL_ACCOUNT_MODEL = "users.SocialAccount"
 USERS_OTP_LOG_MODEL = "users.OTPLog"
 
+# Integrations App
+INTEGRATIONS_APP = "core.apps.integrations"
+INTEGRATIONS_INTEGRATION_MODEL = "integrations.Integration"
+INTEGRATIONS_CREDENTIALS_MANAGER_MODEL = "integrations.CredentialsManager"
+
+# Integrations Sub-Apps
+INTEGRATIONS_EMAIL_APP = "core.apps.integrations.email"
+INTEGRATIONS_EMAIL_EMAIL_LOG_MODEL = "integrations_email.EmailLog"
+INTEGRATIONS_EMAIL_EMAIL_TEMPLATE_MODEL = "integrations_email.EmailTemplate"
+
+INTEGRATIONS_SMS_APP = "core.apps.integrations.sms"
+INTEGRATIONS_SMS_SMS_LOG_MODEL = "integrations_sms.SMSLog"
+INTEGRATIONS_SMS_SMS_TEMPLATE_MODEL = "integrations_sms.SMSTemplate"
+
+INTEGRATIONS_PAYMENTS_APP = "core.apps.integrations.payments"
+INTEGRATIONS_PAYMENTS_PAYMENT_LOG_MODEL = "integrations_payments.PaymentLog"
+
 
 # ----------------------------
 #   Runtime App Classification
@@ -90,6 +107,10 @@ PROJECT_APPS = [
     CRM_APP,
     INVOICES_APP,
     USERS_APP,
+    INTEGRATIONS_APP,
+    INTEGRATIONS_EMAIL_APP,
+    INTEGRATIONS_SMS_APP,
+    INTEGRATIONS_PAYMENTS_APP,
     # "apps.setup",
     # "apps.notifications",
 ]
@@ -116,6 +137,10 @@ DJANGO_TENANT_PRIVATE_APPS = [
     CONFIGURATION_APP,
     INVOICES_APP,
     USERS_APP,
+    INTEGRATIONS_APP,
+    INTEGRATIONS_EMAIL_APP,
+    INTEGRATIONS_SMS_APP,
+    INTEGRATIONS_PAYMENTS_APP,
     # "apps.payments_management",
     # "apps.setup",
     # "apps.notifications",

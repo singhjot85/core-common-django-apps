@@ -1,4 +1,4 @@
-from backends.sms.base import BaseSMSBackend
-from backends.sms.console import ConsoleSMSBackend
+from .base import BaseSMSBackend
+from .console import ConsoleSMSBackend
 
 __all__ = ["BaseSMSBackend", "ConsoleSMSBackend"]
