@@ -8,6 +8,11 @@ Routes:
 """
 
 from django.urls import path
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
 
 from core.apps.users.api.template_views import (
     ForgotPasswordView,
@@ -25,6 +30,17 @@ urlpatterns = [
     path("signup/", SignupView.as_view(), name="ui-signup"),
     path("register/", RegisterView.as_view(), name="ui-register"),
     path("forgot-password/", ForgotPasswordView.as_view(), name="ui-forgot-password"),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/schema/swagger-ui/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+    path(
+        "api/schema/redoc/",
+        SpectacularRedocView.as_view(url_name="schema"),
+        name="redoc",
+    ),
     # Django Admin
     path("admin/", private_admin_site.urls),
     # Backend API Endpoints

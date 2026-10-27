@@ -227,42 +227,59 @@ class LoginView(APIView):
 
 class OTPSendView(APIView):
     """
-    Asynchronous OTP dispatch view.
+    Dispatch one-time passcodes (OTP) via SMS or Email asynchronously.
+
     Validates identifier syntax and immediately returns HTTP 202 Accepted,
-    queuing actual dispatch to background worker without leaking user existence.
+    queuing actual dispatch to a background worker to prevent user enumeration.
     """
 
     permission_classes = [AllowAny]
+    serializer_class = OTPSendSerializer
 
     def post(self, request, *args, **kwargs):
         """
         Dispatch an OTP verification code to the given identifier asynchronously.
 
         Always returns 202 Accepted to prevent user enumeration regardless of
-        whether the identifier exists in the database.
+        whether the identifier exists in the database. The actual generation
+        and delivery of the OTP is handled by a background Celery worker.
 
         API details:
         - POST ``/api/v1/auth/otp/send/``
-            - **202**: Request accepted and dispatched to background queue.
-            - **400**: Invalid identifier syntax or channel parameters.
-            - **403**: OTP authentication is disabled by configuration.
+            - **Request Body**:
+                - ``identifier`` (string, required): Destination phone number (min 7 digits) or valid email address.
+                - ``channel`` (string, optional): Delivery channel (``"phone"`` or ``"email"``). Defaults to ``"phone"``.
+                - ``purpose`` (string, optional): Purpose of the OTP (``"login"``, ``"verification"``, ``"reset_password"``). Defaults to ``"login"``.
+            - **202 Accepted**: Request accepted and dispatched to background queue.
+                - ``detail`` (string): Generic confirmation message (e.g. ``"If the account exists, an OTP has been dispatched."``).
+            - **400 Bad Request**: Invalid identifier syntax or channel parameters.
+                - Validation error dict (e.g. ``{"identifier": ["Invalid phone number format."]}``).
+            - **403 Forbidden**: OTP authentication is disabled by configuration.
+                - ``detail`` (string): ``"OTP authentication is currently disabled."``
 
         Side effects:
             - Queues ``send_otp_task`` Celery job for asynchronous code generation and delivery.
 
         Args:
-            request (Request): DRF request containing ``identifier``, ``channel``, and ``purpose``.
+            request (Request): DRF request containing JSON body with:
+                - ``identifier`` (str): Target phone number or email address.
+                - ``channel`` (str, optional): Delivery channel (``"phone"`` or ``"email"``). Defaults to ``"phone"``.
+                - ``purpose`` (str, optional): Purpose of OTP (``"login"``, ``"verification"``, or ``"reset_password"``). Defaults to ``"login"``.
 
         Returns:
-            Response: HTTP 202 status with generic confirmation message.
+            Response: HTTP 202 Accepted response containing:
+                - ``detail`` (str): Generic status confirmation message.
 
         Raises:
-            PermissionDenied: If OTP login is disabled in application settings.
+            PermissionDenied:
+                - OTP authentication is disabled in application settings.
+            ValidationError:
+                - Request body contains invalid phone/email syntax or invalid choice values.
         """
         if not app_settings.ENABLE_OTP_LOGIN:
             raise PermissionDenied(_("OTP authentication is currently disabled."))
 
-        serializer = OTPSendSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         identifier = serializer.validated_data["identifier"]
@@ -291,42 +308,83 @@ class OTPSendView(APIView):
 
 class OTPVerifyView(APIView):
     """
-    API view for verifying OTP codes and authenticating/provisioning users with zero enumeration.
+    Verify OTP codes and authenticate or provision users with zero enumeration.
+
+    Validates submitted passcodes, tracks failed attempts to prevent brute-force attacks,
+    and returns JWT tokens upon successful verification.
     """
 
     permission_classes = [AllowAny]
+    serializer_class = OTPVerifySerializer
 
     def post(self, request, *args, **kwargs):
         """
         Verify submitted OTP code and authenticate or provision the user.
 
+        Validates the submitted OTP against the cache for the given identifier,
+        enforces account lockout on excessive failed attempts, and authenticates
+        the user upon successful verification. If the user does not exist and
+        auto-registration is enabled, automatically creates and verifies a new user account.
+
         API details:
         - POST ``/api/v1/auth/otp/verify/``
-            - **200**: OTP verified; existing user authenticated.
-            - **201**: OTP verified; new user provisioned and authenticated.
-            - **400**: Invalid OTP, expired OTP, or auto-registration disabled.
-            - **403**: OTP authentication disabled by configuration.
-            - **423**: Identity temporarily locked due to excessive failed verification attempts.
+            - **Request Body**:
+                - ``identifier`` (string, required): Phone number or email address that received the code.
+                - ``code`` (string, required): The OTP verification code (max 10 characters).
+                - ``channel`` (string, optional): Delivery channel (``"phone"`` or ``"email"``). Defaults to ``"phone"``.
+            - **200 OK**: OTP verified; existing user authenticated.
+                - ``refresh`` (string): JWT refresh token.
+                - ``access`` (string): JWT access token.
+                - ``access_expires_in`` (int): Token expiry duration in seconds.
+                - ``user`` (dict): Serialized user profile per ``USER_DETAILS_SERIALIZER``.
+                - ``created`` (bool): ``False`` indicating an existing user account.
+                - ``redirect_url`` (string): Post-authentication redirect target URL.
+            - **201 Created**: OTP verified; new user provisioned and authenticated.
+                - Payload schema matches **200 OK**, with ``created`` set to ``True``.
+            - **400 Bad Request**: Invalid OTP, expired OTP, or auto-registration disabled.
+                - On incorrect OTP: ``{"detail": "Incorrect OTP.", "remaining_attempts": int, "is_locked": false}``.
+                - On validation error: Field error dictionary (e.g. ``{"code": ["This field is required."]}``).
+            - **403 Forbidden**: OTP authentication disabled by configuration.
+                - ``detail`` (string): ``"OTP authentication is currently disabled."``
+            - **423 Locked**: Identity temporarily locked due to excessive failed verification attempts.
+                - ``{"detail": "Account locked due to too many failed attempts.", "remaining_attempts": 0, "is_locked": true}``.
 
         Side effects:
             - Increments failed verification counter in cache on incorrect code.
             - Resets failed attempt counter on successful verification.
             - May create a new user record if auto-registration is enabled.
             - Updates ``is_phone_verified`` or ``is_email_verified`` flags on user.
+            - Initiates Django session login if session middleware is active.
 
         Args:
-            request (Request): DRF request containing ``identifier``, ``code``, and ``channel``.
+            request (Request): DRF request containing JSON body with:
+                - ``identifier`` (str): Phone number or email address that received the OTP code.
+                - ``code`` (str): OTP verification code to validate.
+                - ``channel`` (str, optional): Channel used for delivery (``"phone"`` or ``"email"``). Defaults to ``"phone"``.
 
         Returns:
-            Response: Auth tokens, user profile, created flag, and redirect URL.
+            Response: HTTP 200 OK (existing user) or HTTP 201 Created (new user) containing:
+                - ``refresh`` (str): JWT refresh token.
+                - ``access`` (str): JWT access token.
+                - ``access_expires_in`` (int): Token lifetime in seconds.
+                - ``user`` (dict): Serialized user profile from ``USER_DETAILS_SERIALIZER``.
+                - ``created`` (bool): True if user was newly provisioned, False otherwise.
+                - ``redirect_url`` (str): Target redirect URL post-authentication.
+                On error:
+                - HTTP 400 Bad Request with ``detail``, ``remaining_attempts``, and ``is_locked`` (or field errors).
+                - HTTP 403 Forbidden with ``detail`` if OTP is disabled.
+                - HTTP 423 Locked with ``detail``, ``remaining_attempts``, and ``is_locked`` if account is locked.
 
         Raises:
-            PermissionDenied: If OTP login is disabled in application settings.
+            PermissionDenied:
+                - OTP authentication is disabled in application settings.
+            ValidationError:
+                - Request body contains missing required fields or invalid choices.
         """
         if not app_settings.ENABLE_OTP_LOGIN:
             raise PermissionDenied(_("OTP authentication is currently disabled."))
 
-        serializer = OTPVerifySerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         identifier = serializer.validated_data["identifier"]
