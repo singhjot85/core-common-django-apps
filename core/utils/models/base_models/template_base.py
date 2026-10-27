@@ -1,8 +1,6 @@
 from django.conf import settings
 from django.core.cache import cache
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db import connection, models
-from django.template import Context, Template
 from django.utils.translation import gettext_lazy as _
 
 from core.utils.models.base_models.version_base import BaseSemanticVersionModel
@@ -29,24 +27,13 @@ class BaseTemplateModel(BaseSemanticVersionModel):
     """
 
     INTERFACE_TYPE = DefaultTemplateTypeChoices.choices
-    TEMPLATE_FIELD_PRIORITY = ("html_content", "plain_content")
 
     is_active = models.BooleanField(default=True, null=False, blank=False)
     interface_type = models.CharField(
         max_length=255, null=False, blank=False, choices=INTERFACE_TYPE
     )
-    plain_content = models.TextField(
+    template = models.TextField(
         verbose_name=_("Text Template content"), null=True, blank=True
-    )
-    html_content = models.TextField(
-        verbose_name=_("HTML Template content"), null=True, blank=True
-    )
-    template_mapping = models.JSONField(
-        verbose_name=_("JSON Mapping for template variables."),
-        default=dict,
-        null=True,
-        blank=True,
-        encoder=DjangoJSONEncoder,
     )
 
     class Meta:
@@ -96,14 +83,7 @@ class BaseTemplateModel(BaseSemanticVersionModel):
             Template string if found, otherwise None.
         """
         serialized_template = cls.get_template(interface_type)
-        if field:
-            return serialized_template.get(field)
-        for f in cls.TEMPLATE_FIELD_PRIORITY:
-            if not serialized_template.get(f, False):
-                continue
-            return serialized_template.get(f)
-
-        return None
+        return serialized_template
 
     @classmethod
     def get_template(cls, interface_type: str) -> dict:
@@ -155,30 +135,8 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         """
         if not obj:
             return {}
-        return {"plain_content": obj.plain_content, "html_content": obj.html_content}
 
-    def render_using_django_engine(
-        self, context: dict
-    ) -> tuple[str | None, str | None]:
-        """
-        Render plain and HTML content using Django's template engine.
-
-        Args:
-            context: Context dictionary passed to the template.
-
-        Returns:
-            tuple: (html_rendered_content, plain_text_rendered_content)
-        """
-        html_render, text_render = (None, None)
-
-        if self.html_content:
-            html_render = Template(self.html_content).render(Context(context))
-        if self.plain_content:
-            text_render = Template(self.plain_content).render(
-                Context(context, autoescape=False)
-            )
-
-        return html_render, text_render
+        return obj.template
 
     def render_template(
         self, rendering_context: dict | None = None, engine: str | None = None
@@ -199,11 +157,4 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         Raises:
             NotImplementedError: If an unsupported template engine is specified.
         """
-        complete_context = dict(self.template_mapping or {})
-        if rendering_context:
-            complete_context.update(rendering_context)
-
-        if not engine or engine.lower() == "django":
-            return self.render_using_django_engine(complete_context)
-
-        raise NotImplementedError(f"Template engine '{engine}' is not supported.")
+        raise NotImplementedError("Render template not implemented.")

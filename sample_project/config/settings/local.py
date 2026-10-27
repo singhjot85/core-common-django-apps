@@ -14,6 +14,8 @@ TEMPLATES[0]["DIRS"] = [
 ]
 
 MIGRATION_MODULES = {
-    app.rsplit(".", 1)[-1]: f"{PROJECT_MIGRATION_PATH}.{app.rsplit('.', 1)[-1]}"
+    app.replace("core.apps.", "").replace("apps.", "").replace(".", "_"): (
+        f"{PROJECT_MIGRATION_PATH}.{app.replace('core.apps.', '').replace('apps.', '').replace('.', '_')}"
+    )
     for app in PROJECT_APPS
 }

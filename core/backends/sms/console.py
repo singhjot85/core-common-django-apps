@@ -1,6 +1,6 @@
 import logging
 
-from backends.sms.base import BaseSMSBackend
+from .base import BaseSMSBackend
 
 LOGGER = logging.getLogger(__name__)
 
