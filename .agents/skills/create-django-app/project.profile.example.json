@@ -1,0 +1,42 @@
+{
+    "project_name": "core-backend",
+    "apps_root": "core/apps",
+    "nested_container_dirs": [
+        "features",
+        "providers"
+    ],
+    "swappable_models": true,
+    "base_model": "core.utils.models.BaseModel",
+    "app_settings": {
+        "base_class": "core.utils.app_settings.BaseSettings",
+        "types_module": "core.utils.app_settings.types",
+        "tiers": [
+            "Settings",
+            "Constance",
+            "Configuration"
+        ],
+        "import_data_type": "SettingsType.IMPORT.value",
+        "settings_key_prefix": "CORE"
+    },
+    "admin": {
+        "private_site": "core.utils.admin.private_admin_site",
+        "public_site": "core.utils.admin.public_admin_site"
+    },
+    "tenancy": "django-tenants",
+    "migrations": {
+        "mode": "external",
+        "root": "sample_project/db_migrations"
+    },
+    "settings_registry_file": "core/config/settings/base_models.py",
+    "registry_lists": {
+        "all": "PROJECT_APPS",
+        "tenant": "DJANGO_TENANT_PRIVATE_APPS",
+        "public": "DJANGO_TENANT_PUBLIC_APPS"
+    },
+    "tests_root": "core/tests",
+    "commands": {
+        "makemigrations": "make mm APP_LABEL={app_label}",
+        "test": "make t DIR={tests_dir}",
+        "lint": "poetry run pre-commit run --all-files"
+    }
+}
