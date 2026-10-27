@@ -1,9 +1,15 @@
 import pytest
+from django.conf import settings
+from django.db import connection
 
+from core.apps import tenants
 from core.apps.configurations import get_configuration_model
 from core.exceptions import InvalidTypeError, SeederException
+from core.seeder import runners
 from core.seeder.base import BaseMeta, BaseSeeder
 from core.seeder.registry import fixture_registry, seeder_registry
+from core.seeder.runners import SeederRunner
+from core.utils.registry import ClassRegistry
 
 Configuration = get_configuration_model()
 
@@ -143,7 +149,6 @@ class TestBaseSeederSchemaResolution:
 
     def test_schema_name_from_meta(self):
         """schema_name explicitly defined on Meta takes highest precedence."""
-        from django.conf import settings
 
         class CustomMeta(BaseMeta):
             model = Configuration
@@ -163,7 +168,6 @@ class TestBaseSeederSchemaResolution:
 
     def test_schema_name_from_seed_data_dict(self):
         """_schema_name in dict seed_data is not respected."""
-        from django.conf import settings
 
         class DictDataSeeder(BaseSeeder):
             class Meta(BaseMeta):
@@ -180,7 +184,6 @@ class TestBaseSeederSchemaResolution:
 
     def test_schema_name_from_seed_data_list(self):
         """_schema_name in list seed_data is not respected."""
-        from django.conf import settings
 
         class ListDataSeeder(BaseSeeder):
             class Meta(BaseMeta):
@@ -197,7 +200,6 @@ class TestBaseSeederSchemaResolution:
 
     def test_organization_tenant_type_without_schema_returns_all_schemas(self):
         """Organization tenant_type seeder without explicit schema resolves to ALL_SCHEMAS."""
-        from django.conf import settings
 
         class OrgSeeder(BaseSeeder):
             class Meta(BaseMeta):
@@ -213,7 +215,6 @@ class TestBaseSeederSchemaResolution:
 
     def test_organization_tenant_type_with_explicit_public_schema_raises(self):
         """Organization tenant_type seeder raises if schema_name is explicitly set to public."""
-        from django.conf import settings
 
         class BadOrgSeeder(BaseSeeder):
             class Meta(BaseMeta):
@@ -236,11 +237,6 @@ class TestSeederRunnerExecution:
 
     def test_runner_runs_all_schemas_for_org_seeder(self, monkeypatch):
         """When an org seeder has ALL_SCHEMAS, runner seeds into all ready tenants."""
-        from core.apps import tenants
-        from core.seeder import runners
-        from core.seeder.runners import SeederRunner
-        from core.utils.registry import ClassRegistry
-
         seeded_schemas = []
 
         class DummyOrgSeeder(BaseSeeder):
@@ -253,8 +249,6 @@ class TestSeederRunnerExecution:
                 related_seeders = {}
 
             def seed(self, data):
-                from django.db import connection
-
                 seeded_schemas.append(getattr(connection, "schema_name", None))
 
         registry = ClassRegistry()
@@ -285,8 +279,6 @@ class TestSeederRunnerExecution:
 
     def test_runner_runs_item_schema_override(self):
         """When an item specifies _schema_name, runner switches to that schema."""
-        from core.seeder.runners import SeederRunner
-        from core.utils.registry import ClassRegistry
 
         seeded_schemas = []
 
@@ -301,8 +293,6 @@ class TestSeederRunnerExecution:
                 related_seeders = {}
 
             def seed(self, data):
-                from django.db import connection
-
                 seeded_schemas.append(getattr(connection, "schema_name", None))
 
         registry = ClassRegistry()

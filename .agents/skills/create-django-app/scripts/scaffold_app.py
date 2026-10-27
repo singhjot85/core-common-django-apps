@@ -182,64 +182,15 @@ def gen_models_plain(ctx) -> str:
 
 def gen_app_settings(ctx) -> str:
     cfg = ctx["profile"]["app_settings"]
-    tiers = cfg.get("tiers", [])
     bmod, bcls = split_dotted(cfg["base_class"])
-    imports = [t for t in ("Configuration", "Constance", "Settings") if t in tiers]
-    dt = cfg.get("import_data_type")
-    if dt and "Settings" in tiers:
-        imports.append(dt.split(".")[0])
-    first = ctx["models"][0]
-    body = ""
-    if "Settings" in tiers:
-        body += '''
-    DEFAULT_PAGE_SIZE = Settings(
-        default=25,
-        data_type=int,
-        help_text="Default page size for list endpoints.",
-    )
-'''
-        if dt and ctx["profile"]["swappable_models"]:
-            body += f'''
-    BASE_{snake(first).upper()}_MODEL: type["Abstract{first}"] = Settings(
-        default="{ctx["module"]}.models.{first}",
-        data_type={dt},
-        help_text="Base swappable model import path for {first}.",
-    )
-'''
-    if "Constance" in tiers:
-        body += f'''
-    ENABLE_{ctx["label"].upper()}_FEATURE = Constance(
-        default=True,
-        data_type=bool,
-        help_text="Runtime toggle for {ctx["label"]}.",
-    )
-'''
-    if "Configuration" in tiers:
-        body += f'''
-    WORKFLOW_RULES = Configuration(
-        default={{"enabled": True}},
-        interface_type="{ctx["label"]}",
-        data_type=dict,
-        help_text="Versioned JSON rules for {ctx["label"]}.",
-    )
-'''
-    tc = ""
-    if ctx["profile"]["swappable_models"] and dt:
-        tc = f'''
-if typing.TYPE_CHECKING:
-    from {ctx["module"]}.models_abstract import Abstract{first}
-'''
-    types_line = f'from {cfg["types_module"]} import {", ".join(imports)}\n' if imports else ""
-    return f'''import typing
+    return f'''from {bmod} import {bcls}
 
-from {bmod} import {bcls}
-{types_line}{tc}
 
 class {ctx["cls"]}Settings({bcls}):
     """Settings for {ctx["verbose"]}. The singleton is created in __init__.py, never here."""
 
     SETTINGS_KEY = "{ctx["settings_key"]}"
-{body}'''
+'''
 
 
 def gen_init(ctx) -> str:

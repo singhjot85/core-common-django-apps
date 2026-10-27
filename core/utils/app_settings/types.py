@@ -180,7 +180,7 @@ class Settings(BaseDescriptor):
         # If value is already resolved into a class/callable/model/primitive, it is valid
         if not isinstance(value, str):
             if isinstance(self.data_type, (type, tuple)):
-                from core.exceptions import InvalidTypeError
+                from core.exceptions import InvalidTypeError  # noqa: PLC0415
 
                 if not isinstance(value, self.data_type):
                     raise InvalidTypeError(type=type(value), expected=self.data_type)
@@ -213,7 +213,7 @@ class Settings(BaseDescriptor):
             return
 
         if isinstance(self.data_type, (type, tuple)):
-            from core.exceptions import InvalidTypeError
+            from core.exceptions import InvalidTypeError  # noqa: PLC0415
 
             if not isinstance(value, self.data_type):
                 raise InvalidTypeError(type=type(value), expected=self.data_type)
@@ -262,7 +262,7 @@ class Configuration(BaseDescriptor):
         If config object exists, appends that key to details dict if not present.
         Uses get_raw_value to account for project overrides.
         """
-        from core.apps.configurations import get_configuration_model
+        from core.apps.configurations import get_configuration_model  # noqa: PLC0415
 
         raw_value = self.get_raw_value(instance)
         key = self.name.lower()
@@ -284,7 +284,7 @@ class Configuration(BaseDescriptor):
         """
         Get Configuration from cache or databse
         """
-        from core.apps.configurations import get_configuration_model
+        from core.apps.configurations import get_configuration_model  # noqa: PLC0415
 
         Configuration = get_configuration_model()
 

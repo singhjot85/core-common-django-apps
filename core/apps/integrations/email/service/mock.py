@@ -23,11 +23,11 @@ class MockEmailService(BaseEmailService):
         Simulate email delivery by logging message contents without network I/O.
         """
         LOGGER.info(
-            "[MockEmailService] Simulating email delivery \n" \
-            "-----------------------------------------------\n" \
-            "To: %s\n" \
+            "[MockEmailService] Simulating email delivery \n"
+            "-----------------------------------------------\n"
+            "To: %s\n"
             "Subject: %s\n"
-            "Content: %s\n" \
+            "Content: %s\n"
             "-----------------------------------------------",
             to,
             subject,

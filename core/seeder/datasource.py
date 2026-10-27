@@ -14,6 +14,8 @@ import typing
 from enum import Enum
 from pathlib import Path
 
+from django.conf import settings
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -97,8 +99,6 @@ class FileDataSource(AbstractDataSource):
             raise FileNotFoundError(
                 f"FileDataSource absolute path does not exist: {path}"
             )
-
-        from django.conf import settings
 
         core_base = getattr(settings, "CORE_BASE_DIR", None)
         base_dir = getattr(settings, "BASE_DIR", None)

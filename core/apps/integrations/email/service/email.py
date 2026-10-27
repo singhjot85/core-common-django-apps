@@ -28,7 +28,7 @@ class EmailService(BaseEmailService):
         """
         backend_class = app_settings.BACKEND
         backend = backend_class() if callable(backend_class) else None
-        
+
         from_email = kwargs.get("from_email") or app_settings.DEFAULT_FROM_EMAIL
 
         email = EmailMultiAlternatives(
@@ -48,5 +48,5 @@ class EmailService(BaseEmailService):
         backend_class = app_settings.BACKEND
         if hasattr(backend_class, "__name__"):
             return backend_class.__name__
-  
+
         return str(backend_class)

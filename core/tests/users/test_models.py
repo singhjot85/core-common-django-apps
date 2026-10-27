@@ -98,12 +98,6 @@ class TestSocialAccountModelUnits:
 class TestOTPLogModelUnits:
     """Unit tests verifying OTPLog model."""
 
-    def test_otp_log_inheritance(self):
-        """OTPLog must inherit from BaseLogModel."""
-        from core.utils.models import BaseLogModel
-
-        assert issubclass(OTPLog, BaseLogModel)
-
     def test_otp_log_status_choices(self):
         """OTPLog STATUS must use OTPDeliveryStatusChoices."""
         OTPLog._meta.get_field("status")

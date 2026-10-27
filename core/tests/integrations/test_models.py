@@ -28,6 +28,9 @@ class TestIntegrationsModels:
         assert creds.details["account_sid"] == "AC123"
         assert str(creds) == f"{creds.get_name_display()} ({creds.pk})"
 
+        path = CredentialsManager.CREDENTIAL_FILE_CALLABLE(creds, "cert.pem")
+        assert "credentials/twilio_cert.pem" in path
+
     def test_integration_lifecycle(self):
         creds = CredentialsManager.objects.create(
             name=CredentialsNameChoices.SENDGRID,

@@ -1,3 +1,4 @@
+import inspect
 from unittest.mock import MagicMock, patch
 
 from celery import shared_task
@@ -37,8 +38,6 @@ class TestTenantAwareCeleryTasks:
 
     def test_provision_tenant_schema_signature(self):
         """Verify provision_tenant_schema has explicit tenant_id signature."""
-        import inspect
-
         sig = inspect.signature(provision_tenant_schema)
         params = list(sig.parameters.keys())
         # Bound tasks have 'self' bound at runtime, signature shows tenant_id

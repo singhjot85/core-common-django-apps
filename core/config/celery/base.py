@@ -43,7 +43,10 @@ class TenantAwareTask(DjangoTask):
 
 def switch_schema_context(task, kwargs=None, **kw):
     """Set the correct database connection before the task runs."""
-    from django_tenants.utils import get_public_schema_name, get_tenant_model
+    from django_tenants.utils import (  # noqa: PLC0415
+        get_public_schema_name,
+        get_tenant_model,
+    )
 
     old_schema = (connection.schema_name, connection.include_public_schema)
     setattr(task, "_old_schema", old_schema)
@@ -78,7 +81,7 @@ def switch_schema_context(task, kwargs=None, **kw):
 
 def restore_schema_context(task, **kw):
     """Restore the original schema after the task runs."""
-    from django_tenants.utils import get_public_schema_name
+    from django_tenants.utils import get_public_schema_name  # noqa: PLC0415
 
     schema_name, include_public = getattr(
         task, "_old_schema", (get_public_schema_name(), True)

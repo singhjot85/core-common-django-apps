@@ -18,12 +18,7 @@ class MockPaymentService(BasePaymentService):
     ) -> Dict[str, Any]:
         tx_id = f"mock_tx_{uuid.uuid4().hex[:12]}"
         LOGGER.info(
-            "[MockPaymentService] Charge simulated: \n"
-            "----------------------------------------\n"
-            "Amount: %s %s \n"
-            "Source %s\n"
-            "Transaction ID: %s\n"
-            "----------------------------------------",
+            "[MockPaymentService] Charge simulated: amount=%s %s, source=%s, tx=%s",
             amount,
             currency,
             source,
@@ -41,12 +36,9 @@ class MockPaymentService(BasePaymentService):
     ) -> Dict[str, Any]:
         ref_id = f"mock_ref_{uuid.uuid4().hex[:12]}"
         LOGGER.info(
-            "[MockPaymentService] Refund simulated for \n"
-            "----------------------------------------\n",
-            "Transaction: %s\n"
-            "Reference Id: %s\n"
-            "----------------------------------------",
+            "[MockPaymentService] Refund simulated: tx=%s, amount=%s, ref=%s",
             transaction_id,
+            amount,
             ref_id,
         )
         return {

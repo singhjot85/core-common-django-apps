@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.core.cache import cache
+from django.core.exceptions import ImproperlyConfigured
 from django.db import connection, models
+from django.template import Context, Template
 from django.utils.translation import gettext_lazy as _
 
 from core.utils.models.base_models.version_base import BaseSemanticVersionModel
@@ -25,6 +27,10 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         html_content (TextField): HTML template body.
         template_mapping (JSONField): Default variables / placeholders mapping for rendering.
     """
+
+    TEMPLATE_BACKEND_DJANGO = "django"
+    TEMPLATE_BACKEND_JIJNA = "jinja"
+    TEMPLATE_BACKEND_SANDBOX = "jinja_sandbox"
 
     INTERFACE_TYPE = DefaultTemplateTypeChoices.choices
 
@@ -65,9 +71,7 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         return super().save(*args, **kwargs)
 
     @classmethod
-    def get_template_source(
-        cls, interface_type: str, field: str | None = None
-    ) -> str | None:
+    def get_template_source(cls, interface_type: str) -> str | None:
         """
         Resolve the template source string for the specified interface type.
 
@@ -138,8 +142,23 @@ class BaseTemplateModel(BaseSemanticVersionModel):
 
         return obj.template
 
+    @classmethod
+    def _render_using_django(cls, template: str, rendering_context: str, **kwargs):
+        """
+        Render using django env
+        """
+        context = Context(
+            rendering_context, autoescape=False, use_l10n=True, use_tz=True
+        )
+        return Template(template).render(context, request=kwargs.get("request"))
+
+    @classmethod
     def render_template(
-        self, rendering_context: dict | None = None, engine: str | None = None
+        cls,
+        template: str,
+        rendering_context: dict,
+        backend: str | None = None,
+        **kwargs,
     ) -> tuple[str | None, str | None]:
         """
         Render template content with variables from template_mapping and rendering_context.
@@ -148,8 +167,9 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         from rendering_context.
 
         Args:
-            rendering_context: Dynamic runtime variables to merge into context.
-            engine: Template engine to use ('django' or None).
+            template (str): Template Content that needs to be rendered.
+            rendering_context (dict): Dynamic runtime variables to merge into context.
+            backend (str, optional): Template engine to use ('django' or None).
 
         Returns:
             tuple: (html_rendered_content, plain_text_rendered_content)
@@ -157,4 +177,12 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         Raises:
             NotImplementedError: If an unsupported template engine is specified.
         """
-        raise NotImplementedError("Render template not implemented.")
+        if not backend:
+            backend = cls.TEMPLATE_BACKEND_DJANGO
+
+        if backend == cls.TEMPLATE_BACKEND_DJANGO:
+            cls._render_using_django(template, rendering_context, **kwargs)
+
+        raise ImproperlyConfigured(
+            f"Given backend is not configured, backend: {backend}"
+        )

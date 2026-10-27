@@ -294,6 +294,8 @@ SPECTACULAR_SETTINGS = {
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "")
 EMAIL_BACKEND = "core.utils.backends.email.console.CoreConsoleEmailBackend"
 
+DEFAULT_FROM_PHONE_NUMBER = os.getenv("DEFAULT_FROM_PHONE", "")
+
 # ------------------
 #  django-constance
 # ------------------
