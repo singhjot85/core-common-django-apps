@@ -42,15 +42,11 @@ class BaseLogModel(UUIDModel, TimeStampedModel, StatusModel):
 
     STATUS = DefaultLogStatusChoices.choices
 
-    # TODO: Remove message_type and all dependency; Status already gives granular view on failure's
-    # This field is only needed, when failure's are tpo categorized like: critical, noise, etc..
-    # Although helpful but not worth keeing on a base model.
-    message_type = models.CharField(
-        max_length=124,
+    reference_id = models.CharField(
+        max_length=255,
         null=True,
         blank=True,
-        default=DefaultLogTypeChoices.INFO,
-        verbose_name=_("Message Type"),
+        verbose_name=_("Message"),
     )
     message = models.CharField(
         max_length=255,

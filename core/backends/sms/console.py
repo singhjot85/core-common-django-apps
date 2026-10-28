@@ -10,7 +10,7 @@ class ConsoleSMSBackend(BaseSMSBackend):
     Development and testing SMS backend that outputs SMS content to logs and stdout.
     """
 
-    def send_sms(self, to: str, message: str) -> bool:
+    def send_sms(self, to: str, message: str, **kwargs) -> bool:
         """
         Log and print SMS content to stdout.
 

@@ -17,6 +17,7 @@ def log_email_dispatch(
     recipient: str,
     subject: str,
     status: str,
+    tracking_id: str = None,
     template_id: Optional[str] = None,
     backend: str = "",
     message: str = "",
@@ -36,5 +37,6 @@ def log_email_dispatch(
         message=message[:255] if message else "",
         traceback=traceback,
         context=context or {},
+        reference_id=tracking_id,
     )
     return str(log.id)

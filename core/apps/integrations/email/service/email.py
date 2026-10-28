@@ -20,6 +20,7 @@ class EmailService(BaseEmailService):
         to: str,
         subject: str,
         plain_body: str,
+        tracking_id: str,
         html_body: Optional[str] = None,
         **kwargs: Any,
     ) -> bool:
@@ -37,6 +38,7 @@ class EmailService(BaseEmailService):
             from_email=from_email,
             to=[to],
             connection=backend,
+            headers={"message-id": tracking_id},
         )
         if html_body:
             email.attach_alternative(html_body, "text/html")

@@ -1,6 +1,7 @@
 import abc
 import logging
 import traceback
+import uuid
 from typing import Any, Dict, Optional, Tuple
 
 from core.apps.integrations.email import get_email_log_model, get_email_template_model
@@ -69,6 +70,7 @@ class BaseEmailService(abc.ABC):
 
         subject = subject or ""
         plain_body = plain_body or ""
+        tracking_id = str(uuid.uuid4())
 
         status = EmailLogStatusChoices.FAILED
         log_message = "Failed"
@@ -80,7 +82,7 @@ class BaseEmailService(abc.ABC):
                 subject=subject,
                 plain_body=plain_body,
                 html_body=html_body,
-                **kwargs,
+                tracking_id=tracking_id**kwargs,
             )
             if success:
                 log_message = "Delivered"
@@ -103,6 +105,7 @@ class BaseEmailService(abc.ABC):
                 message=log_message,
                 traceback=traceback_str,
                 context=context,
+                tracking_id=tracking_id,
             )
 
     def get_backend_name(self) -> str:
