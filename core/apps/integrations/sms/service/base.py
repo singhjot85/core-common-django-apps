@@ -1,5 +1,6 @@
 import abc
 import logging
+import uuid
 from typing import Any, Dict, Optional
 
 from core.apps.integrations.sms import get_sms_template_model
@@ -58,9 +59,12 @@ class BaseSMSService(abc.ABC):
         status = SMSLogStatusChoices.FAILED
         log_message = "Failed"
         traceback_str = ""
+        tracking_id = str(uuid.uuid4())
 
         try:
-            success = self._send(to=to, message=message, **kwargs)
+            success = self._send(
+                to=to, message=message, tracking_id=tracking_id, **kwargs
+            )
             if success:
                 status = SMSLogStatusChoices.SUCCESS
                 log_message = "Delivered"
@@ -82,6 +86,7 @@ class BaseSMSService(abc.ABC):
                 message=log_message,
                 traceback=traceback_str,
                 context=context,
+                tracking_id=tracking_id,
             )
 
     def get_backend_name(self) -> str:

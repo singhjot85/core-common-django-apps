@@ -23,7 +23,7 @@ class BaseSMSBackend(abc.ABC):
         self._from = _from
 
     @abc.abstractmethod
-    def send_sms(self, to: str, message: str) -> bool:
+    def send_sms(self, to: str, message: str, **kwargs) -> bool:
         """
         Send an SMS message to the recipient phone number.
 

@@ -14,6 +14,7 @@ def log_sms_dispatch(
     recipient: str,
     status: str,
     template_id: Optional[str] = None,
+    tracking_id: str = None,
     backend: str = "",
     message: str = "",
     traceback: str = "",
@@ -31,5 +32,6 @@ def log_sms_dispatch(
         message=message[:255] if message else "",
         traceback=traceback,
         context=context or {},
+        reference_id=tracking_id,
     )
     return str(log.id)

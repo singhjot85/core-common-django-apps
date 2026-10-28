@@ -119,3 +119,4 @@ indent-style = "space"
 "**/settings/*.py" = ["F403", "F405"]
 "**/core/utils/dirtyfields/*.py" = ["B007", "B028"]
 "sample_project/manage.py" = ["PLC0415"]
+"**/*migrations/*.py" = ["E501", ]
