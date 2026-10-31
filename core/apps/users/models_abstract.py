@@ -64,7 +64,7 @@ class AbstractUser(DjangoAbstractUser, BaseUserModel):
         verbose_name_plural = _("users")
 
     def __str__(self):
-        return self.username or self.email or self.phone_number or str(self.pk)
+        return self.get_full_name() or self.username or self.email or str(self.pk)
 
     @property
     def has_password(self) -> bool:

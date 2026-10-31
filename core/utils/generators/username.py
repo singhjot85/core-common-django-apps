@@ -49,7 +49,11 @@ class UsernameGenerator:
         self.first_name = (first_name or "").strip()
         self.last_name = (last_name or "").strip()
         self.email = (email or "").strip()
-        self.phone_number = (phone_number or "").strip()
+        self.phone_number = (
+            phone_number.as_e164
+            if hasattr(phone_number, "as_e164")
+            else str(phone_number or "").strip()
+        )
         self.max_base_length = max_base_length
 
     def build_base_slug(self) -> str:

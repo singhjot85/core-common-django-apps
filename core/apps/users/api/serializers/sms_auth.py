@@ -8,9 +8,9 @@ Provides:
 """
 
 import logging
-import typing
 
 from django.utils.translation import gettext_lazy as _
+from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
 from core.apps.users import get_user_model
@@ -18,7 +18,6 @@ from core.apps.users.api.serializers.base import (
     BaseOTPVerificationSerializer,
     BaseSignupSerializer,
     SendOTPMixin,
-    validate_clean_phone_number,
 )
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
 
@@ -35,31 +34,11 @@ class PhoneOTPSendSerializer(serializers.Serializer, SendOTPMixin):
     - ``purpose`` (ChoiceField): Purpose of the OTP (login, signup, etc.). Defaults to ``"login"``.
     """
 
-    phone_number = serializers.CharField(max_length=32, required=True, allow_null=False)
+    phone_number = PhoneNumberField(required=True, allow_null=False)
     purpose = serializers.ChoiceField(
         choices=OTPPurposeChoices.choices,
         default=OTPPurposeChoices.LOGIN,
     )
-
-    def validate_phone_number(self, value: typing.Optional[str]) -> str:
-        """
-        Validate phone number format.
-
-        Args:
-            value (str, optional): Raw phone number string.
-
-        Returns:
-            str: Cleaned phone number string.
-
-        Raises:
-            ValidationError:
-            - Phone number is blank or missing.
-            - Phone number contains fewer than 7 digits.
-        """
-        if not value or not value.strip():
-            raise serializers.ValidationError(_("Phone number is required."))
-
-        return validate_clean_phone_number(value)
 
     def send(self) -> bool:
         """
@@ -68,8 +47,12 @@ class PhoneOTPSendSerializer(serializers.Serializer, SendOTPMixin):
         Returns:
             bool: True if task was successfully queued, False otherwise.
         """
+        phone_obj = self.validated_data["phone_number"]
+        e164_phone = (
+            phone_obj.as_e164 if hasattr(phone_obj, "as_e164") else str(phone_obj)
+        )
         return self.send_otp(
-            identifier=self.validated_data["phone_number"],
+            identifier=e164_phone,
             channel=OTPChannelChoices.PHONE,
             purpose=self.validated_data["purpose"],
         )
@@ -87,29 +70,7 @@ class PhoneOTPSignupSerializer(BaseOTPVerificationSerializer, BaseSignupSerializ
     - ``otp_code`` must match the active code issued to the phone number.
     """
 
-    phone_number = serializers.CharField(max_length=32, required=True, allow_null=False)
-
-    def validate_phone_number(self, value: typing.Optional[str]) -> str:
-        """
-        Validate that phone number is provided, valid syntax, and not already registered.
-
-        Args:
-            value (str, optional): Raw phone number string.
-
-        Returns:
-            str: Cleaned phone number string.
-
-        Raises:
-            ValidationError:
-            - Phone number is empty or omitted.
-            - Phone number contains fewer than 7 digits.
-            - Phone number already exists in the database.
-        """
-        if not value:
-            raise serializers.ValidationError(
-                {"phone_number": _("Phone Number is required field")}
-            )
-        return super().validate_phone_number(value)
+    phone_number = PhoneNumberField(required=True, allow_null=False)
 
     def validate(self, attrs: dict) -> dict:
         """
@@ -124,8 +85,13 @@ class PhoneOTPSignupSerializer(BaseOTPVerificationSerializer, BaseSignupSerializ
         Raises:
             ValidationError: If OTP verification fails or the phone identity is locked.
         """
+        phone_obj = attrs.get("phone_number")
+        e164_phone = (
+            phone_obj.as_e164 if hasattr(phone_obj, "as_e164") else str(phone_obj)
+        )
         is_valid, usr_msg = self.verify_otp(
-            identifier=attrs.get("phone_number"), code=attrs.get("otp_code")
+            identifier=e164_phone,
+            code=attrs.get("otp_code"),
         )
         if not is_valid:
             raise serializers.ValidationError({"otp_code": usr_msg})
@@ -164,27 +130,7 @@ class PhoneOTPLoginSerializer(BaseOTPVerificationSerializer):
     - ``otp_code`` must match the active code stored in cache.
     """
 
-    phone_number = serializers.CharField(max_length=32, required=True, allow_null=False)
-
-    def validate_phone_number(self, value: typing.Optional[str]) -> str:
-        """
-        Validate that phone number is provided and contains minimum valid digits.
-
-        Args:
-            value (str, optional): Raw phone number string.
-
-        Returns:
-            str: Cleaned phone number string.
-
-        Raises:
-            ValidationError:
-            - Phone number is blank or missing.
-            - Phone number contains fewer than 7 digits.
-        """
-        if not value or not value.strip():
-            raise serializers.ValidationError(_("Phone number is required."))
-
-        return validate_clean_phone_number(value)
+    phone_number = PhoneNumberField(required=True, allow_null=False)
 
     def validate(self, attrs: dict) -> dict:
         """
@@ -207,14 +153,17 @@ class PhoneOTPLoginSerializer(BaseOTPVerificationSerializer):
         """
         phone_number = attrs.get("phone_number")
         code = attrs.get("otp_code")
+        e164_phone = (
+            phone_number.as_e164
+            if hasattr(phone_number, "as_e164")
+            else str(phone_number)
+        )
 
-        is_valid, usr_msg = self.verify_otp(identifier=phone_number, code=code)
+        is_valid, usr_msg = self.verify_otp(identifier=e164_phone, code=code)
         if not is_valid:
             raise serializers.ValidationError({"otp_code": usr_msg})
 
-        user: typing.Optional["User"] = User.objects.filter(
-            phone_number=phone_number
-        ).first()
+        user = User.objects.filter(phone_number=phone_number).first()
         if not user:
             raise serializers.ValidationError(
                 {"phone_number": _("No user found with this phone number.")}

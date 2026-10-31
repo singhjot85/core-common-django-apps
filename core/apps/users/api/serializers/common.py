@@ -7,13 +7,12 @@ Provides:
 - GoogleLoginSerializer: Validates incoming Google OAuth2 ID tokens.
 """
 
-import re
-
 from django.core.validators import EmailValidator
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
+from core.apps.users.utils import normalize_to_e164
 
 
 class OTPSendSerializer(serializers.Serializer):
@@ -53,8 +52,8 @@ class OTPSendSerializer(serializers.Serializer):
         channel = attrs.get("channel")
 
         if channel == OTPChannelChoices.PHONE:
-            digits = re.sub(r"\D", "", identifier)
-            if len(digits) < 7:
+            identifier = normalize_to_e164(identifier)
+            if not identifier:
                 raise serializers.ValidationError(
                     {"identifier": _("Invalid phone number format.")}
                 )
@@ -90,7 +89,7 @@ class OTPVerifySerializer(serializers.Serializer):
 
     def validate(self, attrs: dict) -> dict:
         """
-        Trim whitespace from identifier and passcode.
+        Trim whitespace and normalize identifier and passcode.
 
         Args:
             attrs (dict): Deserialized attributes.
@@ -98,7 +97,17 @@ class OTPVerifySerializer(serializers.Serializer):
         Returns:
             dict: Sanitized attributes dictionary.
         """
-        attrs["identifier"] = attrs.get("identifier", "").strip()
+        identifier = attrs.get("identifier", "").strip()
+        channel = attrs.get("channel")
+        if channel == OTPChannelChoices.PHONE:
+            identifier = normalize_to_e164(identifier)
+            if not identifier:
+                raise serializers.ValidationError(
+                    {"identifier": _("Invalid phone number format.")}
+                )
+
+        attrs["identifier"] = identifier
+
         attrs["code"] = attrs.get("code", "").strip()
         return attrs
 

@@ -293,7 +293,12 @@ class AuthLockoutService:
         if user.email:
             cls.clear_attempts(user.email)
         if user.phone_number:
-            cls.clear_attempts(user.phone_number)
+            phone_str = (
+                user.phone_number.as_e164
+                if hasattr(user.phone_number, "as_e164")
+                else str(user.phone_number)
+            )
+            cls.clear_attempts(phone_str)
 
         LOGGER.info(f"User {user.pk} successfully unlocked via unlock token.")
         return True, str(_("Account successfully unlocked. You may now sign in."))

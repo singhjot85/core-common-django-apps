@@ -39,7 +39,7 @@ from core.apps.users.api.serializers import (
 from core.apps.users.constants import SocialProviderChoices
 from core.apps.users.services.auth_lockout import AuthLockoutService
 from core.apps.users.services.social import SocialAuthServiceFactory
-from core.apps.users.utils import get_auth_redirect_url
+from core.apps.users.utils import get_auth_redirect_url, normalize_to_e164
 
 if typing.TYPE_CHECKING:
     from core.apps.users.models_abstract import AbstractUser
@@ -452,8 +452,9 @@ class SMSOTPAuthViewSet(viewsets.GenericViewSet):
         if not app_settings.ENABLE_OTP_LOGIN:
             raise PermissionDenied(_("OTP authentication is currently disabled."))
 
-        phone_number = request.data.get("phone_number", "").strip()
-        if AuthLockoutService.is_locked(phone_number):
+        raw_phone = request.data.get("phone_number", "")
+        e164_phone = normalize_to_e164(raw_phone) or str(raw_phone).strip()
+        if AuthLockoutService.is_locked(e164_phone):
             return Response(
                 {
                     "detail": _("Account locked due to too many failed attempts."),
@@ -467,7 +468,13 @@ class SMSOTPAuthViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
 
         user = serializer.validated_data["user"]
-        AuthLockoutService.clear_attempts(phone_number)
+        validated_phone = serializer.validated_data.get("phone_number")
+        clear_target = (
+            validated_phone.as_e164
+            if hasattr(validated_phone, "as_e164")
+            else e164_phone
+        )
+        AuthLockoutService.clear_attempts(clear_target)
         return _build_auth_response(request, user, status_code=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"], url_path="signup")
@@ -494,9 +501,16 @@ class SMSOTPAuthViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        phone_number = serializer.validated_data.get("phone_number")
-        if phone_number:
-            AuthLockoutService.clear_attempts(phone_number)
+
+        validated_phone = serializer.validated_data.get("phone_number")
+        if validated_phone:
+            clear_target = (
+                validated_phone.as_e164
+                if hasattr(validated_phone, "as_e164")
+                else str(validated_phone)
+            )
+            AuthLockoutService.clear_attempts(clear_target)
+
         return _build_auth_response(request, user, status_code=status.HTTP_201_CREATED)
 
 

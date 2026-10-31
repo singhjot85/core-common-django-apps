@@ -9,44 +9,22 @@ Provides:
 """
 
 import logging
-import re
 import typing
 
 from django.utils.translation import gettext_lazy as _
+from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
 from core.apps.users import app_settings, get_user_model
-from core.apps.users.constants import OTPPurposeChoices
+from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
 from core.apps.users.services.auth_lockout import AuthLockoutService
 from core.apps.users.services.otp import OTPServiceFactory
 from core.apps.users.tasks import send_otp_task
+from core.apps.users.utils import normalize_to_e164
 from core.utils.tasks import queue_task
 
 User = get_user_model()
 LOGGER = logging.getLogger(__name__)
-
-
-def validate_clean_phone_number(value: str) -> str:
-    """
-    Validate that phone number contains at least 7 digits.
-
-    Strips whitespace and checks that numeric digits meet the minimum length
-    threshold of 7 digits required for valid international or domestic routing.
-
-    Args:
-        value (str): Raw input phone number string.
-
-    Returns:
-        str: Cleaned, whitespace-trimmed phone number string.
-
-    Raises:
-        ValidationError: If stripped phone number contains fewer than 7 digits.
-    """
-    clean_val = value.strip()
-    digits = re.sub(r"\D", "", clean_val)
-    if len(digits) < 7:
-        raise serializers.ValidationError(_("Invalid phone number format."))
-    return clean_val
 
 
 class UserDetailsSerializer(serializers.ModelSerializer):
@@ -113,8 +91,8 @@ class BaseSignupSerializer(serializers.Serializer):
         max_length=150, required=False, allow_blank=True, default=""
     )
     email = serializers.EmailField(required=False, allow_null=True, default=None)
-    phone_number = serializers.CharField(
-        max_length=32, required=False, allow_null=True, default=None
+    phone_number = PhoneNumberField(
+        required=False, allow_null=True, allow_blank=True, default=None
     )
 
     def validate_username(self, value: str) -> str:
@@ -161,32 +139,30 @@ class BaseSignupSerializer(serializers.Serializer):
         return None
 
     def validate_phone_number(
-        self, value: typing.Optional[str]
-    ) -> typing.Optional[str]:
+        self, value: typing.Optional[typing.Any]
+    ) -> typing.Optional[typing.Any]:
         """
         Validate phone number syntax and verify it does not already exist.
 
         Args:
-            value (str, optional): Raw submitted phone number string.
+            value (PhoneNumber or str, optional): Raw submitted phone number.
 
         Returns:
-            str or None: Cleaned phone number string, or None if omitted.
+            PhoneNumber or None: Validated phone number, or None if omitted/blank.
 
         Raises:
             ValidationError:
-            - Phone number contains fewer than 7 digits.
             - An account with the matching phone number already exists.
         """
-        if value and value.strip():
-            clean_phone = validate_clean_phone_number(value)
-            if User.objects.filter(phone_number=clean_phone).exists():
-                raise serializers.ValidationError(
-                    {"phone_number": _("Phone Number already exists.")}
-                )
-            return clean_phone
-        return None
+        if not value:
+            return None
 
-    def create(self, validated_data: dict) -> "User":
+        if User.objects.filter(phone_number=value).exists():
+            raise serializers.ValidationError(_("Phone Number already exists."))
+
+        return value
+
+    def create(self, validated_data: dict):
         """
         Create and persist a new user record in the database.
 
@@ -234,6 +210,9 @@ class SendOTPMixin:
         Returns:
             bool: True if task was successfully queued, False otherwise.
         """
+        if channel == OTPChannelChoices.PHONE:
+            identifier = normalize_to_e164(identifier)
+
         try:
             queue_task(
                 task=send_otp_task,
@@ -296,6 +275,11 @@ class BaseOTPVerificationSerializer(serializers.Serializer):
         Raises:
             ValidationError: If the identity is locked due to excessive failed attempts.
         """
+        if identifier and "@" not in str(identifier):
+            e164_id = normalize_to_e164(identifier)
+            if e164_id:
+                identifier = e164_id
+
         if AuthLockoutService.is_locked(identifier):
             raise serializers.ValidationError(self._ACCOUNT_LOCKED_MSG)
 

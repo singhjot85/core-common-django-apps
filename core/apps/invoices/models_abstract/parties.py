@@ -4,6 +4,7 @@ from functools import cached_property
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from phonenumber_field.modelfields import PhoneNumberField
 
 from core.apps.invoices.constants import ContactTypeChoices, PartyTypeChoices
 from core.utils.models import AbstractParty, BaseModel
@@ -121,7 +122,7 @@ class AbstractInvoicePartyPhone(BaseModel):
         related_name="phones",
         verbose_name=_("Invoice Party"),
     )
-    phone = models.CharField(max_length=32, verbose_name=_("Phone Number"))
+    phone = PhoneNumberField(verbose_name=_("Phone Number"))
     phone_type = models.CharField(
         max_length=32,
         choices=ContactTypeChoices.choices,
