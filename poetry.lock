@@ -617,6 +617,26 @@ files = [
 Django = ">=3.2"
 
 [[package]]
+name = "django-phonenumber-field"
+version = "9.0.0"
+description = "An international phone number field for django models."
+optional = false
+python-versions = ">=3.11"
+groups = ["main"]
+files = [
+    {file = "django_phonenumber_field-9.0.0-py3-none-any.whl", hash = "sha256:53731bf139ba82004aff6087ccdd55f8ba5c4e11c623557cc1873eeed46eba2a"},
+    {file = "django_phonenumber_field-9.0.0.tar.gz", hash = "sha256:b4a641fc8ae3fdec7aeaf28e3af92bb8d36aefad085b955420807de7e8d37abe"},
+]
+
+[package.dependencies]
+Django = ">=5.2"
+
+[package.extras]
+babel = ["Babel"]
+phonenumbers = ["phonenumbers (>=7.0.2)"]
+phonenumberslite = ["phonenumberslite (>=7.0.2)"]
+
+[[package]]
 name = "django-redis"
 version = "7.0.0"
 description = "Full featured redis cache backend for Django."
@@ -2886,4 +2906,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4"
-content-hash = "dea0a4ab5451bc5d774a6a6b47672184e33a763fc317849ecf6344b91e7fb759"
+content-hash = "732b3904e2c9d43b6643b223b9f2d3962eb23255360849b5d093467014eba465"
