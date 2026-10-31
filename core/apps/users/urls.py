@@ -4,30 +4,36 @@ from dj_rest_auth.views import (
     PasswordResetView,
     UserDetailsView,
 )
-from django.urls import path
+from django.urls import include, path
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
 from core.apps.users.api.views import (
     AccountUnlockView,
+    EmailOTPAuthViewSet,
     GoogleLoginView,
-    LoginView,
     OTPSendView,
-    OTPVerifyView,
-    SignupView,
+    PasswordAuthViewSet,
+    SMSOTPAuthViewSet,
 )
+from core.utils.routers import get_api_router_instance
+
+# Setup auth router
+core_auth_router = get_api_router_instance()
+core_auth_router.register(r"password", PasswordAuthViewSet, basename="auth-password")
+core_auth_router.register(r"auth/otp", EmailOTPAuthViewSet, basename="auth-otp-email")
+core_auth_router.register(r"auth/otp", SMSOTPAuthViewSet, basename="auth-otp-sms")
 
 urlpatterns = [
-    # Registration & Login
-    path("auth/signup/", SignupView.as_view(), name="user-signup"),
-    path("auth/login/", LoginView.as_view(), name="user-login"),
+    # Core Auth Router (Password, Email OTP, SMS OTP login & signup)
+    path("", include(core_auth_router.urls)),
+    # Auxiliary Auth Endpoints
     path("auth/unlock/", AccountUnlockView.as_view(), name="user-unlock"),
     path("auth/user/", UserDetailsView.as_view(), name="user-details"),
     # JWT Tokens
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("auth/logout/", TokenBlacklistView.as_view(), name="token-blacklist"),
-    # OTP Flows
+    # OTP Dispatch
     path("auth/otp/send/", OTPSendView.as_view(), name="otp-send"),
-    path("auth/otp/verify/", OTPVerifyView.as_view(), name="otp-verify"),
     # Social Logins
     path("auth/social/google/", GoogleLoginView.as_view(), name="social-google-login"),
     # Password Management
