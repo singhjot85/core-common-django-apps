@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from phonenumber_field.modelfields import PhoneNumberField
 
 from core.apps.crm.constants import (
     AddressTypeChoices,
@@ -75,7 +76,7 @@ class AbstractCustomerPhone(BaseModel):
         on_delete=models.PROTECT,
         related_name="phones",
     )
-    phone = models.CharField(max_length=32)
+    phone = PhoneNumberField()
     phone_type = models.CharField(
         max_length=32,
         choices=ContactTypeChoices.choices,

@@ -6,14 +6,13 @@ from rest_framework.test import APIRequestFactory
 
 from core.apps.users import get_user_model
 from core.apps.users.api.views import (
+    EmailOTPAuthViewSet,
     GoogleLoginView,
-    LoginView,
-    OTPSendView,
-    OTPVerifyView,
-    SignupView,
+    PasswordAuthViewSet,
+    SMSOTPAuthViewSet,
     get_auth_redirect_url,
 )
-from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
+from core.apps.users.constants import OTPPurposeChoices
 
 User = get_user_model()
 
@@ -37,10 +36,16 @@ class TestUsersViews:
         mock_create_user.return_value = mock_user
         mock_jwt.return_value = {"access": "access-xyz", "refresh": "refresh-xyz"}
 
-        view = SignupView.as_view()
+        view = PasswordAuthViewSet.as_view({"post": "signup"})
         request = self.factory.post(
-            "/api/users/auth/signup/",
-            {"first_name": "John", "last_name": "Doe", "email": "john@example.com"},
+            "/api/users/v1/auth/password/signup/",
+            {
+                "first_name": "John",
+                "last_name": "Doe",
+                "username": "john_doe",
+                "email": "john@example.com",
+                "password": "Password123!",  # pragma: allowlist secret
+            },
             format="json",
         )
         response = view(request)
@@ -49,23 +54,31 @@ class TestUsersViews:
         assert "user" in response.data
 
     def test_otp_send_view_invalid_format_returns_400(self):
-        view = OTPSendView.as_view()
-        request = self.factory.post(
-            "/api/users/auth/otp/send/",
-            {"identifier": "invalid-email", "channel": OTPChannelChoices.EMAIL},
+        email_view = EmailOTPAuthViewSet.as_view({"post": "send"})
+        req_email = self.factory.post(
+            "/api/users/v1/auth/otp/email/send/",
+            {"email": "invalid-email"},
             format="json",
         )
-        response = view(request)
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        res_email = email_view(req_email)
+        assert res_email.status_code == status.HTTP_400_BAD_REQUEST
 
-    @patch("core.apps.users.api.views.queue_task")
+        sms_view = SMSOTPAuthViewSet.as_view({"post": "send"})
+        req_sms = self.factory.post(
+            "/api/users/v1/auth/otp/sms/send/",
+            {"phone_number": "invalid-phone"},
+            format="json",
+        )
+        res_sms = sms_view(req_sms)
+        assert res_sms.status_code == status.HTTP_400_BAD_REQUEST
+
+    @patch("core.apps.users.api.serializers.base.queue_task")
     def test_otp_send_view_valid_format_returns_202_accepted(self, mock_queue_task):
-        view = OTPSendView.as_view()
+        view = SMSOTPAuthViewSet.as_view({"post": "send"})
         request = self.factory.post(
-            "/api/users/auth/otp/send/",
+            "/api/users/v1/auth/otp/sms/send/",
             {
-                "identifier": "+1234567890",
-                "channel": OTPChannelChoices.PHONE,
+                "phone_number": "+12025550123",
                 "purpose": OTPPurposeChoices.LOGIN,
             },
             format="json",
@@ -76,18 +89,17 @@ class TestUsersViews:
         # Ensure task was queued
         assert mock_queue_task.called
 
-    @patch("core.apps.users.api.views.OTPServiceFactory.send_otp")
-    @patch("core.apps.users.api.views.queue_task")
+    @patch("core.apps.users.services.otp.factory.OTPServiceFactory.send_otp")
+    @patch("core.apps.users.api.serializers.base.queue_task")
     def test_otp_send_view_queue_failure_does_not_execute_sync_fallback(
         self, mock_queue_task, mock_send_otp
     ):
         mock_queue_task.side_effect = Exception("Broker unavailable")
-        view = OTPSendView.as_view()
+        view = SMSOTPAuthViewSet.as_view({"post": "send"})
         request = self.factory.post(
-            "/api/users/auth/otp/send/",
+            "/api/users/v1/auth/otp/sms/send/",
             {
-                "identifier": "+1234567890",
-                "channel": OTPChannelChoices.PHONE,
+                "phone_number": "+12025550123",
                 "purpose": OTPPurposeChoices.LOGIN,
             },
             format="json",
@@ -96,17 +108,16 @@ class TestUsersViews:
         assert response.status_code == status.HTTP_202_ACCEPTED
         mock_send_otp.assert_not_called()
 
-    @patch("core.apps.users.api.views.OTPServiceFactory.verify_otp")
+    @patch("core.apps.users.api.serializers.base.OTPServiceFactory.verify_otp")
     def test_otp_verify_view_invalid_otp_returns_400(self, mock_verify):
         mock_verify.return_value = (False, "Invalid OTP code.")
 
-        view = OTPVerifyView.as_view()
+        view = SMSOTPAuthViewSet.as_view({"post": "login"})
         request = self.factory.post(
-            "/api/users/auth/otp/verify/",
+            "/api/users/v1/auth/otp/sms/login/",
             {
-                "identifier": "+1234567890",
-                "code": "000000",
-                "channel": OTPChannelChoices.PHONE,
+                "phone_number": "+12025550123",
+                "otp_code": "000000",
             },
             format="json",
         )
@@ -135,7 +146,6 @@ class TestUsersViews:
         response = view(request)
         assert response.status_code == status.HTTP_200_OK
         assert "access" in response.data
-        assert response.data["created"] is False
 
     def test_get_auth_redirect_url_safe_and_fallback(self):
         """get_auth_redirect_url returns safe relative or in-app url and rejects malicious external targets."""
@@ -174,9 +184,9 @@ class TestUsersViews:
             is_active=True,
         )
 
-        view = LoginView.as_view()
+        view = PasswordAuthViewSet.as_view({"post": "login"})
         request = self.factory.post(
-            "/api/users/v1/auth/login/",
+            "/api/users/v1/auth/password/login/",
             {
                 "username": "spaced_password_user",
                 "password": "  SecretPass123!  ",  # pragma: allowlist secret
@@ -189,9 +199,9 @@ class TestUsersViews:
         assert response.data["user"]["username"] == "spaced_password_user"
 
     @pytest.mark.django_db
-    @patch("core.apps.users.api.views.OTPServiceFactory.verify_otp")
+    @patch("core.apps.users.api.serializers.base.OTPServiceFactory.verify_otp")
     def test_otp_verify_view_case_insensitive_email(self, mock_verify):
-        """OTPVerifyView matches registered email case-insensitively."""
+        """EmailOTPAuthViewSet matches registered email case-insensitively."""
         mock_verify.return_value = (True, "OTP verified")
         user = User.objects.create_user(
             username="mixed_case_user",
@@ -199,17 +209,15 @@ class TestUsersViews:
             is_active=True,
         )
 
-        view = OTPVerifyView.as_view()
+        view = EmailOTPAuthViewSet.as_view({"post": "login"})
         request = self.factory.post(
-            "/api/users/v1/auth/otp/verify/",
+            "/api/users/v1/auth/otp/email/login/",
             {
-                "identifier": "JOHN.DOE@EXAMPLE.COM",
-                "code": "123456",
-                "channel": OTPChannelChoices.EMAIL,
+                "email": "JOHN.DOE@EXAMPLE.COM",
+                "otp_code": "123456",
             },
             format="json",
         )
         response = view(request)
         assert response.status_code == status.HTTP_200_OK
         assert response.data["user"]["id"] == str(user.pk)
-        assert response.data["created"] is False

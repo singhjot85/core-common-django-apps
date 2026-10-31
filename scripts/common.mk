@@ -28,7 +28,8 @@ FORCE ?= 0
 COMPOSE_COMMAND = docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(or $(COMPOSE_YAML),$(DEV_YAML_PATH))
 DJANGO_CONTAINER_COMMAND = docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(DJANGO_SERVICE)
 TEMP_DJANGO_CONTAINER = docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) run --rm $(DJANGO_SERVICE)
-DEBUGPY_COMPOSE_CMD = export ENABLE_DEBUGPY=1 && $(COMPOSE_COMMAND)
+# DEBUGPY_COMPOSE_CMD = export ENABLE_DEBUGPY=1 && $(COMPOSE_COMMAND)
+DEBUGPY_COMPOSE_CMD ?= docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(DEV_YAML_PATH) -f $(DEBUGPY_YAML_PATH) run -p ${DEBUGPY_DJANGO_PORT}:5678 --rm ${DJANGO_SERVICE} python -m debugpy --listen 0.0.0.0:5678
 DEBUGPY_TEMP_DJANGO_CONTAINER ?= docker compose --env-file ./.env -p $(PROJECT_NAME) -f $(DEV_YAML_PATH) -f $(DEBUGPY_YAML_PATH) run -p ${DEBUGPY_DJANGO_PORT}:5678 --rm ${DJANGO_SERVICE} python -m debugpy --listen 0.0.0.0:5678
 
 CACHE_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(CACHE_SERVICE)

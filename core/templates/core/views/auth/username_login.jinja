@@ -34,7 +34,7 @@
         <!-- ================= SECTION: SIGN IN ================= -->
         <div id="username_section_signin" data-username-tab-content="signin">
             <form method="post"
-                  action="{{ login_action|default('/api/users/v1/auth/login/') }}"
+                  action="{{ login_action|default('/api/users/v1/auth/password/login/') }}"
                   id="form_username_login"
                   data-auth-api="username-login"
                   data-redirect-url="{{ redirect_url|default(landing_page_url|default('/landing/') ) }}">
@@ -103,7 +103,7 @@
              data-username-tab-content="signup"
              style="display: none">
             <form method="post"
-                  action="{{ signup_action|default('/api/users/v1/auth/signup/') }}"
+                  action="{{ signup_action|default('/api/users/v1/auth/password/signup/') }}"
                   id="form_username_signup"
                   data-auth-api="username-signup"
                   data-redirect-url="{{ redirect_url|default(landing_page_url|default('/landing/') ) }}">

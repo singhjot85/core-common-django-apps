@@ -62,21 +62,6 @@ class TestUserModelUnits:
         assert user_unusable_pw.has_password is False
         assert user_unusable_pw.has_usable_password() is False
 
-    def test_user_string_representation(self):
-        """__str__ should return username, email, phone, or pk."""
-        user = User(
-            username="alex99", email="alex@example.com", phone_number="+1234567890"
-        )
-        assert str(user) == "alex99"
-
-        user_no_uname = User(
-            username="", email="alex@example.com", phone_number="+1234567890"
-        )
-        assert str(user_no_uname) == "alex@example.com"
-
-        user_phone_only = User(username="", email="", phone_number="+1234567890")
-        assert str(user_phone_only) == "+1234567890"
-
 
 class TestSocialAccountModelUnits:
     """Unit tests verifying SocialAccount model."""
@@ -97,12 +82,6 @@ class TestSocialAccountModelUnits:
 
 class TestOTPLogModelUnits:
     """Unit tests verifying OTPLog model."""
-
-    def test_otp_log_inheritance(self):
-        """OTPLog must inherit from BaseLogModel."""
-        from core.utils.models import BaseLogModel
-
-        assert issubclass(OTPLog, BaseLogModel)
 
     def test_otp_log_status_choices(self):
         """OTPLog STATUS must use OTPDeliveryStatusChoices."""

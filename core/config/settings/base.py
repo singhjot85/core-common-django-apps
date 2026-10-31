@@ -44,6 +44,7 @@ PROJECT_MIGRATION_PATH = f"{PROJECT_NAME}.db_migrations"
 USE_TZ = True
 USE_I18N = True
 LANGUAGE_CODE = "en-us"
+PHONENUMBER_DEFAULT_REGION = str(os.getenv("BACKEND_PHONENUMBER_DEFAULT_REGION", "IN"))
 
 WSGI_APPLICATION = "config.wsgi.application"
 DEBUG = os.getenv("DEBUG", DJANGO_ENV == "dev")

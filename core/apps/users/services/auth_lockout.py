@@ -10,6 +10,7 @@ import typing
 from django.core.cache import cache
 from django.db import connection
 from django.utils.translation import gettext_lazy as _
+from phonenumber_field.phonenumber import to_python
 
 from core.apps.users import app_settings, get_user_model
 from core.utils.tasks import queue_task
@@ -49,9 +50,14 @@ class AuthLockoutService:
             identifier (str): Username, email, or phone number.
 
         Returns:
-            str: Stripped and lowercased string representation.
+            str: Stripped and lowercased string representation, or canonical E.164 phone.
         """
-        return identifier.strip().lower()
+        clean = (str(identifier) if identifier is not None else "").strip()
+        if clean and "@" not in clean:
+            phone = to_python(clean)
+            if phone and phone.is_valid():
+                return phone.as_e164
+        return clean.lower()
 
     @classmethod
     def _attempts_key(cls, identifier: str) -> str:
@@ -293,7 +299,12 @@ class AuthLockoutService:
         if user.email:
             cls.clear_attempts(user.email)
         if user.phone_number:
-            cls.clear_attempts(user.phone_number)
+            phone_str = (
+                user.phone_number.as_e164
+                if hasattr(user.phone_number, "as_e164")
+                else str(user.phone_number)
+            )
+            cls.clear_attempts(phone_str)
 
         LOGGER.info(f"User {user.pk} successfully unlocked via unlock token.")
         return True, str(_("Account successfully unlocked. You may now sign in."))

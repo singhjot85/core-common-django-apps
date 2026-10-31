@@ -15,11 +15,10 @@ from rest_framework_simplejwt.settings import api_settings as jwt_settings
 
 from core.apps.users.api.views import (
     AccountUnlockView,
-    LoginView,
-    OTPVerifyView,
+    PasswordAuthViewSet,
+    SMSOTPAuthViewSet,
     get_jwt_tokens_for_user,
 )
-from core.apps.users.constants import OTPChannelChoices
 from core.apps.users.services.auth_lockout import AuthLockoutService
 from core.utils.middleware import JWTCookieAuthenticationMiddleware
 
@@ -127,9 +126,9 @@ class TestZeroEnumerationAuthentication:
         self.factory = APIRequestFactory()
 
     def test_password_login_invalid_credentials_returns_generic_error(self):
-        view = LoginView.as_view()
+        view = PasswordAuthViewSet.as_view({"post": "login"})
         request = self.factory.post(
-            "/api/users/v1/auth/login/",
+            "/api/users/v1/auth/password/login/",
             {
                 "username": "non_existing_user",
                 "password": "WrongPassword123!",  # pragma: allowlist secret
@@ -145,11 +144,11 @@ class TestZeroEnumerationAuthentication:
         assert response.data["is_locked"] is False
 
     def test_password_login_lockout_after_max_attempts(self):
-        view = LoginView.as_view()
+        view = PasswordAuthViewSet.as_view({"post": "login"})
         username = "attacked_account"
         for _ in range(4):
             req = self.factory.post(
-                "/api/users/v1/auth/login/",
+                "/api/users/v1/auth/password/login/",
                 {"username": username, "password": "Bad"},  # pragma: allowlist secret
                 format="json",
             )
@@ -158,7 +157,7 @@ class TestZeroEnumerationAuthentication:
 
         # 5th attempt locks out
         req = self.factory.post(
-            "/api/users/v1/auth/login/",
+            "/api/users/v1/auth/password/login/",
             {"username": username, "password": "Bad"},  # pragma: allowlist secret
             format="json",
         )
@@ -168,27 +167,26 @@ class TestZeroEnumerationAuthentication:
         assert res.data["remaining_attempts"] == 0
         assert res.data["is_locked"] is True
 
-    @patch("core.apps.users.api.views.OTPServiceFactory.verify_otp")
+    @patch("core.apps.users.api.serializers.base.OTPServiceFactory.verify_otp")
     def test_otp_verify_invalid_code_returns_generic_error_and_remaining(
         self, mock_verify
     ):
         mock_verify.return_value = (False, "Code is invalid")
 
-        view = OTPVerifyView.as_view()
+        view = SMSOTPAuthViewSet.as_view({"post": "login"})
         request = self.factory.post(
-            "/api/users/v1/auth/otp/verify/",
+            "/api/users/v1/auth/otp/sms/login/",
             {
-                "identifier": "+15551234567",
-                "code": "999999",
-                "channel": OTPChannelChoices.PHONE,
+                "phone_number": "+12025550123",
+                "otp_code": "999999",
             },
             format="json",
         )
         response = view(request)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.data["detail"] == "Incorrect OTP."
-        assert response.data["remaining_attempts"] == 4
-        assert response.data["is_locked"] is False
+        assert "Attempts left: 4" in str(response.data["otp_code"])
+        assert cache.get(AuthLockoutService._attempts_key("+12025550123")) == 1
+        assert AuthLockoutService.is_locked("+12025550123") is False
 
     def test_account_unlock_api_view_endpoint(self):
         view = AccountUnlockView.as_view()

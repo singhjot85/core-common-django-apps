@@ -1,0 +1,40 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Django Container",
+            "type": "python",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 2253
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}/backend/core-common-django-apps/",
+                    "remoteRoot": "/backend"
+                }
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "Celery Container",
+            "type": "python",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 2254
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}/backend",
+                    "remoteRoot": "/backend"
+                }
+            ],
+            "justMyCode": false
+        }
+    ]
+}

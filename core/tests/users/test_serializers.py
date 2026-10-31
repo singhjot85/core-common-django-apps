@@ -8,6 +8,9 @@ from core.apps.users.api.serializers import (
     LoginSerializer,
     OTPSendSerializer,
     OTPVerifySerializer,
+    PhoneOTPLoginSerializer,
+    PhoneOTPSendSerializer,
+    PhoneOTPSignupSerializer,
     SignupSerializer,
 )
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
@@ -27,40 +30,52 @@ class TestSignupSerializer:
             "username": "alice_smith",
             "password": "Password123!",  # pragma: allowlist secret
             "email": "alice@example.com",
-            "phone_number": "+1234567890",
+            "phone_number": "+12025550123",
         }
         serializer = SignupSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
 
     @patch.object(User.objects, "filter")
-    def test_signup_validation_success_phone_only_no_password(self, mock_filter):
-        mock_filter.return_value.exists.return_value = False
+    def test_signup_validation_duplicate_phone_rejected(self, mock_filter):
+        mock_filter.return_value.exists.return_value = True
         data = {
-            "first_name": "Bob",
-            "phone_number": "+1987654321",
-        }
-        serializer = SignupSerializer(data=data)
-        assert serializer.is_valid(), serializer.errors
-        assert serializer.validated_data.get("password") == ""
-        assert serializer.validated_data.get("username") == ""
-
-    @patch.object(User.objects, "filter")
-    def test_signup_validation_success_email_only(self, mock_filter):
-        mock_filter.return_value.exists.return_value = False
-        data = {
-            "email": "bob@example.com",
-        }
-        serializer = SignupSerializer(data=data)
-        assert serializer.is_valid(), serializer.errors
-
-    def test_signup_validation_fails_no_identifiers(self):
-        data = {
-            "first_name": "Bob",
-            "last_name": "Builder",
+            "first_name": "Alice",
+            "last_name": "Smith",
+            "username": "alice_smith",
+            "password": "Password123!",  # pragma: allowlist secret
+            "phone_number": "+12025550123",
         }
         serializer = SignupSerializer(data=data)
         assert not serializer.is_valid()
-        assert "non_field_errors" in serializer.errors
+        assert "phone_number" in serializer.errors
+
+    @patch.object(User.objects, "filter")
+    def test_signup_validation_invalid_phone_rejected(self, mock_filter):
+        mock_filter.return_value.exists.return_value = False
+        data = {
+            "first_name": "Alice",
+            "last_name": "Smith",
+            "username": "alice_smith",
+            "password": "Password123!",  # pragma: allowlist secret
+            "phone_number": "invalid-phone",
+        }
+        serializer = SignupSerializer(data=data)
+        assert not serializer.is_valid()
+        assert "phone_number" in serializer.errors
+
+    @patch.object(User.objects, "filter")
+    def test_signup_validation_blank_phone_normalized_to_none(self, mock_filter):
+        mock_filter.return_value.exists.return_value = False
+        data = {
+            "first_name": "Alice",
+            "last_name": "Smith",
+            "username": "alice_smith",
+            "password": "Password123!",  # pragma: allowlist secret
+            "phone_number": "",
+        }
+        serializer = SignupSerializer(data=data)
+        assert serializer.is_valid(), serializer.errors
+        assert serializer.validated_data.get("phone_number") is None
 
 
 class TestOTPSerializers:
@@ -68,12 +83,13 @@ class TestOTPSerializers:
 
     def test_otp_send_phone_valid(self):
         data = {
-            "identifier": "+1 (555) 019-2834",
+            "identifier": "+1 202 555 0123",
             "channel": OTPChannelChoices.PHONE,
             "purpose": OTPPurposeChoices.LOGIN,
         }
         serializer = OTPSendSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
+        assert serializer.validated_data["identifier"] == "+12025550123"
 
     def test_otp_send_phone_invalid_length(self):
         data = {
@@ -103,12 +119,71 @@ class TestOTPSerializers:
 
     def test_otp_verify_serializer_valid(self):
         data = {
-            "identifier": "+1234567890",
+            "identifier": "+1 202 555 0123",
             "code": "123456",
             "channel": OTPChannelChoices.PHONE,
         }
         serializer = OTPVerifySerializer(data=data)
         assert serializer.is_valid(), serializer.errors
+        assert serializer.validated_data["identifier"] == "+12025550123"
+
+
+class TestPhoneOTPSerializers:
+    """Tests for phone-specific OTP serializers ensuring E.164 normalization."""
+
+    @patch("core.apps.users.api.serializers.base.queue_task")
+    def test_phone_otp_send_serializer_queues_e164(self, mock_queue_task):
+        data = {
+            "phone_number": "+1 202 555 0123",
+            "purpose": OTPPurposeChoices.LOGIN,
+        }
+        serializer = PhoneOTPSendSerializer(data=data)
+        assert serializer.is_valid(), serializer.errors
+        assert serializer.send() is True
+        mock_queue_task.assert_called_once()
+        _, kwargs = mock_queue_task.call_args
+        assert kwargs["task_kwargs"]["identifier"] == "+12025550123"
+
+    @patch.object(User.objects, "filter")
+    @patch("core.apps.users.api.serializers.base.OTPServiceFactory.verify_otp")
+    def test_phone_otp_signup_serializer_verifies_e164(
+        self, mock_verify_otp, mock_filter
+    ):
+        mock_filter.return_value.exists.return_value = False
+        mock_verify_otp.return_value = (True, "OTP verified successfully.")
+        data = {
+            "first_name": "Bob",
+            "phone_number": "+1 202 555 0123",
+            "otp_code": "123456",
+        }
+        serializer = PhoneOTPSignupSerializer(data=data)
+        assert serializer.is_valid(), serializer.errors
+        mock_verify_otp.assert_called_once_with(
+            identifier="+12025550123", code="123456"
+        )
+        assert serializer.validated_data["is_phone_verified"] is True
+
+    @patch("core.apps.users.api.serializers.base.OTPServiceFactory.verify_otp")
+    def test_phone_otp_login_serializer_verifies_e164(self, mock_verify_otp):
+        mock_verify_otp.return_value = (True, "OTP verified successfully.")
+        user = User(
+            username="bob",
+            phone_number="+12025550123",
+            is_active=True,
+            is_phone_verified=True,
+        )
+        with patch.object(User.objects, "filter") as mock_filter:
+            mock_filter.return_value.first.return_value = user
+            data = {
+                "phone_number": "+1 202 555 0123",
+                "otp_code": "123456",
+            }
+            serializer = PhoneOTPLoginSerializer(data=data)
+            assert serializer.is_valid(), serializer.errors
+            mock_verify_otp.assert_called_once_with(
+                identifier="+12025550123", code="123456"
+            )
+            assert serializer.validated_data["user"] == user
 
 
 class TestGoogleLoginSerializer:

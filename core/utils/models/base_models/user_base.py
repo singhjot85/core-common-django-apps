@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from phonenumber_field.modelfields import PhoneNumberField
 
 from core.utils.models.base_models.base import BaseModel
 
@@ -14,8 +15,7 @@ class BaseUserModel(BaseModel):
         is_email_verified (BooleanField): Flag for email verification status.
     """
 
-    phone_number = models.CharField(
-        max_length=32,
+    phone_number = PhoneNumberField(
         null=True,
         blank=True,
         unique=True,
