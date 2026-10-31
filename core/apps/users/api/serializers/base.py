@@ -12,6 +12,7 @@ import logging
 import typing
 
 from django.utils.translation import gettext_lazy as _
+from phonenumber_field.phonenumber import to_python
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
@@ -20,7 +21,6 @@ from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
 from core.apps.users.services.auth_lockout import AuthLockoutService
 from core.apps.users.services.otp import OTPServiceFactory
 from core.apps.users.tasks import send_otp_task
-from core.apps.users.utils import normalize_to_e164
 from core.utils.tasks import queue_task
 
 User = get_user_model()
@@ -211,7 +211,9 @@ class SendOTPMixin:
             bool: True if task was successfully queued, False otherwise.
         """
         if channel == OTPChannelChoices.PHONE:
-            identifier = normalize_to_e164(identifier)
+            phone = to_python(identifier)
+            if phone and phone.is_valid():
+                identifier = phone.as_e164
 
         try:
             queue_task(
@@ -276,9 +278,9 @@ class BaseOTPVerificationSerializer(serializers.Serializer):
             ValidationError: If the identity is locked due to excessive failed attempts.
         """
         if identifier and "@" not in str(identifier):
-            e164_id = normalize_to_e164(identifier)
-            if e164_id:
-                identifier = e164_id
+            phone = to_python(identifier)
+            if phone and phone.is_valid():
+                identifier = phone.as_e164
 
         if AuthLockoutService.is_locked(identifier):
             raise serializers.ValidationError(self._ACCOUNT_LOCKED_MSG)

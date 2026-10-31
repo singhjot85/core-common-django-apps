@@ -39,7 +39,7 @@ from core.apps.users.api.serializers import (
 from core.apps.users.constants import SocialProviderChoices
 from core.apps.users.services.auth_lockout import AuthLockoutService
 from core.apps.users.services.social import SocialAuthServiceFactory
-from core.apps.users.utils import get_auth_redirect_url, normalize_to_e164
+from core.apps.users.utils import get_auth_redirect_url
 
 if typing.TYPE_CHECKING:
     from core.apps.users.models_abstract import AbstractUser
@@ -79,7 +79,7 @@ def get_jwt_tokens_for_user(user: "AbstractUser") -> dict:
 
 
 def _build_auth_response(
-    request, user: "AbstractUser", status_code=status.HTTP_200_OK
+    request, user: "AbstractUser", status_code=status.HTTP_200_OK, **extra_data
 ) -> Response:
     """
     Establish session login, generate JWT tokens, and return a standardized response.
@@ -453,8 +453,7 @@ class SMSOTPAuthViewSet(viewsets.GenericViewSet):
             raise PermissionDenied(_("OTP authentication is currently disabled."))
 
         raw_phone = request.data.get("phone_number", "")
-        e164_phone = normalize_to_e164(raw_phone) or str(raw_phone).strip()
-        if AuthLockoutService.is_locked(e164_phone):
+        if AuthLockoutService.is_locked(raw_phone):
             return Response(
                 {
                     "detail": _("Account locked due to too many failed attempts."),
@@ -469,12 +468,7 @@ class SMSOTPAuthViewSet(viewsets.GenericViewSet):
 
         user = serializer.validated_data["user"]
         validated_phone = serializer.validated_data.get("phone_number")
-        clear_target = (
-            validated_phone.as_e164
-            if hasattr(validated_phone, "as_e164")
-            else e164_phone
-        )
-        AuthLockoutService.clear_attempts(clear_target)
+        AuthLockoutService.clear_attempts(validated_phone)
         return _build_auth_response(request, user, status_code=status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"], url_path="signup")

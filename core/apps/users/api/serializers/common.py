@@ -9,10 +9,10 @@ Provides:
 
 from django.core.validators import EmailValidator
 from django.utils.translation import gettext_lazy as _
+from phonenumber_field.phonenumber import to_python
 from rest_framework import serializers
 
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
-from core.apps.users.utils import normalize_to_e164
 
 
 class OTPSendSerializer(serializers.Serializer):
@@ -52,11 +52,12 @@ class OTPSendSerializer(serializers.Serializer):
         channel = attrs.get("channel")
 
         if channel == OTPChannelChoices.PHONE:
-            identifier = normalize_to_e164(identifier)
-            if not identifier:
+            phone = to_python(identifier)
+            if not (phone and phone.is_valid()):
                 raise serializers.ValidationError(
                     {"identifier": _("Invalid phone number format.")}
                 )
+            identifier = phone.as_e164
         elif channel == OTPChannelChoices.EMAIL:
             validator = EmailValidator()
             try:
@@ -100,11 +101,12 @@ class OTPVerifySerializer(serializers.Serializer):
         identifier = attrs.get("identifier", "").strip()
         channel = attrs.get("channel")
         if channel == OTPChannelChoices.PHONE:
-            identifier = normalize_to_e164(identifier)
-            if not identifier:
+            phone = to_python(identifier)
+            if not (phone and phone.is_valid()):
                 raise serializers.ValidationError(
                     {"identifier": _("Invalid phone number format.")}
                 )
+            identifier = phone.as_e164
 
         attrs["identifier"] = identifier
 

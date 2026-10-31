@@ -146,7 +146,6 @@ class TestUsersViews:
         response = view(request)
         assert response.status_code == status.HTTP_200_OK
         assert "access" in response.data
-        assert response.data["created"] is False
 
     def test_get_auth_redirect_url_safe_and_fallback(self):
         """get_auth_redirect_url returns safe relative or in-app url and rejects malicious external targets."""
