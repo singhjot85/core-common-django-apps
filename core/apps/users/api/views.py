@@ -4,8 +4,8 @@ OTP lifecycle, and lockout recovery.
 
 Organized into modular viewsets:
 - PasswordAuthViewSet: login and signup using username and password.
-- EmailOTPAuthViewSet: login and signup using email and OTP code.
-- SMSOTPAuthViewSet: login and signup using phone number and OTP code.
+- EmailOTPAuthViewSet: send OTP, login, and signup using email.
+- SMSOTPAuthViewSet: send OTP, login, and signup using phone number.
 """
 
 import datetime
@@ -25,24 +25,21 @@ from rest_framework_simplejwt.settings import api_settings as jwt_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.apps.users import app_settings, get_user_model
-from core.apps.users.api.serializer import (
-    GoogleLoginSerializer,
-    OTPSendSerializer,
-)
 from core.apps.users.api.serializers import (
     EmailOTPLoginSerializer,
+    EmailOTPSendSerializer,
     EmailOTPSignupSerializer,
+    GoogleLoginSerializer,
     PasswordLoginSerializer,
     PasswordSignupSerializer,
     PhoneOTPLoginSerializer,
+    PhoneOTPSendSerializer,
     PhoneOTPSignupSerializer,
 )
 from core.apps.users.constants import SocialProviderChoices
 from core.apps.users.services.auth_lockout import AuthLockoutService
 from core.apps.users.services.social import SocialAuthServiceFactory
-from core.apps.users.tasks import send_otp_task
 from core.apps.users.utils import get_auth_redirect_url
-from core.utils.tasks import queue_task
 
 if typing.TYPE_CHECKING:
     from core.apps.users.models_abstract import AbstractUser
@@ -241,17 +238,21 @@ class PasswordAuthViewSet(viewsets.GenericViewSet):
 
 class EmailOTPAuthViewSet(viewsets.GenericViewSet):
     """
-    ViewSet handling Email OTP-based login and signup.
+    ViewSet handling Email OTP-based dispatch, login, and signup.
 
     Permissions: AllowAny.
 
     API details:
-    - POST ``/api/users/v1/auth/otp/email-login/``
+    - POST ``/api/users/v1/auth/otp/email/send/``
+        - **202**: OTP code generated and queued for background email delivery.
+        - **400**: Invalid email address format.
+        - **403**: OTP authentication disabled by configuration.
+    - POST ``/api/users/v1/auth/otp/email/login/``
         - **200**: User authenticated via email OTP; JWT tokens returned.
         - **400**: Invalid OTP or unregistered email address.
         - **403**: OTP authentication disabled by configuration.
         - **423**: Email address temporarily locked due to excessive failed attempts.
-    - POST ``/api/users/v1/auth/otp/email-signup/``
+    - POST ``/api/users/v1/auth/otp/email/signup/``
         - **201**: User created and authenticated with verified email.
         - **400**: Invalid OTP, missing fields, or email already registered.
         - **403**: OTP authentication disabled by configuration.
@@ -263,11 +264,42 @@ class EmailOTPAuthViewSet(viewsets.GenericViewSet):
         """
         Return appropriate serializer based on action.
         """
+        if self.action == "send":
+            return EmailOTPSendSerializer
         if self.action == "signup":
             return EmailOTPSignupSerializer
         return EmailOTPLoginSerializer
 
-    @action(detail=False, methods=["post"], url_path="email-login")
+    @action(detail=False, methods=["post"], url_path="send")
+    def send(self, request, *args, **kwargs):
+        """
+        Dispatch an OTP verification code to the target email address asynchronously.
+
+        Side effects:
+        - Queues ``send_otp_task`` Celery job for asynchronous email delivery.
+
+        Args:
+            request (Request): DRF request with ``email`` and optional ``purpose``.
+
+        Returns:
+            Response: HTTP 202 Accepted response.
+
+        Raises:
+            PermissionDenied: If OTP authentication is disabled.
+        """
+        if not app_settings.ENABLE_OTP_LOGIN:
+            raise PermissionDenied(_("OTP authentication is currently disabled."))
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.send()
+
+        return Response(
+            {"detail": _("If the account exists, an OTP has been dispatched.")},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=False, methods=["post"], url_path="login")
     def login(self, request, *args, **kwargs):
         """
         Verify Email OTP and authenticate existing user.
@@ -306,7 +338,7 @@ class EmailOTPAuthViewSet(viewsets.GenericViewSet):
         AuthLockoutService.clear_attempts(email)
         return _build_auth_response(request, user, status_code=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["post"], url_path="email-signup")
+    @action(detail=False, methods=["post"], url_path="signup")
     def signup(self, request, *args, **kwargs):
         """
         Verify Email OTP and register a new user account.
@@ -338,17 +370,21 @@ class EmailOTPAuthViewSet(viewsets.GenericViewSet):
 
 class SMSOTPAuthViewSet(viewsets.GenericViewSet):
     """
-    ViewSet handling SMS/Phone OTP-based login and signup.
+    ViewSet handling SMS/Phone OTP-based dispatch, login, and signup.
 
     Permissions: AllowAny.
 
     API details:
-    - POST ``/api/users/v1/auth/otp/phone-login/``
+    - POST ``/api/users/v1/auth/otp/sms/send/``
+        - **202**: OTP code generated and queued for background SMS delivery.
+        - **400**: Invalid phone number format.
+        - **403**: OTP authentication disabled by configuration.
+    - POST ``/api/users/v1/auth/otp/sms/login/``
         - **200**: User authenticated via SMS OTP; JWT tokens returned.
         - **400**: Invalid OTP or unregistered phone number.
         - **403**: OTP authentication disabled by configuration.
         - **423**: Phone number temporarily locked due to excessive failed attempts.
-    - POST ``/api/users/v1/auth/otp/phone-signup/``
+    - POST ``/api/users/v1/auth/otp/sms/signup/``
         - **201**: User created and authenticated with verified phone number.
         - **400**: Invalid OTP, missing fields, or phone number already registered.
         - **403**: OTP authentication disabled by configuration.
@@ -360,11 +396,42 @@ class SMSOTPAuthViewSet(viewsets.GenericViewSet):
         """
         Return appropriate serializer based on action.
         """
+        if self.action == "send":
+            return PhoneOTPSendSerializer
         if self.action == "signup":
             return PhoneOTPSignupSerializer
         return PhoneOTPLoginSerializer
 
-    @action(detail=False, methods=["post"], url_path="phone-login")
+    @action(detail=False, methods=["post"], url_path="send")
+    def send(self, request, *args, **kwargs):
+        """
+        Dispatch an OTP verification code to the target phone number asynchronously.
+
+        Side effects:
+        - Queues ``send_otp_task`` Celery job for asynchronous SMS delivery.
+
+        Args:
+            request (Request): DRF request with ``phone_number`` and optional ``purpose``.
+
+        Returns:
+            Response: HTTP 202 Accepted response.
+
+        Raises:
+            PermissionDenied: If OTP authentication is disabled.
+        """
+        if not app_settings.ENABLE_OTP_LOGIN:
+            raise PermissionDenied(_("OTP authentication is currently disabled."))
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.send()
+
+        return Response(
+            {"detail": _("If the account exists, an OTP has been dispatched.")},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=False, methods=["post"], url_path="login")
     def login(self, request, *args, **kwargs):
         """
         Verify Phone OTP and authenticate existing user.
@@ -403,7 +470,7 @@ class SMSOTPAuthViewSet(viewsets.GenericViewSet):
         AuthLockoutService.clear_attempts(phone_number)
         return _build_auth_response(request, user, status_code=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["post"], url_path="phone-signup")
+    @action(detail=False, methods=["post"], url_path="signup")
     def signup(self, request, *args, **kwargs):
         """
         Verify Phone OTP and register a new user account.
@@ -434,73 +501,8 @@ class SMSOTPAuthViewSet(viewsets.GenericViewSet):
 
 
 # ============================================================================
-# Auxiliary Auth Endpoints: OTP Dispatch, Social Auth, Account Unlock
+# Auxiliary Auth Endpoints: Social Auth, Account Unlock
 # ============================================================================
-
-
-class OTPSendView(APIView):
-    """
-    Dispatch one-time passcodes (OTP) via SMS or Email asynchronously.
-
-    Validates identifier syntax and immediately returns HTTP 202 Accepted,
-    queuing actual dispatch to a background worker to prevent user enumeration.
-
-    API details:
-    - POST ``/api/users/v1/auth/otp/send/``
-        - **202**: Request accepted and dispatched to background queue.
-        - **400**: Invalid identifier syntax or channel parameters.
-        - **403**: OTP authentication disabled by configuration.
-    """
-
-    permission_classes = [AllowAny]
-    serializer_class = OTPSendSerializer
-
-    def post(self, request, *args, **kwargs):
-        """
-        Dispatch an OTP verification code to the target identifier asynchronously.
-
-        Always returns 202 Accepted to prevent user enumeration. The actual generation
-        and delivery is handled by the ``send_otp_task`` Celery task.
-
-        Side effects:
-        - Queues ``send_otp_task`` Celery job for asynchronous delivery.
-
-        Args:
-            request (Request): DRF request with ``identifier``, ``channel``, and ``purpose``.
-
-        Returns:
-            Response: HTTP 202 Accepted response.
-
-        Raises:
-            PermissionDenied: If OTP authentication is disabled.
-        """
-        if not app_settings.ENABLE_OTP_LOGIN:
-            raise PermissionDenied(_("OTP authentication is currently disabled."))
-
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        identifier = serializer.validated_data["identifier"]
-        channel = serializer.validated_data["channel"]
-        purpose = serializer.validated_data["purpose"]
-
-        try:
-            queue_task(
-                task=send_otp_task,
-                task_kwargs={
-                    "identifier": identifier,
-                    "channel": channel,
-                    "purpose": purpose,
-                },
-                on_commit=True,
-            )
-        except Exception as e:
-            LOGGER.error(f"Failed to queue OTP task for {identifier}: {e}")
-
-        return Response(
-            {"detail": _("If the account exists, an OTP has been dispatched.")},
-            status=status.HTTP_202_ACCEPTED,
-        )
 
 
 class GoogleLoginView(APIView):

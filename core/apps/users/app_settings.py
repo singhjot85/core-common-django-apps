@@ -4,7 +4,7 @@ from core.utils.app_settings import BaseSettings
 from core.utils.app_settings.types import Constance, Settings, SettingsType
 
 if typing.TYPE_CHECKING:
-    from core.apps.users.api.serializer import SignupSerializer, UserDetailsSerializer
+    from core.apps.users.api.serializers import SignupSerializer, UserDetailsSerializer
     from core.utils.backends.sms.console import ConsoleSMSBackend
     from core.utils.models import BaseUserModel
 

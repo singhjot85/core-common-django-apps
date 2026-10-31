@@ -50,24 +50,32 @@ class BaseTemplateView(TemplateView):
         ),
         "otp_login_phone_action": (
             "auth-otp-sms-login",
-            "/api/users/v1/auth/otp/phone-login/",
+            "/api/users/v1/auth/otp/sms/login/",
         ),
         "otp_signup_phone_action": (
             "auth-otp-sms-signup",
-            "/api/users/v1/auth/otp/phone-signup/",
+            "/api/users/v1/auth/otp/sms/signup/",
+        ),
+        "otp_send_phone_action": (
+            "auth-otp-sms-send",
+            "/api/users/v1/auth/otp/sms/send/",
         ),
         "otp_login_email_action": (
             "auth-otp-email-login",
-            "/api/users/v1/auth/otp/email-login/",
+            "/api/users/v1/auth/otp/email/login/",
         ),
         "otp_signup_email_action": (
             "auth-otp-email-signup",
-            "/api/users/v1/auth/otp/email-signup/",
+            "/api/users/v1/auth/otp/email/signup/",
         ),
-        "otp_send_action": ("otp-send", "/api/users/v1/auth/otp/send/"),
+        "otp_send_email_action": (
+            "auth-otp-email-send",
+            "/api/users/v1/auth/otp/email/send/",
+        ),
+        "otp_send_action": ("auth-otp-sms-send", "/api/users/v1/auth/otp/sms/send/"),
         "otp_verify_action": (
             "auth-otp-sms-login",
-            "/api/users/v1/auth/otp/phone-login/",
+            "/api/users/v1/auth/otp/sms/login/",
         ),
         "forgot_password_action": (
             "password-reset",

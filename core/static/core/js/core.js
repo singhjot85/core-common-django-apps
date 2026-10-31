@@ -557,14 +557,25 @@
         btn.disabled = true;
         btn.textContent = "Sending...";
 
+        let sendUrl = "/api/users/v1/auth/otp/sms/send/";
+        let sendPayload = {};
+
+        if (channel === "email") {
+          sendUrl = (form && form.dataset.emailSendAction) || "/api/users/v1/auth/otp/email/send/";
+          sendPayload = { email: identifier, purpose: purpose };
+        } else {
+          sendUrl = (form && (form.dataset.phoneSendAction || form.dataset.sendAction)) || "/api/users/v1/auth/otp/sms/send/";
+          sendPayload = { phone_number: identifier, purpose: purpose };
+        }
+
         try {
-          const res = await fetch("/api/users/v1/auth/otp/send/", {
+          const res = await fetch(sendUrl, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "X-CSRFToken": Core.getCSRFToken(),
             },
-            body: JSON.stringify({ identifier: identifier, channel: channel, purpose: purpose }),
+            body: JSON.stringify(sendPayload),
           });
           const data = await res.json();
 
@@ -719,8 +730,8 @@
         const code = hiddenOtp ? hiddenOtp.value.trim() : "";
         const isEmail = identifier.includes("@");
 
-        const phoneAction = otpForm.dataset.phoneAction || "/api/users/v1/auth/otp/phone-login/";
-        const emailAction = otpForm.dataset.emailAction || "/api/users/v1/auth/otp/email-login/";
+        const phoneAction = otpForm.dataset.phoneAction || "/api/users/v1/auth/otp/sms/login/";
+        const emailAction = otpForm.dataset.emailAction || "/api/users/v1/auth/otp/email/login/";
         const endpoint = isEmail ? emailAction : phoneAction;
         const payload = isEmail
           ? { email: identifier, otp_code: code }
@@ -806,7 +817,7 @@
         }
 
         try {
-          const endpoint = otpSignupForm.action || "/api/users/v1/auth/otp/phone-signup/";
+          const endpoint = otpSignupForm.action || "/api/users/v1/auth/otp/sms/signup/";
 
           const res = await fetch(endpoint, {
             method: "POST",

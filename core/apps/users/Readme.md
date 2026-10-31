@@ -106,22 +106,22 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 
 ### 2. Multi-Channel Login
 - **Username & Password**: Authenticates against `ModelBackend` for accounts with a usable password. Accounts created without passwords receive a descriptive message directing them to OTP or social login.
-- **Phone Number OTP Login**:
-  1. Client sends phone number.
-  2. Server returns `202 Accepted` and asynchronously verifies the account and dispatches OTP.
-  3. Client verifies OTP code.
-  4. Server issues SimpleJWT token pair (`access`, `refresh`) and user profile.
-- **Email OTP Login**:
-  1. Client sends email address.
-  2. Server returns `202 Accepted` and asynchronously verifies the account and dispatches OTP.
-  3. Client verifies OTP code.
-  4. Server issues SimpleJWT token pair and user profile.
+- **Phone Number OTP Login & Signup**:
+  1. Client sends phone number to generate OTP (`/api/users/v1/auth/otp/sms/send/` with `purpose="login"` or `purpose="signup"`).
+  2. Server returns `202 Accepted` and asynchronously dispatches OTP.
+  3. Client submits phone number and 6-digit OTP code directly to `/api/users/v1/auth/otp/sms/login/` or `/api/users/v1/auth/otp/sms/signup/`.
+  4. Server verifies OTP, authenticates or provisions the user account, and issues SimpleJWT token pair (`access`, `refresh`) and user profile.
+- **Email OTP Login & Signup**:
+  1. Client sends email address to generate OTP (`/api/users/v1/auth/otp/email/send/`).
+  2. Server returns `202 Accepted` and asynchronously dispatches OTP.
+  3. Client submits email address and 6-digit OTP code directly to `/api/users/v1/auth/otp/email/login/` or `/api/users/v1/auth/otp/email/signup/`.
+  4. Server verifies OTP, authenticates or provisions user, and issues SimpleJWT token pair and user profile.
 - **Google Social Login**: Client sends Google ID token $\rightarrow$ server validates token $\rightarrow$ authenticates or registers user $\rightarrow$ returns SimpleJWT token pair.
 
 ### 3. Asynchronous OTP Dispatch Policy
-- Calling `/api/users/auth/otp/send/` validates identifier syntax (returns `400 Bad Request` only on malformed phone/email syntax).
+- Calling `/api/users/v1/auth/otp/sms/send/` or `/api/users/v1/auth/otp/email/send/` validates identifier syntax (returns `400 Bad Request` only on malformed phone/email syntax).
 - For all valid formats, the endpoint immediately returns **`202 Accepted`** with no user existence disclosure, protecting against account enumeration and timing attacks.
-- The actual user existence lookup, OTP code generation, Redis TTL caching, and SMS/Email dispatch are processed in a Celery background task via `core.utils.tasks.queue_task`.
+- The actual user existence lookup (for login flows), OTP code generation, Redis TTL caching, and SMS/Email dispatch are processed in a Celery background task via `core.utils.tasks.queue_task`.
 - Under no circumstance should external delivery calls (SMS/Email) execute directly on the main HTTP request thread; if queuing fails, the error is logged without executing blocking external calls synchronously.
 
 ### 4. Server-Side Cookie Authentication & Middleware (`JWTCookieAuthenticationMiddleware`)
@@ -132,7 +132,7 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
   - If expired or invalid on non-exempt routes, terminates request processing immediately with `404 Not Found` and deletes the expired cookies.
   - On exempt routes (`settings.JWT_AUTH_EXEMPT_PATHS`, defaulting to `/login/`, `/signup/`, `/register/`, `/api/users/v1/auth/`, `/static/`, `/favicon.ico`), permits access to the unauthenticated handler and attaches deletion headers to the response so stale cookies are evicted by the browser.
 - **Outgoing Response Delegation**:
-  - When authentication views complete (e.g. `LoginView`, `SignupView`, `OTPVerifyView`, `GoogleLoginView`), the middleware detects issued tokens from `response.data` or `request._auth_tokens`.
+  - When authentication views complete (e.g. `PasswordAuthViewSet`, `EmailOTPAuthViewSet`, `SMSOTPAuthViewSet`, `GoogleLoginView`), the middleware detects issued tokens from `response.data` or `request._auth_tokens`.
   - Sets client-readable `access_token` and HttpOnly `refresh_token` (`settings.REFRESH_TOKEN_COOKIE_NAME`) cookies with `SameSite=Lax`.
 - **Safe In-App Redirects**:
   - Validates `next` parameters across query parameters and JSON/form bodies using `url_has_allowed_host_and_scheme` to prevent open redirects.
@@ -145,17 +145,22 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
-| `/api/users/auth/signup/` | `POST` | Registers new user; returns SimpleJWT tokens and user profile. |
-| `/api/users/auth/login/` | `POST` | Standard username/password login via `dj-rest-auth` + SimpleJWT. |
-| `/api/users/auth/logout/` | `POST` | Invalidates / blacklists refresh token. |
-| `/api/users/auth/token/refresh/` | `POST` | Refreshes SimpleJWT access token. |
-| `/api/users/auth/user/` | `GET`, `PUT`, `PATCH` | Retrieves and updates current user profile. |
-| `/api/users/auth/password/change/` | `POST` | Changes password for authenticated user. |
-| `/api/users/auth/password/reset/` | `POST` | Initiates password reset flow. |
-| `/api/users/auth/password/reset/confirm/` | `POST` | Confirms password reset with token. |
-| `/api/users/auth/otp/send/` | `POST` | Asynchronously dispatches OTP via phone or email (`202 Accepted`). |
-| `/api/users/auth/otp/verify/` | `POST` | Verifies OTP and returns SimpleJWT tokens. |
-| `/api/users/auth/social/google/` | `POST` | Exchanges Google ID token for SimpleJWT tokens. |
+| `/api/users/v1/auth/password/signup/` | `POST` | Registers new user via username and password; returns SimpleJWT tokens and user profile. |
+| `/api/users/v1/auth/password/login/` | `POST` | Password-based login with account lockout protection. |
+| `/api/users/v1/auth/otp/sms/send/` | `POST` | Asynchronously generates and queues OTP dispatch to phone number (`202 Accepted`). |
+| `/api/users/v1/auth/otp/sms/signup/` | `POST` | Atomically verifies phone OTP and provisions user account; returns SimpleJWT tokens. |
+| `/api/users/v1/auth/otp/sms/login/` | `POST` | Authenticates existing user via verified phone OTP. |
+| `/api/users/v1/auth/otp/email/send/` | `POST` | Asynchronously generates and queues OTP dispatch to email (`202 Accepted`). |
+| `/api/users/v1/auth/otp/email/signup/` | `POST` | Atomically verifies email OTP and provisions user account; returns SimpleJWT tokens. |
+| `/api/users/v1/auth/otp/email/login/` | `POST` | Authenticates existing user via verified email OTP. |
+| `/api/users/v1/auth/unlock/` | `GET` | Validates unlock token and clears account lockout. |
+| `/api/users/v1/auth/social/google/` | `POST` | Exchanges Google ID token for SimpleJWT tokens. |
+| `/api/users/v1/auth/token/refresh/` | `POST` | Refreshes SimpleJWT access token. |
+| `/api/users/v1/auth/logout/` | `POST` | Invalidates / blacklists refresh token. |
+| `/api/users/v1/auth/user/` | `GET`, `PUT`, `PATCH` | Retrieves and updates current user profile. |
+| `/api/users/v1/auth/password/change/` | `POST` | Changes password for authenticated user. |
+| `/api/users/v1/auth/password/reset/` | `POST` | Initiates password reset flow. |
+| `/api/users/v1/auth/password/reset/confirm/` | `POST` | Confirms password reset with token. |
 
 ---
 

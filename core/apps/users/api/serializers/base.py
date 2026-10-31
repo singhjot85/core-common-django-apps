@@ -4,7 +4,7 @@ Common serializer bases and mixins for authentication and user lifecycle workflo
 Provides:
 - UserDetailsSerializer: Serializes authenticated user attributes.
 - BaseSignupSerializer: Shared signup field declarations and uniqueness validations.
-- BaseOTPVerificationSerializer: Verification and lockout enforcement mixin for OTP workflows.
+- BaseOTPVerificationSerializer: Verification, lockout enforcement, and dispatch mixin for OTP workflows.
 - validate_clean_phone_number: Phone normalization and minimum length validation utility.
 """
 
@@ -16,8 +16,11 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core.apps.users import app_settings, get_user_model
+from core.apps.users.constants import OTPPurposeChoices
 from core.apps.users.services.auth_lockout import AuthLockoutService
 from core.apps.users.services.otp import OTPServiceFactory
+from core.apps.users.tasks import send_otp_task
+from core.utils.tasks import queue_task
 
 User = get_user_model()
 LOGGER = logging.getLogger(__name__)
@@ -202,12 +205,60 @@ class BaseSignupSerializer(serializers.Serializer):
         return User.objects.create_user(**validated_data)
 
 
-class BaseOTPVerificationSerializer:
+class SendOTPMixin:
     """
-    Mixin serializer providing OTP validation and lockout handling for auth workflows.
+    A mixin providing send. otp functionality
+    """
+
+    @classmethod
+    def send_otp(
+        cls,
+        identifier: str,
+        channel: str,
+        purpose: str = OTPPurposeChoices.LOGIN,
+    ) -> bool:
+        """
+        Queue background task to generate and dispatch OTP to recipient.
+
+        Enqueues ``send_otp_task`` via ``queue_task`` on commit to avoid blocking
+        the HTTP request thread.
+
+        Side effects:
+        - Enqueues ``send_otp_task`` background Celery job.
+
+        Args:
+            identifier (str): Destination phone number or email address.
+            channel (str): Delivery channel (e.g. ``"phone"`` or ``"email"``).
+            purpose (str, optional): Purpose of the OTP. Defaults to ``"login"``.
+
+        Returns:
+            bool: True if task was successfully queued, False otherwise.
+        """
+        try:
+            queue_task(
+                task=send_otp_task,
+                task_kwargs={
+                    "identifier": identifier,
+                    "channel": channel,
+                    "purpose": purpose,
+                },
+                on_commit=True,
+            )
+            return True
+        except Exception as e:
+            LOGGER.error(
+                f"Failed to queue OTP task for {identifier} via {channel}: {e}"
+            )
+            return False
+
+
+class BaseOTPVerificationSerializer(serializers.Serializer):
+    """
+    Mixin serializer providing OTP dispatch, validation, and lockout handling.
 
     Enforces account lockout checks against AuthLockoutService before verifying
     the submitted OTP against cache. Records failed verification attempts when invalid.
+    Also provides asynchronous OTP dispatch queueing to prevent user enumeration.
 
     Attributes:
         otp_code (CharField): Verification passcode of length ``app_settings.OTP_LENGTH``.

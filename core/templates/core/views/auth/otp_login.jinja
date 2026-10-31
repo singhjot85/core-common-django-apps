@@ -33,11 +33,13 @@
         <!-- ================= SECTION: OTP SIGN IN ================= -->
         <div id="otp_section_signin" data-otp-tab-content="signin">
             <form method="post"
-                  action="{{ otp_login_phone_action|default('/api/users/v1/auth/otp/phone-login/') }}"
+                  action="{{ otp_login_phone_action|default('/api/users/v1/auth/otp/sms/login/') }}"
                   id="form_otp_login"
                   data-auth-api="otp-login"
-                  data-phone-action="{{ otp_login_phone_action|default('/api/users/v1/auth/otp/phone-login/') }}"
-                  data-email-action="{{ otp_login_email_action|default('/api/users/v1/auth/otp/email-login/') }}"
+                  data-phone-action="{{ otp_login_phone_action|default('/api/users/v1/auth/otp/sms/login/') }}"
+                  data-email-action="{{ otp_login_email_action|default('/api/users/v1/auth/otp/email/login/') }}"
+                  data-phone-send-action="{{ otp_send_phone_action|default('/api/users/v1/auth/otp/sms/send/') }}"
+                  data-email-send-action="{{ otp_send_email_action|default('/api/users/v1/auth/otp/email/send/') }}"
                   data-redirect-url="{{ redirect_url|default(landing_page_url|default('/') ) }}">
                 {{ csrf_input }}
                 <input type="hidden" name="auth_flow" value="otp">
@@ -90,9 +92,10 @@
              data-otp-tab-content="signup"
              style="display: none">
             <form method="post"
-                  action="{{ otp_signup_phone_action|default('/api/users/v1/auth/otp/phone-signup/') }}"
+                  action="{{ otp_signup_phone_action|default('/api/users/v1/auth/otp/sms/signup/') }}"
                   id="form_otp_signup"
                   data-auth-api="otp-signup"
+                  data-send-action="{{ otp_send_phone_action|default('/api/users/v1/auth/otp/sms/send/') }}"
                   data-redirect-url="{{ redirect_url|default(landing_page_url|default('/') ) }}">
                 {{ csrf_input }}
                 <input type="hidden" name="auth_flow" value="otp_signup">

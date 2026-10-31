@@ -1,7 +1,8 @@
 """
-Serializers for SMS and phone-based OTP authentication and registration workflows.
+Serializers for SMS and phone-based OTP authentication, registration, and dispatch workflows.
 
 Provides:
+- PhoneOTPSendSerializer: Validates phone number for requesting an OTP code.
 - PhoneOTPSignupSerializer: Provisions new users after verifying phone OTP code.
 - PhoneOTPLoginSerializer: Authenticates existing users upon phone OTP verification.
 """
@@ -16,11 +17,62 @@ from core.apps.users import get_user_model
 from core.apps.users.api.serializers.base import (
     BaseOTPVerificationSerializer,
     BaseSignupSerializer,
+    SendOTPMixin,
     validate_clean_phone_number,
 )
+from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
 
 User = get_user_model()
 LOGGER = logging.getLogger(__name__)
+
+
+class PhoneOTPSendSerializer(serializers.Serializer, SendOTPMixin):
+    """
+    Validate parameters for requesting an OTP code dispatched to a phone number.
+
+    Fields:
+    - ``phone_number`` (CharField): Destination phone number (minimum 7 digits).
+    - ``purpose`` (ChoiceField): Purpose of the OTP (login, signup, etc.). Defaults to ``"login"``.
+    """
+
+    phone_number = serializers.CharField(max_length=32, required=True, allow_null=False)
+    purpose = serializers.ChoiceField(
+        choices=OTPPurposeChoices.choices,
+        default=OTPPurposeChoices.LOGIN,
+    )
+
+    def validate_phone_number(self, value: typing.Optional[str]) -> str:
+        """
+        Validate phone number format.
+
+        Args:
+            value (str, optional): Raw phone number string.
+
+        Returns:
+            str: Cleaned phone number string.
+
+        Raises:
+            ValidationError:
+            - Phone number is blank or missing.
+            - Phone number contains fewer than 7 digits.
+        """
+        if not value or not value.strip():
+            raise serializers.ValidationError(_("Phone number is required."))
+
+        return validate_clean_phone_number(value)
+
+    def send(self) -> bool:
+        """
+        Dispatch OTP code to the validated phone number.
+
+        Returns:
+            bool: True if task was successfully queued, False otherwise.
+        """
+        return self.send_otp(
+            identifier=self.validated_data["phone_number"],
+            channel=OTPChannelChoices.PHONE,
+            purpose=self.validated_data["purpose"],
+        )
 
 
 class PhoneOTPSignupSerializer(BaseOTPVerificationSerializer, BaseSignupSerializer):
@@ -100,7 +152,7 @@ class PhoneOTPSignupSerializer(BaseOTPVerificationSerializer, BaseSignupSerializ
         return super().create(validated_data)
 
 
-class PhoneOTPLoginSerializer(BaseOTPVerificationSerializer, serializers.Serializer):
+class PhoneOTPLoginSerializer(BaseOTPVerificationSerializer):
     """
     Authenticate an existing active user via verified Phone OTP passcode.
 

@@ -4,8 +4,9 @@ Serializer exports for the users application authentication and registration dom
 Exposes:
 - UserDetailsSerializer, BaseSignupSerializer, BaseOTPVerificationSerializer
 - PasswordLoginSerializer, PasswordSignupSerializer
-- EmailOTPLoginSerializer, EmailOTPSignupSerializer
-- PhoneOTPLoginSerializer, PhoneOTPSignupSerializer
+- EmailOTPSendSerializer, EmailOTPLoginSerializer, EmailOTPSignupSerializer
+- PhoneOTPSendSerializer, PhoneOTPLoginSerializer, PhoneOTPSignupSerializer
+- OTPSendSerializer, OTPVerifySerializer, GoogleLoginSerializer
 - Backward-compatible aliases: SignupSerializer, LoginSerializer
 """
 
@@ -14,8 +15,14 @@ from .base import (
     BaseSignupSerializer as BaseSignupSerializer,
     UserDetailsSerializer as UserDetailsSerializer,
 )
+from .common import (
+    GoogleLoginSerializer as GoogleLoginSerializer,
+    OTPSendSerializer as OTPSendSerializer,
+    OTPVerifySerializer as OTPVerifySerializer,
+)
 from .email_auth import (
     EmailOTPLoginSerializer as EmailOTPLoginSerializer,
+    EmailOTPSendSerializer as EmailOTPSendSerializer,
     EmailOTPSignupSerializer as EmailOTPSignupSerializer,
 )
 from .password_auth import (
@@ -24,6 +31,7 @@ from .password_auth import (
 )
 from .sms_auth import (
     PhoneOTPLoginSerializer as PhoneOTPLoginSerializer,
+    PhoneOTPSendSerializer as PhoneOTPSendSerializer,
     PhoneOTPSignupSerializer as PhoneOTPSignupSerializer,
 )
 

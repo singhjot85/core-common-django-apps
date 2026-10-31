@@ -1,7 +1,8 @@
 """
-Serializers for email OTP authentication and registration workflows.
+Serializers for email OTP authentication, registration, and dispatch workflows.
 
 Provides:
+- EmailOTPSendSerializer: Validates email destination for requesting an OTP code.
 - EmailOTPSignupSerializer: Provisions new users after verifying email OTP code.
 - EmailOTPLoginSerializer: Authenticates existing users upon email OTP verification.
 """
@@ -16,10 +17,58 @@ from core.apps.users import get_user_model
 from core.apps.users.api.serializers.base import (
     BaseOTPVerificationSerializer,
     BaseSignupSerializer,
+    SendOTPMixin,
 )
+from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
 
 User = get_user_model()
 LOGGER = logging.getLogger(__name__)
+
+
+class EmailOTPSendSerializer(serializers.Serializer, SendOTPMixin):
+    """
+    Validate parameters for requesting an OTP code dispatched to an email address.
+
+    Fields:
+    - ``email`` (EmailField): Target recipient email address.
+    - ``purpose`` (ChoiceField): Purpose of the OTP (login, signup, etc.). Defaults to ``"login"``.
+    """
+
+    email = serializers.EmailField(required=True, allow_null=False)
+    purpose = serializers.ChoiceField(
+        choices=OTPPurposeChoices.choices,
+        default=OTPPurposeChoices.LOGIN,
+    )
+
+    def validate_email(self, value: typing.Optional[str]) -> str:
+        """
+        Validate and normalize email address.
+
+        Args:
+            value (str, optional): Raw email address.
+
+        Returns:
+            str: Trimmed, lowercased email string.
+
+        Raises:
+            ValidationError: If email is blank or missing.
+        """
+        if not value or not value.strip():
+            raise serializers.ValidationError(_("Email is required."))
+        return value.strip().lower()
+
+    def send(self) -> bool:
+        """
+        Dispatch OTP code to the validated email address.
+
+        Returns:
+            bool: True if task was successfully queued, False otherwise.
+        """
+        return self.send_otp(
+            identifier=self.validated_data["email"],
+            channel=OTPChannelChoices.EMAIL,
+            purpose=self.validated_data["purpose"],
+        )
 
 
 class EmailOTPSignupSerializer(BaseOTPVerificationSerializer, BaseSignupSerializer):
@@ -96,7 +145,7 @@ class EmailOTPSignupSerializer(BaseOTPVerificationSerializer, BaseSignupSerializ
         return super().create(validated_data)
 
 
-class EmailOTPLoginSerializer(BaseOTPVerificationSerializer, serializers.Serializer):
+class EmailOTPLoginSerializer(BaseOTPVerificationSerializer):
     """
     Authenticate an existing active user via verified Email OTP passcode.
 
@@ -153,7 +202,7 @@ class EmailOTPLoginSerializer(BaseOTPVerificationSerializer, serializers.Seriali
         if not is_valid:
             raise serializers.ValidationError({"otp_code": usr_msg})
 
-        user: typing.Optional["User"] = User.objects.filter(email__iexact=email).first()
+        user = User.objects.filter(email__iexact=email).first()
         if not user:
             raise serializers.ValidationError(
                 {"email": _("No user found with this email address.")}
