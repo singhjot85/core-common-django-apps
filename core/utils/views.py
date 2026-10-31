@@ -43,10 +43,32 @@ class BaseTemplateView(TemplateView):
 
     # Default url-action mapping shipped with each template
     DEFAULT_URL_ACTION_MAP: dict[str, tuple] = {
-        "login_action": ("user-login", "/api/users/v1/auth/login/"),
-        "signup_action": ("user-signup", "/api/users/v1/auth/signup/"),
+        "login_action": ("auth-password-login", "/api/users/v1/auth/password/login/"),
+        "signup_action": (
+            "auth-password-signup",
+            "/api/users/v1/auth/password/signup/",
+        ),
+        "otp_login_phone_action": (
+            "auth-otp-sms-login",
+            "/api/users/v1/auth/otp/phone-login/",
+        ),
+        "otp_signup_phone_action": (
+            "auth-otp-sms-signup",
+            "/api/users/v1/auth/otp/phone-signup/",
+        ),
+        "otp_login_email_action": (
+            "auth-otp-email-login",
+            "/api/users/v1/auth/otp/email-login/",
+        ),
+        "otp_signup_email_action": (
+            "auth-otp-email-signup",
+            "/api/users/v1/auth/otp/email-signup/",
+        ),
         "otp_send_action": ("otp-send", "/api/users/v1/auth/otp/send/"),
-        "otp_verify_action": ("otp-verify", "/api/users/v1/auth/otp/verify/"),
+        "otp_verify_action": (
+            "auth-otp-sms-login",
+            "/api/users/v1/auth/otp/phone-login/",
+        ),
         "forgot_password_action": (
             "password-reset",
             "/api/users/v1/auth/password/reset/",

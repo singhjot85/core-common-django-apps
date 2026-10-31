@@ -64,3 +64,36 @@ class OTPServiceFactory:
             str: Cache key for locking.
         """
         return f"{connection.schema_name}:otp_lock:{identifier}"
+
+
+# Backward-compatible singleton/wrapper facade
+class OTPService:
+    """
+    Facade maintaining backward compatibility with prior OTPService API.
+    """
+
+    @classmethod
+    def send_phone_otp(
+        cls, phone_number: str, purpose: str = OTPPurposeChoices.LOGIN
+    ) -> bool:
+        return PhoneOTPService().send_otp(identifier=phone_number, purpose=purpose)
+
+    @classmethod
+    def send_email_otp(cls, email: str, purpose: str = OTPPurposeChoices.LOGIN) -> bool:
+        return EmailOTPService().send_otp(identifier=email, purpose=purpose)
+
+    @classmethod
+    def verify_otp(cls, identifier: str, code: str) -> tuple[bool, str]:
+        return BaseOTPService.verify_otp(identifier=identifier, code=code)
+
+    @classmethod
+    def generate_code(cls, length: int = 6) -> str:
+        return BaseOTPService.generate_code(length=length)
+
+    @classmethod
+    def hash_code(cls, code: str) -> str:
+        return BaseOTPService.hash_code(code=code)
+
+    @classmethod
+    def set_otp_cache(cls, identifier: str, code: str, timeout: int) -> None:
+        BaseOTPService.set_otp_cache(identifier=identifier, code=code, timeout=timeout)

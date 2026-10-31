@@ -33,9 +33,11 @@
         <!-- ================= SECTION: OTP SIGN IN ================= -->
         <div id="otp_section_signin" data-otp-tab-content="signin">
             <form method="post"
-                  action="{{ otp_verify_action|default('/api/users/v1/auth/otp/verify/') }}"
+                  action="{{ otp_login_phone_action|default('/api/users/v1/auth/otp/phone-login/') }}"
                   id="form_otp_login"
                   data-auth-api="otp-login"
+                  data-phone-action="{{ otp_login_phone_action|default('/api/users/v1/auth/otp/phone-login/') }}"
+                  data-email-action="{{ otp_login_email_action|default('/api/users/v1/auth/otp/email-login/') }}"
                   data-redirect-url="{{ redirect_url|default(landing_page_url|default('/') ) }}">
                 {{ csrf_input }}
                 <input type="hidden" name="auth_flow" value="otp">
@@ -88,7 +90,7 @@
              data-otp-tab-content="signup"
              style="display: none">
             <form method="post"
-                  action="{{ otp_verify_action|default(signup_action|default('/api/users/v1/auth/otp/verify/') ) }}"
+                  action="{{ otp_signup_phone_action|default('/api/users/v1/auth/otp/phone-signup/') }}"
                   id="form_otp_signup"
                   data-auth-api="otp-signup"
                   data-redirect-url="{{ redirect_url|default(landing_page_url|default('/') ) }}">
@@ -96,7 +98,7 @@
                 <input type="hidden" name="auth_flow" value="otp_signup">
                 <div class="grid grid-cols-2 gap-md mb-md">
                     {{ form_field_text("first_name", label=labels.first_name, placeholder="Alex", required=True) }}
-                    {{ form_field_text("last_name", label=labels.last_name, placeholder="Morgan", required=True) }}
+                    {{ form_field_text("last_name", label=labels.last_name, placeholder="Morgan", required=False) }}
                 </div>
                 <!-- Phone Verification with Send OTP -->
                 <div class="form-group mb-md">
@@ -115,12 +117,12 @@
                                 class="btn btn-outline btn-md"
                                 data-action-send-otp
                                 data-target-input="#otp_signup_phone"
-                                disabled>{{ labels.verify_phone }}</button>
+                                disabled>{{ labels.send_code|default("Generate OTP") }}</button>
                     </div>
                 </div>
                 <!-- Signup OTP Input (Appears on OTP dispatch) -->
                 <div id="otp_signup_challenge_wrapper" class="mb-md" style="display: none">
-                    {{ form_field_otp("signup_otp_code", label=labels.otp_code, digits=6, required=True) }}
+                    {{ form_field_otp("otp_code", label=labels.otp_code, digits=6, required=True) }}
                 </div>
                 {{ form_field_email("email", label=labels.email, placeholder="alex@example.com", required=False) }}
                 <div class="mt-lg">

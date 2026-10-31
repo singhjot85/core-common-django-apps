@@ -528,13 +528,7 @@
     function checkSignupPhone() {
       if (!signupPhoneInput || signupPhoneInput.readOnly) return;
       const valid = isValidPhone(signupPhoneInput.value);
-      if (valid) {
-        if (signupChallenge) signupChallenge.style.display = "block";
-        if (signupSendBtn) signupSendBtn.disabled = false;
-      } else {
-        if (signupChallenge) signupChallenge.style.display = "none";
-        if (signupSendBtn) signupSendBtn.disabled = true;
-      }
+      if (signupSendBtn) signupSendBtn.disabled = !valid;
     }
 
     if (signupPhoneInput) {
@@ -556,6 +550,9 @@
 
         const identifier = targetInput.value.trim();
         const channel = identifier.includes("@") ? "email" : "phone";
+        const form = btn.closest("form");
+        const isSignup = form && form.id === "form_otp_signup";
+        const purpose = isSignup ? "signup" : "login";
 
         btn.disabled = true;
         btn.textContent = "Sending...";
@@ -567,7 +564,7 @@
               "Content-Type": "application/json",
               "X-CSRFToken": Core.getCSRFToken(),
             },
-            body: JSON.stringify({ identifier: identifier, channel: channel, purpose: "login" }),
+            body: JSON.stringify({ identifier: identifier, channel: channel, purpose: purpose }),
           });
           const data = await res.json();
 
@@ -579,7 +576,6 @@
             btn.disabled = true;
 
             // Ensure challenge section for this form is visible and focused
-            const form = btn.closest("form");
             const challenge = form
               ? (form.querySelector("#otp_challenge_wrapper") || form.querySelector("#otp_signup_challenge_wrapper"))
               : null;
@@ -721,16 +717,23 @@
         const hiddenOtp = otpForm.querySelector('input[name="otp_code"]');
         const identifier = identifierInput ? identifierInput.value.trim() : "";
         const code = hiddenOtp ? hiddenOtp.value.trim() : "";
-        const channel = identifier.includes("@") ? "email" : "phone";
+        const isEmail = identifier.includes("@");
+
+        const phoneAction = otpForm.dataset.phoneAction || "/api/users/v1/auth/otp/phone-login/";
+        const emailAction = otpForm.dataset.emailAction || "/api/users/v1/auth/otp/email-login/";
+        const endpoint = isEmail ? emailAction : phoneAction;
+        const payload = isEmail
+          ? { email: identifier, otp_code: code }
+          : { phone_number: identifier, otp_code: code };
 
         try {
-          const res = await fetch(otpForm.action, {
+          const res = await fetch(endpoint, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "X-CSRFToken": Core.getCSRFToken(),
             },
-            body: JSON.stringify({ identifier: identifier, code: code, channel: channel }),
+            body: JSON.stringify(payload),
           });
           const data = await res.json();
 
@@ -743,7 +746,7 @@
             }
             window.location.href = data.redirect_url || otpForm.dataset.redirectUrl || "/";
           } else {
-            Core.auth.showToast(data.detail || data.code || "Verification failed.");
+            Core.auth.showToast(data.detail || data.otp_code || data.email || data.phone_number || "Verification failed.");
             if (typeof data.remaining_attempts !== "undefined") {
               if (data.is_locked) {
                 Core.auth.setWarning("otp_login_attempts_warning", "Account locked. An unlock link has been emailed to you.");
@@ -774,24 +777,36 @@
 
         const phoneInput = document.getElementById("otp_signup_phone");
         const hiddenOtp =
-          otpSignupForm.querySelector('input[name="signup_otp_code"]') ||
-          otpSignupForm.querySelector('input[name="otp_code"]');
-        const identifier = phoneInput ? phoneInput.value.trim() : "";
-        const code = hiddenOtp ? hiddenOtp.value.trim() : "";
-        const channel = identifier.includes("@") ? "email" : "phone";
+          otpSignupForm.querySelector('input[name="otp_code"]') ||
+          otpSignupForm.querySelector('input[name="signup_otp_code"]');
+        const firstNameInput = otpSignupForm.querySelector('input[name="first_name"]');
+        const lastNameInput = otpSignupForm.querySelector('input[name="last_name"]');
+        const emailInput = otpSignupForm.querySelector('input[name="email"]');
 
-        if (!identifier || !code) {
+        const phoneNumber = phoneInput ? phoneInput.value.trim() : "";
+        const code = hiddenOtp ? hiddenOtp.value.trim() : "";
+        const firstName = firstNameInput ? firstNameInput.value.trim() : "";
+        const lastName = lastNameInput ? lastNameInput.value.trim() : "";
+        const email = emailInput ? emailInput.value.trim() : "";
+
+        if (!phoneNumber || !code) {
           Core.auth.showToast("Please enter phone number and 6-digit verification code.");
           if (submitBtn) submitBtn.disabled = false;
           return;
         }
 
+        const payload = {
+          first_name: firstName,
+          last_name: lastName,
+          phone_number: phoneNumber,
+          otp_code: code,
+        };
+        if (email) {
+          payload.email = email;
+        }
+
         try {
-          const actionAttr = otpSignupForm.getAttribute("action");
-          const endpoint =
-            actionAttr && !actionAttr.endsWith("/auth/signup/")
-              ? actionAttr
-              : "/api/users/v1/auth/otp/verify/";
+          const endpoint = otpSignupForm.action || "/api/users/v1/auth/otp/phone-signup/";
 
           const res = await fetch(endpoint, {
             method: "POST",
@@ -799,7 +814,7 @@
               "Content-Type": "application/json",
               "X-CSRFToken": Core.getCSRFToken(),
             },
-            body: JSON.stringify({ identifier: identifier, code: code, channel: channel }),
+            body: JSON.stringify(payload),
           });
           const data = await res.json();
 
@@ -812,7 +827,8 @@
             }
             window.location.href = data.redirect_url || otpSignupForm.dataset.redirectUrl || "/";
           } else {
-            Core.auth.showToast(data.detail || data.code || "Verification failed.");
+            const errorMsg = data.detail || data.otp_code || data.phone_number || data.email || "Signup failed.";
+            Core.auth.showToast(errorMsg);
             if (submitBtn) submitBtn.disabled = false;
           }
         } catch (err) {
