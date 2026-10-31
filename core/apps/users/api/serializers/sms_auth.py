@@ -1,3 +1,11 @@
+"""
+Serializers for SMS and phone-based OTP authentication and registration workflows.
+
+Provides:
+- PhoneOTPSignupSerializer: Provisions new users after verifying phone OTP code.
+- PhoneOTPLoginSerializer: Authenticates existing users upon phone OTP verification.
+"""
+
 import logging
 import typing
 
@@ -17,15 +25,33 @@ LOGGER = logging.getLogger(__name__)
 
 class PhoneOTPSignupSerializer(BaseOTPVerificationSerializer, BaseSignupSerializer):
     """
-    Serializer for signup via Phone/SMS OTP verification.
-    Requires first_name, phone_number, and otp_code.
+    Validate and provision a new user via verified Phone OTP passcode.
+
+    Requires ``first_name``, ``phone_number``, and ``otp_code``.
+    Marks the created user's ``is_phone_verified`` flag as True upon creation.
+
+    Validation rules:
+    - ``phone_number`` is required, must contain at least 7 digits, and must not exist in database.
+    - ``otp_code`` must match the active code issued to the phone number.
     """
 
     phone_number = serializers.CharField(max_length=32, required=True, allow_null=False)
 
     def validate_phone_number(self, value: typing.Optional[str]) -> str:
         """
-        Validate that phone number is provided, valid, and unique.
+        Validate that phone number is provided, valid syntax, and not already registered.
+
+        Args:
+            value (str, optional): Raw phone number string.
+
+        Returns:
+            str: Cleaned phone number string.
+
+        Raises:
+            ValidationError:
+            - Phone number is empty or omitted.
+            - Phone number contains fewer than 7 digits.
+            - Phone number already exists in the database.
         """
         if not value:
             raise serializers.ValidationError(
@@ -35,7 +61,16 @@ class PhoneOTPSignupSerializer(BaseOTPVerificationSerializer, BaseSignupSerializ
 
     def validate(self, attrs: dict) -> dict:
         """
-        Verify submitted OTP code against phone number.
+        Verify the submitted OTP code against the recipient phone number.
+
+        Args:
+            attrs (dict): Deserialized attributes including ``phone_number`` and ``otp_code``.
+
+        Returns:
+            dict: Validated attributes dictionary with ``is_phone_verified=True``.
+
+        Raises:
+            ValidationError: If OTP verification fails or the phone identity is locked.
         """
         is_valid, usr_msg = self.verify_otp(
             identifier=attrs.get("phone_number"), code=attrs.get("otp_code")
@@ -48,7 +83,18 @@ class PhoneOTPSignupSerializer(BaseOTPVerificationSerializer, BaseSignupSerializ
 
     def create(self, validated_data: dict) -> "User":
         """
-        Remove otp_code before persisting user.
+        Create and persist the verified user record.
+
+        Pops the transient ``otp_code`` field before calling ``create_user``.
+
+        Side effects:
+        - Writes a new user row with ``is_phone_verified=True`` to the database.
+
+        Args:
+            validated_data (dict): Sanitized validated attributes.
+
+        Returns:
+            User: Newly provisioned user instance.
         """
         validated_data.pop("otp_code", None)
         return super().create(validated_data)
@@ -56,15 +102,32 @@ class PhoneOTPSignupSerializer(BaseOTPVerificationSerializer, BaseSignupSerializ
 
 class PhoneOTPLoginSerializer(BaseOTPVerificationSerializer, serializers.Serializer):
     """
-    Serializer for logging in existing users via Phone/SMS OTP.
-    Requires phone_number and otp_code.
+    Authenticate an existing active user via verified Phone OTP passcode.
+
+    Requires an existing registered ``phone_number`` and matching ``otp_code``.
+    Updates ``is_phone_verified`` on the user record if not already marked.
+
+    Validation rules:
+    - ``phone_number`` is required and must belong to an existing active account.
+    - ``otp_code`` must match the active code stored in cache.
     """
 
     phone_number = serializers.CharField(max_length=32, required=True, allow_null=False)
 
     def validate_phone_number(self, value: typing.Optional[str]) -> str:
         """
-        Validate phone number format.
+        Validate that phone number is provided and contains minimum valid digits.
+
+        Args:
+            value (str, optional): Raw phone number string.
+
+        Returns:
+            str: Cleaned phone number string.
+
+        Raises:
+            ValidationError:
+            - Phone number is blank or missing.
+            - Phone number contains fewer than 7 digits.
         """
         if not value or not value.strip():
             raise serializers.ValidationError(_("Phone number is required."))
@@ -73,7 +136,22 @@ class PhoneOTPLoginSerializer(BaseOTPVerificationSerializer, serializers.Seriali
 
     def validate(self, attrs: dict) -> dict:
         """
-        Verify OTP code and retrieve matching user.
+        Verify OTP code and authenticate the matching existing user.
+
+        Side effects:
+        - Updates ``is_phone_verified=True`` on the user model if previously False.
+
+        Args:
+            attrs (dict): Dictionary with ``phone_number`` and ``otp_code``.
+
+        Returns:
+            dict: Attribute dictionary with authenticated ``attrs['user']``.
+
+        Raises:
+            ValidationError:
+            - OTP code is invalid, expired, or locked out.
+            - No user account exists with the provided phone number.
+            - User account is deactivated (``is_active=False``).
         """
         phone_number = attrs.get("phone_number")
         code = attrs.get("otp_code")

@@ -1,3 +1,14 @@
+"""
+Serializer exports for the users application authentication and registration domain.
+
+Exposes:
+- UserDetailsSerializer, BaseSignupSerializer, BaseOTPVerificationSerializer
+- PasswordLoginSerializer, PasswordSignupSerializer
+- EmailOTPLoginSerializer, EmailOTPSignupSerializer
+- PhoneOTPLoginSerializer, PhoneOTPSignupSerializer
+- Backward-compatible aliases: SignupSerializer, LoginSerializer
+"""
+
 from .base import (
     BaseOTPVerificationSerializer as BaseOTPVerificationSerializer,
     BaseSignupSerializer as BaseSignupSerializer,

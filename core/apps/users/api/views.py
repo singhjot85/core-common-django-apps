@@ -85,8 +85,21 @@ def _build_auth_response(
     request, user: "AbstractUser", status_code=status.HTTP_200_OK
 ) -> Response:
     """
-    Helper to establish session login, generate JWT tokens, serialize user details,
-    and return a standardized authentication Response.
+    Establish session login, generate JWT tokens, and return a standardized response.
+
+    Attaches user data, access/refresh tokens, and post-authentication redirect URL.
+    Optionally starts a Django request session if session middleware is active.
+
+    Side effects:
+    - Initiates Django session login if session middleware is present.
+
+    Args:
+        request (Request): DRF request object.
+        user (AbstractUser): Authenticated user model instance.
+        status_code (int, optional): HTTP status code. Defaults to 200 OK.
+
+    Returns:
+        Response: HTTP Response containing tokens, serialized user details, and redirect URL.
     """
     if hasattr(request, "session"):
         login(getattr(request, "_request", request), user)
@@ -108,14 +121,27 @@ def _build_auth_response(
 class PasswordAuthViewSet(viewsets.GenericViewSet):
     """
     ViewSet handling password-based login and signup.
-    Endpoints:
-    - POST auth/password/login/
-    - POST auth/password/signup/
+
+    Permissions: AllowAny.
+
+    API details:
+    - POST ``/api/users/v1/auth/password/login/``
+        - **200**: User authenticated; JWT tokens and user profile returned.
+        - **400**: Missing credentials or invalid username/password.
+        - **403**: Password authentication disabled by configuration.
+        - **423**: Account locked due to excessive failed attempts.
+    - POST ``/api/users/v1/auth/password/signup/``
+        - **201**: User created and authenticated; JWT tokens returned.
+        - **400**: Payload validation failed (duplicate username, weak password).
+        - **403**: Password authentication disabled by configuration.
     """
 
     permission_classes = [permissions.AllowAny]
 
     def get_serializer_class(self):
+        """
+        Return appropriate serializer based on action.
+        """
         if self.action == "signup":
             return PasswordSignupSerializer
         return PasswordLoginSerializer
@@ -124,7 +150,21 @@ class PasswordAuthViewSet(viewsets.GenericViewSet):
     def login(self, request, *args, **kwargs):
         """
         Authenticate user with username and password.
-        Enforces account lockout checks.
+
+        Validates credentials and enforces account lockout checks on consecutive failures.
+
+        Side effects:
+        - Increments failed attempt counter in cache on invalid credentials.
+        - Clears failed attempt counter on successful login.
+
+        Args:
+            request (Request): DRF request with ``username`` and ``password``.
+
+        Returns:
+            Response: Auth tokens, user details, and redirect URL on success; error response otherwise.
+
+        Raises:
+            PermissionDenied: If password authentication is disabled.
         """
         if not app_settings.ENABLE_PASSWORD_LOGIN:
             raise PermissionDenied(
@@ -175,6 +215,18 @@ class PasswordAuthViewSet(viewsets.GenericViewSet):
     def signup(self, request, *args, **kwargs):
         """
         Register a new user account with username and password.
+
+        Side effects:
+        - Creates a new User row in the database.
+
+        Args:
+            request (Request): DRF request with registration fields.
+
+        Returns:
+            Response: HTTP 201 Created containing tokens and user profile.
+
+        Raises:
+            PermissionDenied: If password authentication is disabled.
         """
         if not app_settings.ENABLE_PASSWORD_LOGIN:
             raise PermissionDenied(
@@ -190,14 +242,27 @@ class PasswordAuthViewSet(viewsets.GenericViewSet):
 class EmailOTPAuthViewSet(viewsets.GenericViewSet):
     """
     ViewSet handling Email OTP-based login and signup.
-    Endpoints:
-    - POST auth/otp/email-login/
-    - POST auth/otp/email-signup/
+
+    Permissions: AllowAny.
+
+    API details:
+    - POST ``/api/users/v1/auth/otp/email-login/``
+        - **200**: User authenticated via email OTP; JWT tokens returned.
+        - **400**: Invalid OTP or unregistered email address.
+        - **403**: OTP authentication disabled by configuration.
+        - **423**: Email address temporarily locked due to excessive failed attempts.
+    - POST ``/api/users/v1/auth/otp/email-signup/``
+        - **201**: User created and authenticated with verified email.
+        - **400**: Invalid OTP, missing fields, or email already registered.
+        - **403**: OTP authentication disabled by configuration.
     """
 
     permission_classes = [permissions.AllowAny]
 
     def get_serializer_class(self):
+        """
+        Return appropriate serializer based on action.
+        """
         if self.action == "signup":
             return EmailOTPSignupSerializer
         return EmailOTPLoginSerializer
@@ -205,7 +270,20 @@ class EmailOTPAuthViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=["post"], url_path="email-login")
     def login(self, request, *args, **kwargs):
         """
-        Verify Email OTP and authenticate user.
+        Verify Email OTP and authenticate existing user.
+
+        Side effects:
+        - Resets failed attempt counter in cache on successful verification.
+        - Marks ``is_email_verified=True`` on user model if previously False.
+
+        Args:
+            request (Request): DRF request with ``email`` and ``otp_code``.
+
+        Returns:
+            Response: HTTP 200 OK containing JWT tokens and serialized user profile.
+
+        Raises:
+            PermissionDenied: If OTP login is disabled.
         """
         if not app_settings.ENABLE_OTP_LOGIN:
             raise PermissionDenied(_("OTP authentication is currently disabled."))
@@ -232,6 +310,19 @@ class EmailOTPAuthViewSet(viewsets.GenericViewSet):
     def signup(self, request, *args, **kwargs):
         """
         Verify Email OTP and register a new user account.
+
+        Side effects:
+        - Creates a new User row with ``is_email_verified=True``.
+        - Clears any lockout attempt counters for the registered email.
+
+        Args:
+            request (Request): DRF request with profile data, ``email``, and ``otp_code``.
+
+        Returns:
+            Response: HTTP 201 Created containing tokens and user profile.
+
+        Raises:
+            PermissionDenied: If OTP registration is disabled.
         """
         if not app_settings.ENABLE_OTP_LOGIN:
             raise PermissionDenied(_("OTP authentication is currently disabled."))
@@ -248,14 +339,27 @@ class EmailOTPAuthViewSet(viewsets.GenericViewSet):
 class SMSOTPAuthViewSet(viewsets.GenericViewSet):
     """
     ViewSet handling SMS/Phone OTP-based login and signup.
-    Endpoints:
-    - POST auth/otp/phone-login/
-    - POST auth/otp/phone-signup/
+
+    Permissions: AllowAny.
+
+    API details:
+    - POST ``/api/users/v1/auth/otp/phone-login/``
+        - **200**: User authenticated via SMS OTP; JWT tokens returned.
+        - **400**: Invalid OTP or unregistered phone number.
+        - **403**: OTP authentication disabled by configuration.
+        - **423**: Phone number temporarily locked due to excessive failed attempts.
+    - POST ``/api/users/v1/auth/otp/phone-signup/``
+        - **201**: User created and authenticated with verified phone number.
+        - **400**: Invalid OTP, missing fields, or phone number already registered.
+        - **403**: OTP authentication disabled by configuration.
     """
 
     permission_classes = [permissions.AllowAny]
 
     def get_serializer_class(self):
+        """
+        Return appropriate serializer based on action.
+        """
         if self.action == "signup":
             return PhoneOTPSignupSerializer
         return PhoneOTPLoginSerializer
@@ -263,7 +367,20 @@ class SMSOTPAuthViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=["post"], url_path="phone-login")
     def login(self, request, *args, **kwargs):
         """
-        Verify Phone OTP and authenticate user.
+        Verify Phone OTP and authenticate existing user.
+
+        Side effects:
+        - Resets failed attempt counter in cache on successful verification.
+        - Marks ``is_phone_verified=True`` on user model if previously False.
+
+        Args:
+            request (Request): DRF request with ``phone_number`` and ``otp_code``.
+
+        Returns:
+            Response: HTTP 200 OK containing JWT tokens and serialized user profile.
+
+        Raises:
+            PermissionDenied: If OTP login is disabled.
         """
         if not app_settings.ENABLE_OTP_LOGIN:
             raise PermissionDenied(_("OTP authentication is currently disabled."))
@@ -290,6 +407,19 @@ class SMSOTPAuthViewSet(viewsets.GenericViewSet):
     def signup(self, request, *args, **kwargs):
         """
         Verify Phone OTP and register a new user account.
+
+        Side effects:
+        - Creates a new User row with ``is_phone_verified=True``.
+        - Clears any lockout attempt counters for the registered phone number.
+
+        Args:
+            request (Request): DRF request with profile data, ``phone_number``, and ``otp_code``.
+
+        Returns:
+            Response: HTTP 201 Created containing tokens and user profile.
+
+        Raises:
+            PermissionDenied: If OTP registration is disabled.
         """
         if not app_settings.ENABLE_OTP_LOGIN:
             raise PermissionDenied(_("OTP authentication is currently disabled."))
@@ -311,12 +441,39 @@ class SMSOTPAuthViewSet(viewsets.GenericViewSet):
 class OTPSendView(APIView):
     """
     Dispatch one-time passcodes (OTP) via SMS or Email asynchronously.
+
+    Validates identifier syntax and immediately returns HTTP 202 Accepted,
+    queuing actual dispatch to a background worker to prevent user enumeration.
+
+    API details:
+    - POST ``/api/users/v1/auth/otp/send/``
+        - **202**: Request accepted and dispatched to background queue.
+        - **400**: Invalid identifier syntax or channel parameters.
+        - **403**: OTP authentication disabled by configuration.
     """
 
     permission_classes = [AllowAny]
     serializer_class = OTPSendSerializer
 
     def post(self, request, *args, **kwargs):
+        """
+        Dispatch an OTP verification code to the target identifier asynchronously.
+
+        Always returns 202 Accepted to prevent user enumeration. The actual generation
+        and delivery is handled by the ``send_otp_task`` Celery task.
+
+        Side effects:
+        - Queues ``send_otp_task`` Celery job for asynchronous delivery.
+
+        Args:
+            request (Request): DRF request with ``identifier``, ``channel``, and ``purpose``.
+
+        Returns:
+            Response: HTTP 202 Accepted response.
+
+        Raises:
+            PermissionDenied: If OTP authentication is disabled.
+        """
         if not app_settings.ENABLE_OTP_LOGIN:
             raise PermissionDenied(_("OTP authentication is currently disabled."))
 
@@ -348,12 +505,34 @@ class OTPSendView(APIView):
 
 class GoogleLoginView(APIView):
     """
-    API view for Google social authentication.
+    Authenticate or register a user using a Google OAuth2 ID token.
+
+    API details:
+    - POST ``/api/users/v1/auth/social/google/``
+        - **200**: Google token verified; existing user authenticated.
+        - **201**: Google token verified; new user created and authenticated.
+        - **400**: Invalid or expired Google ID token.
+        - **403**: Social authentication disabled by configuration.
     """
 
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        """
+        Verify Google ID token and return session and JWT tokens.
+
+        Side effects:
+        - Creates user record and social auth link if first-time signin.
+
+        Args:
+            request (Request): DRF request with ``id_token``.
+
+        Returns:
+            Response: Auth tokens, user details, and redirect URL.
+
+        Raises:
+            PermissionDenied: If social login is disabled.
+        """
         if not app_settings.ENABLE_SOCIAL_LOGIN:
             raise PermissionDenied(_("Social authentication is currently disabled."))
 
@@ -374,12 +553,30 @@ class GoogleLoginView(APIView):
 
 class AccountUnlockView(APIView):
     """
-    API view to verify an account unlock token and reactivate the user account.
+    Verify an account unlock token and reactivate the user account.
+
+    API details:
+    - GET ``/api/users/v1/auth/unlock/?token={token}``
+        - **200**: Account successfully unlocked.
+        - **400**: Unlock token is invalid, expired, or already used.
     """
 
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
+        """
+        Verify an account unlock token and clear lockout status.
+
+        Side effects:
+        - Removes lockout state and failure counters from cache.
+        - Deletes used unlock token from cache.
+
+        Args:
+            request (Request): DRF request with ``token`` query parameter.
+
+        Returns:
+            Response: JSON payload indicating success and unlock status.
+        """
         token = request.query_params.get("token", "")
         success, message = AuthLockoutService.verify_and_unlock_account(token)
         if success:
