@@ -7,30 +7,21 @@ from core.apps.crm.api.views import (
     CustomerPreferenceViewSet,
     CustomerViewSet,
 )
-from core.utils.routers import get_api_router_instance
+from core.utils.routers import get_api_router_instance, get_nested_api_router_instance
 
-crm_router = get_api_router_instance()
+base_crm_router = get_api_router_instance()
+base_crm_router.register(r"customers", CustomerViewSet, basename="customer")
 
-crm_router.register(r"customers", CustomerViewSet, basename="customer")
-crm_router.register(r"customer-phones", CustomerPhoneViewSet, basename="customer-phone")
-crm_router.register(r"customer-emails", CustomerEmailViewSet, basename="customer-email")
+crm_router = get_nested_api_router_instance(base_crm_router)
+crm_router.register(r"phones", CustomerPhoneViewSet, basename="phones")
+crm_router.register(r"emails", CustomerEmailViewSet, basename="emails")
+crm_router.register(r"addresses", CustomerAddressViewSet, basename="addresses")
 crm_router.register(
-    r"customer-addresses", CustomerAddressViewSet, basename="customer-address"
+    r"identifications", CustomerIdentificationViewSet, basename="identifications"
 )
 crm_router.register(
-    r"customer-identifications",
-    CustomerIdentificationViewSet,
-    basename="customer-identification",
+    r"preference-types", CustomerPreferenceTypeViewSet, basename="preference-types"
 )
-crm_router.register(
-    r"customer-preference-types",
-    CustomerPreferenceTypeViewSet,
-    basename="customer-preference-type",
-)
-crm_router.register(
-    r"customer-preferences",
-    CustomerPreferenceViewSet,
-    basename="customer-preference",
-)
+crm_router.register(r"preferences", CustomerPreferenceViewSet, basename="preferences")
 
-urlpatterns = crm_router.urls
+urlpatterns = [*base_crm_router, *crm_router.urls]
