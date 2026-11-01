@@ -7,7 +7,7 @@
         "postal_code": "500001",
         "country": "IN",
         "address_type": "permanent",
-        "is_primary": true
+        "is_primary": false
     },
     {
         "customer__first_name": "Diana",

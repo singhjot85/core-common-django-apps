@@ -44,7 +44,7 @@ endif
 # --------------------------
 # Development Targets
 # --------------------------
-.PHONY: start-app, dev-setup
+.PHONY: start-app, seed-tenants, seed-models, setup, clean-setup
 
 docker-start-new-app:
 	@echo "⌛ Creating app ${APP_LABEL}...\n"

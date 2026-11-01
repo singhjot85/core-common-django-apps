@@ -2,13 +2,13 @@
     {
         "customer__first_name": "Charlie",
         "email": "charlie@private.localhost",
-        "email_type": "primary",
-        "is_primary": true
+        "email_type": "work",
+        "is_primary": false
     },
     {
         "customer__first_name": "Diana",
         "email": "diana@private.localhost",
-        "email_type": "primary",
+        "email_type": "work",
         "is_primary": true
     }
 ]
