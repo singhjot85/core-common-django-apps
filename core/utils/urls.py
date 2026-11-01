@@ -1,168 +1,64 @@
-import importlib.util
-import logging
+"""
+URL resolution and route-building utilities for explicit API registration.
+
+Transforms declarative URL mappings (file_path, version, api_path) into
+versioned Django URLResolver instances without relying on automatic module discovery.
+"""
+
 import typing
 
-from django.conf import settings
-from django.urls import URLPattern, URLResolver, include, path
+from django.urls import URLResolver, include, path
 
-LOGGER = logging.getLogger(__name__)
+URL_ENTRY_TYPE: typing.TypeAlias = (
+    tuple[str, typing.Optional[str], str] | tuple[str, str]
+)
+URL_MAPPING_TYPE: typing.TypeAlias = typing.Sequence[URL_ENTRY_TYPE]
 
 
-def _build_url_path(app_label: str, prefix: str = "api", version: str = "v1") -> str:
+def resolve_and_build_paths(
+    url_mapping: URL_MAPPING_TYPE,
+    prefix: typing.Optional[str] = "api",
+) -> list[URLResolver]:
     """
-    Construct a normalized, versioned URL route path string.
+    Construct versioned Django URLResolver patterns from an explicit URL mapping sequence.
+
+    Each mapping entry defines:
+    - ``file_path`` (str): Dotted Python import path to the target `urls` module.
+    - ``version`` (str | None): API version segment (e.g. 'v1'). Defaults to 'v1' if omitted or None.
+    - ``api_path`` (str): Resource path segment (e.g. 'users', 'customers').
+
+    Normalizes slashes and ensures each included resolver ends with a trailing slash
+    so sub-routes concatenate cleanly.
 
     Args:
-        app_label: The short app label (e.g. 'users', 'crm').
-        prefix: URL prefix (e.g. 'api'). Defaults to 'api'.
-        version: API version string (e.g. 'v1'). Defaults to 'v1'.
+        url_mapping (URL_MAPPING_TYPE): Sequence of URL mapping tuples.
+        prefix (str, optional): Optional top-level URL prefix. Defaults to 'api'.
 
     Returns:
-        Normalized URL path ending with a forward slash.
+        list[URLResolver]: List of Django URLResolver objects.
+
+    Raises:
+        ValueError: If any mapping entry does not match the expected 2-tuple or 3-tuple format.
     """
-    parts = []
-    if prefix:
-        parts.append(prefix.strip("/"))
-    parts.append(app_label.strip("/"))
-    if version:
-        parts.append(version.strip("/"))
+    url_patterns: list[URLResolver] = []
 
-    return f"{'/'.join(parts)}/"
+    for entry in url_mapping:
+        if len(entry) == 3:
+            file_path, version, api_path = entry
+        elif len(entry) == 2:
+            file_path, api_path = entry
+            version = "v1"
+        else:
+            raise ValueError(f"Invalid URL mapping entry, got: {entry!r}")
 
+        clean_prefix = prefix.strip("/") if prefix else ""
+        clean_path = api_path.strip("/")
+        clean_version = (version or "v1").strip("/")
 
-def _has_urls_module(dotted_app_path: str) -> bool:
-    """
-    Check whether a dotted app path contains a discoverable `urls` module.
+        parts = [p for p in (clean_prefix, clean_path, clean_version) if p]
+        route = f"{'/'.join(parts)}/" if parts else ""
 
-    Args:
-        dotted_app_path: Dotted module path (e.g. 'core.apps.users').
+        mapping = path(route, include(file_path))
+        url_patterns.append(mapping)
 
-    Returns:
-        True if `<dotted_app_path>.urls` exists and can be imported, False otherwise.
-    """
-    module_name = f"{dotted_app_path}.urls"
-    try:
-        spec = importlib.util.find_spec(module_name)
-        return spec is not None
-    except (ImportError, ValueError, AttributeError):
-        return False
-
-
-def _resolve_app_url_entries(
-    app_list: typing.Iterable[str],
-    excluded_apps: typing.Iterable[str] | None = None,
-    prefix: str = "api",
-    version: str = "v1",
-) -> tuple[URLPattern | URLResolver, ...]:
-    """
-    Filter apps, discover their URL modules, and generate Django URL patterns.
-
-    Args:
-        app_list: Iterable of dotted app paths to inspect.
-        excluded_apps: Iterable of dotted app paths to omit.
-        prefix: URL prefix string for generated endpoints.
-        version: API version string.
-
-    Returns:
-        Tuple of Django URLPattern or URLResolver objects.
-    """
-    exclusions = set(excluded_apps) if excluded_apps else set()
-    url_entries: list[URLPattern | URLResolver] = []
-
-    for dotted_app_path in app_list:
-        if dotted_app_path in exclusions:
-            continue
-
-        if not _has_urls_module(dotted_app_path):
-            LOGGER.debug("Skipping %s: no 'urls' module found.", dotted_app_path)
-            continue
-
-        app_label = dotted_app_path.split(".")[-1]
-        url_path = _build_url_path(app_label=app_label, prefix=prefix, version=version)
-        url_entries.append(path(url_path, include(f"{dotted_app_path}.urls")))
-
-    return tuple(url_entries)
-
-
-def build_tenant_app_urlpatterns(
-    prefix: str = "api",
-    version: str = "v1",
-) -> tuple[URLPattern | URLResolver, ...]:
-    """
-    Construct versioned API URL patterns for tenant-private applications.
-
-    Excludes shared, tenant-only infrastructure, and external dependencies.
-
-    Args:
-        prefix: Root URL prefix (default: 'api').
-        version: API version segment (default: 'v1').
-
-    Returns:
-        Tuple of discovered Django URLPattern or URLResolver objects.
-    """
-    tenant_apps = getattr(settings, "DJANGO_TENANT_PRIVATE_APPS", [])
-    excluded = (
-        getattr(settings, "SHARED_DJANGO_APPS", [])
-        + getattr(settings, "TENANT_ONLY_DJANGO_APPS", [])
-        + getattr(settings, "SHARED_EXTRA_DEPENDENCIES", [])
-        + getattr(settings, "TENANT_ONLY_EXTRA_DEPENDENCIES", [])
-    )
-    return _resolve_app_url_entries(
-        app_list=tenant_apps,
-        excluded_apps=excluded,
-        prefix=prefix,
-        version=version,
-    )
-
-
-def build_public_app_urlpatterns(
-    prefix: str = "api",
-    version: str = "v1",
-) -> tuple[URLPattern | URLResolver, ...]:
-    """
-    Construct versioned API URL patterns for public/shared-schema applications.
-
-    Excludes shared, public-only infrastructure, and external dependencies.
-
-    Args:
-        prefix: Root URL prefix (default: 'api').
-        version: API version segment (default: 'v1').
-
-    Returns:
-        Tuple of discovered Django URLPattern or URLResolver objects.
-    """
-    public_apps = getattr(settings, "DJANGO_TENANT_PUBLIC_APPS", [])
-    excluded = (
-        getattr(settings, "SHARED_DJANGO_APPS", [])
-        + getattr(settings, "PUBLIC_ONLY_DJANGO_APPS", [])
-        + getattr(settings, "SHARED_EXTRA_DEPENDENCIES", [])
-        + getattr(settings, "PUBLIC_ONLY_EXTRA_DEPENDENCIES", [])
-    )
-    return _resolve_app_url_entries(
-        app_list=public_apps,
-        excluded_apps=excluded,
-        prefix=prefix,
-        version=version,
-    )
-
-
-def build_app_urlpatterns(
-    prefix: str = "api",
-    version: str = "v1",
-) -> tuple[URLPattern | URLResolver, ...]:
-    """
-    Construct versioned API URL patterns for all configured `PROJECT_APPS`.
-
-    Args:
-        prefix: Root URL prefix (default: 'api').
-        version: API version segment (default: 'v1').
-
-    Returns:
-        Tuple of discovered Django URLPattern or URLResolver objects.
-    """
-    project_apps = getattr(settings, "PROJECT_APPS", [])
-    return _resolve_app_url_entries(
-        app_list=project_apps,
-        prefix=prefix,
-        version=version,
-    )
+    return url_patterns

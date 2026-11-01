@@ -15,8 +15,8 @@ from core.apps.users.api.template_views import (
     RegisterView,
     SignupView,
 )
+from core.config.api_protected import core_api_url_patterns
 from core.utils.admin import public_admin_site
-from core.utils.urls import build_public_app_urlpatterns
 
 urlpatterns = [
     # UI / Template Endpoints
@@ -28,5 +28,5 @@ urlpatterns = [
     # Django Admin
     path("admin/", public_admin_site.urls),
     # Backend API Endpoints
-    *build_public_app_urlpatterns(),
+    *core_api_url_patterns,
 ]
