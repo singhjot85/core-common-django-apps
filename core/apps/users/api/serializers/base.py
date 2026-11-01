@@ -24,6 +24,7 @@ from core.apps.users.services.otp import OTPServiceFactory
 from core.apps.users.tasks import send_otp_task
 from core.utils.tasks import queue_task
 
+Customer = get_customer_model()
 User = get_user_model()
 LOGGER = logging.getLogger(__name__)
 
@@ -184,13 +185,16 @@ class BaseSignupSerializer(serializers.Serializer):
         user = User.objects.create_user(**validated_data)
 
         if app_settings.AUTO_CREATE_CUSTOMER:
-            Customer = get_customer_model()
-
-            customer = Customer.objects.get_or_create_for_user(
+            customer, created = Customer.objects.get_or_create_for_user(
                 user=user, **customer_create_kwargs
             )
 
-            LOGGER.info("Customer: %s, crated for user: %s", customer, user)
+            LOGGER.info(
+                "Customer: %s, created for user: %s (newly_created=%s)",
+                customer,
+                user,
+                created,
+            )
 
         return user
 

@@ -61,17 +61,32 @@ class AbstractCustomer(BaseModel, AbstractParty):
 
     @property
     def primary_phone(self) -> typing.Optional["AbstractCustomerPhone"]:
-        """Return the primary phone instance for the customer."""
+        """
+        Return the primary phone instance for the customer.
+
+        Returns:
+            AbstractCustomerPhone | None: The active primary phone record if set, else None.
+        """
         return self.phones.filter(is_primary=True).first()
 
     @property
     def primary_email(self) -> typing.Optional["AbstractCustomerEmail"]:
-        """Return the primary email instance for the customer."""
+        """
+        Return the primary email instance for the customer.
+
+        Returns:
+            AbstractCustomerEmail | None: The active primary email record if set, else None.
+        """
         return self.emails.filter(is_primary=True).first()
 
     @property
     def primary_address(self) -> typing.Optional["AbstractCustomerAddress"]:
-        """Return the primary address instance for the customer."""
+        """
+        Return the primary address instance for the customer.
+
+        Returns:
+            AbstractCustomerAddress | None: The active primary address record if set, else None.
+        """
         return self.addresses.filter(is_primary=True).first()
 
 
@@ -103,7 +118,7 @@ class AbstractCustomerPhone(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["customer"],
-                condition=[models.Q(is_primary=True, is_removed=False)],
+                condition=models.Q(is_primary=True, is_removed=False),
                 name="unique_available_primary_phone_per_customer",
             )
         ]
@@ -140,7 +155,7 @@ class AbstractCustomerEmail(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["customer"],
-                condition=[models.Q(is_primary=True, is_removed=False)],
+                condition=models.Q(is_primary=True, is_removed=False),
                 name="unique_available_primary_email_per_customer",
             )
         ]
@@ -176,7 +191,7 @@ class AbstractCustomerAddress(BaseModel, AbstractAddress):
         constraints = [
             models.UniqueConstraint(
                 fields=["customer"],
-                condition=[models.Q(is_primary=True, is_removed=False)],
+                condition=models.Q(is_primary=True, is_removed=False),
                 name="unique_available_primary_address_per_customer",
             )
         ]
@@ -257,7 +272,15 @@ class AbstractCustomerPreferenceType(BaseModel):
         return f"{self.label} ({self.code})"
 
     def clean(self):
-        """Validate default_value against data_type."""
+        """
+        Validate default_value against data_type.
+
+        Ensures that boolean types receive a boolean default, choice types receive
+        a value present in the allowed list, and multi-select types receive a subset list.
+
+        Raises:
+            ValidationError: If default_value does not conform to the data_type schema.
+        """
         if (
             self.data_type == PreferenceDataTypeChoices.BOOLEAN
             and self.default_value is not None
@@ -315,7 +338,13 @@ class AbstractCustomerPreference(BaseModel):
         return f"{self.customer} - {self.preference_type}: {self.value}"
 
     def clean(self):
-        """Validate value against preference_type data_type and allowed values."""
+        """
+        Validate value against preference_type data_type and allowed values.
+
+        Raises:
+            ValidationError: If value violates boolean typing, choice inclusion,
+                or multi-select list requirements.
+        """
         if not self.preference_type_id:
             return
         pref_type = self.preference_type

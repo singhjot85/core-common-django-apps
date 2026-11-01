@@ -1,3 +1,17 @@
+"""
+DRF serializers for CRM entities and related customer sub-resources.
+
+Provides:
+- CustomerSerializer: Standard serializer for creating and updating customer profiles.
+- CustomerDetailsSerializer: Comprehensive read-only serializer embedding related contacts and preferences.
+- CustomerPhoneSerializer: Serializer for customer phone records.
+- CustomerEmailSerializer: Serializer for customer email records.
+- CustomerAddressSerializer: Serializer for customer address records.
+- CustomerIdentificationSerializer: Serializer for customer KYC and identity documents.
+- CustomerPreferenceSerializer: Serializer for individual customer preference values.
+- CustomerPreferenceTypeSerializer: Serializer for customer preference definitions and schema choices.
+"""
+
 from rest_framework import serializers
 
 from core.apps.crm import (
@@ -24,7 +38,11 @@ CustomerPreferenceType = get_customer_preference_type_model()
 
 
 class CustomerPhoneSerializer(DynamicReadOnlyModelSerializer):
-    """Serializer for customer phone numbers."""
+    """
+    Serialize and validate customer phone numbers.
+
+    Enforces phone format validation and contact type choices.
+    """
 
     class Meta:
         model = CustomerPhone
@@ -40,7 +58,11 @@ class CustomerPhoneSerializer(DynamicReadOnlyModelSerializer):
 
 
 class CustomerEmailSerializer(DynamicReadOnlyModelSerializer):
-    """Serializer for customer email addresses."""
+    """
+    Serialize and validate customer email addresses.
+
+    Enforces email format validation and contact type choices.
+    """
 
     class Meta:
         model = CustomerEmail
@@ -49,7 +71,11 @@ class CustomerEmailSerializer(DynamicReadOnlyModelSerializer):
 
 
 class CustomerAddressSerializer(DynamicReadOnlyModelSerializer):
-    """Serializer for customer physical and mailing addresses."""
+    """
+    Serialize and validate customer physical and mailing addresses.
+
+    Exposes the composite ``full_address`` property as a read-only field.
+    """
 
     full_address = serializers.CharField(read_only=True)
 
@@ -73,7 +99,11 @@ class CustomerAddressSerializer(DynamicReadOnlyModelSerializer):
 
 
 class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
-    """Serializer for customer KYC and identity documents."""
+    """
+    Serialize customer KYC, identity credentials, and verification status.
+
+    Includes the human-readable ``identity_type_display`` label.
+    """
 
     identity_type_display = serializers.CharField(
         source="get_identity_type_display", read_only=True
@@ -98,7 +128,11 @@ class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
 
 
 class CustomerPreferenceSerializer(serializers.ModelSerializer):
-    """Serializer for individual customer preference entries."""
+    """
+    Serialize individual customer preference assignments.
+
+    Includes human-readable code and label sourced from the associated preference type.
+    """
 
     preference_code = serializers.CharField(
         source="preference_type.code", read_only=True
@@ -121,7 +155,12 @@ class CustomerPreferenceSerializer(serializers.ModelSerializer):
 
 
 class CustomerDetailsSerializer(ReadOnlyModelSerializer):
-    """ """
+    """
+    Read-only serializer for comprehensive customer profile details.
+
+    Embeds related phone numbers, email addresses, physical addresses,
+    KYC identifications, and active preference settings.
+    """
 
     full_name = serializers.CharField(read_only=True)
     phones = CustomerPhoneSerializer(many=True, read_only=True)
@@ -152,7 +191,9 @@ class CustomerDetailsSerializer(ReadOnlyModelSerializer):
 
 
 class CustomerPreferenceTypeSerializer(DynamicReadOnlyModelSerializer):
-    """Serializer for customer preference types."""
+    """
+    Serialize customer preference type schemas and configuration options.
+    """
 
     data_type_display = serializers.CharField(
         source="get_data_type_display", read_only=True
@@ -175,7 +216,9 @@ class CustomerPreferenceTypeSerializer(DynamicReadOnlyModelSerializer):
 
 
 class CustomerSerializer(serializers.ModelSerializer):
-    """Serializer for customer profiles with nested contacts and addresses."""
+    """
+    Serialize customer profile attributes for creation and updates.
+    """
 
     class Meta:
         model = Customer
@@ -192,4 +235,13 @@ class CustomerSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
+        """
+        Create and return a new Customer instance.
+
+        Args:
+            validated_data (dict): Validated customer field data.
+
+        Returns:
+            Customer: Newly created customer profile instance.
+        """
         return super().create(validated_data)

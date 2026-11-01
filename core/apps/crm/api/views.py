@@ -1,3 +1,18 @@
+"""
+API views and viewsets for the CRM application.
+
+Provides:
+- BaseCustomerViewSet: Base viewset restricting HTTP methods and enforcing authentication.
+- BaseCustomerEntityViewSet: Nested viewset mixin binding child resources to parent customer URLs.
+- CustomerViewSet: Top-level endpoints for customer profiles.
+- CustomerPhoneViewSet: Customer phone management endpoints with primary toggling.
+- CustomerEmailViewSet: Customer email management endpoints with primary toggling.
+- CustomerAddressViewSet: Customer address management endpoints with primary toggling.
+- CustomerIdentificationViewSet: Customer KYC and identity document records.
+- CustomerPreferenceTypeViewSet: Catalog viewset for configuring customer preference schemas.
+- CustomerPreferenceViewSet: Customer preference value endpoints nested under customers.
+"""
+
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -40,7 +55,10 @@ class BaseCustomerViewSet(
 ):
     """
     Base ViewSet for customer entity endpoints.
-    Disallows listing all records and deleting records via API.
+
+    Restricts HTTP methods to GET, POST, and PUT. Explicitly excludes
+    list and delete actions to prevent bulk data enumeration and accidental
+    destructive removals via the API.
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -52,7 +70,13 @@ class BaseCustomerEntityViewSet(
     mixins.ListModelMixin,
     BaseCustomerViewSet,
 ):
-    """ """
+    """
+    Base ViewSet for nested customer sub-entities.
+
+    Combines ``NestedViewSetMixin`` with customer scoping to filter all
+    queries and validate mutations against the parent customer defined
+    by ``customer_pk`` in the URL path.
+    """
 
     # Mapping for NestedViewSetMixin
     parent_lookup_kwargs = {"customer_pk": "customer_id"}
@@ -60,14 +84,42 @@ class BaseCustomerEntityViewSet(
 
 class CustomerViewSet(BaseCustomerViewSet):
     """
-    ViewSet for managing Customer records.
+    ViewSet for managing top-level Customer profiles.
+
+    Provides endpoints for creating, retrieving, and updating customer profiles.
+    Optimizes queries for detail retrievals by prefetching all associated contacts,
+    identifications, and preferences.
     """
 
     queryset = Customer.available_objects.all()
     serializer_class = CustomerSerializer
 
+    def get_queryset(self):
+        """
+        Return queryset optimized with prefetched relations for detail views.
+
+        Returns:
+            models.QuerySet: Optimized Customer queryset.
+        """
+        queryset = super().get_queryset()
+        if self.action == "retrieve":
+            return queryset.prefetch_related(
+                "phones",
+                "emails",
+                "addresses",
+                "identifications",
+                "preferences__preference_type",
+            )
+        return queryset
+
     def get_serializer_class(self):
-        """ """
+        """
+        Return the serializer class matching the requested action.
+
+        Returns:
+            type[serializers.Serializer]: CustomerSerializer for mutations,
+            CustomerDetailsSerializer for detail representations.
+        """
         if self.action in ["create", "update"]:
             return CustomerSerializer
 
@@ -76,7 +128,9 @@ class CustomerViewSet(BaseCustomerViewSet):
 
 class CustomerPhoneViewSet(BaseCustomerEntityViewSet):
     """
-    ViewSet for managing CustomerPhone records.
+    ViewSet for managing customer phone records.
+
+    Scoped under ``/customers/{customer_pk}/phones/``. Supports primary phone toggling.
     """
 
     queryset = CustomerPhone.available_objects.select_related("customer").all()
@@ -84,7 +138,19 @@ class CustomerPhoneViewSet(BaseCustomerEntityViewSet):
 
     @action(detail=True, methods=["post"], url_path="set-primary")
     def set_primary(self, request, *args, **kwargs):
-        """Set this phone number as primary for its customer."""
+        """
+        Set this phone number as primary for its customer.
+
+        Side effects:
+            - Unsets primary flag on all other phone numbers of the customer.
+            - Sets ``is_primary=True`` on this phone record.
+
+        Args:
+            request (Request): Active HTTP request.
+
+        Returns:
+            Response: Serialized updated phone object with HTTP 200 OK.
+        """
         phone = self.get_object()
         CustomerPhone.objects.set_primary(phone)
         serializer = self.get_serializer(phone)
@@ -93,7 +159,9 @@ class CustomerPhoneViewSet(BaseCustomerEntityViewSet):
 
 class CustomerEmailViewSet(BaseCustomerEntityViewSet):
     """
-    ViewSet for managing CustomerEmail records.
+    ViewSet for managing customer email records.
+
+    Scoped under ``/customers/{customer_pk}/emails/``. Supports primary email toggling.
     """
 
     queryset = CustomerEmail.available_objects.select_related("customer").all()
@@ -101,7 +169,19 @@ class CustomerEmailViewSet(BaseCustomerEntityViewSet):
 
     @action(detail=True, methods=["post"], url_path="set-primary")
     def set_primary(self, request, *args, **kwargs):
-        """Set this email address as primary for its customer."""
+        """
+        Set this email address as primary for its customer.
+
+        Side effects:
+            - Unsets primary flag on all other email addresses of the customer.
+            - Sets ``is_primary=True`` on this email record.
+
+        Args:
+            request (Request): Active HTTP request.
+
+        Returns:
+            Response: Serialized updated email object with HTTP 200 OK.
+        """
         email = self.get_object()
         CustomerEmail.objects.set_primary(email)
         serializer = self.get_serializer(email)
@@ -110,7 +190,9 @@ class CustomerEmailViewSet(BaseCustomerEntityViewSet):
 
 class CustomerAddressViewSet(BaseCustomerEntityViewSet):
     """
-    ViewSet for managing CustomerAddress records.
+    ViewSet for managing customer physical and mailing addresses.
+
+    Scoped under ``/customers/{customer_pk}/addresses/``. Supports primary address toggling.
     """
 
     queryset = CustomerAddress.available_objects.select_related("customer").all()
@@ -118,7 +200,19 @@ class CustomerAddressViewSet(BaseCustomerEntityViewSet):
 
     @action(detail=True, methods=["post"], url_path="set-primary")
     def set_primary(self, request, *args, **kwargs):
-        """Set this address as primary for its customer."""
+        """
+        Set this address as primary for its customer.
+
+        Side effects:
+            - Unsets primary flag on all other addresses of the customer.
+            - Sets ``is_primary=True`` on this address record.
+
+        Args:
+            request (Request): Active HTTP request.
+
+        Returns:
+            Response: Serialized updated address object with HTTP 200 OK.
+        """
         address = self.get_object()
         CustomerAddress.objects.set_primary(address)
         serializer = self.get_serializer(address)
@@ -127,27 +221,39 @@ class CustomerAddressViewSet(BaseCustomerEntityViewSet):
 
 class CustomerIdentificationViewSet(BaseCustomerEntityViewSet):
     """
-    ViewSet for managing CustomerIdentification records.
+    ViewSet for managing customer KYC and identity documents.
+
+    Scoped under ``/customers/{customer_pk}/identifications/``.
     """
 
     queryset = CustomerIdentification.available_objects.select_related("customer").all()
     serializer_class = CustomerIdentificationSerializer
 
 
-class CustomerPreferenceTypeViewSet(BaseCustomerEntityViewSet):
+class CustomerPreferenceTypeViewSet(
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
     """
-    ViewSet for managing CustomerPreferenceType definitions.
+    ViewSet for managing customer preference type schemas and allowed values.
+
+    Provides a standalone catalog of preference definitions (e.g. language, notification channels).
     """
 
     queryset = CustomerPreferenceType.available_objects.all()
     serializer_class = CustomerPreferenceTypeSerializer
+    permission_classes = [permissions.IsAuthenticated]
     http_method_names = ["get", "post", "put"]
 
 
 class CustomerPreferenceViewSet(BaseCustomerEntityViewSet):
     """
-    ViewSet for managing CustomerPreference entries.
+    ViewSet for managing individual customer preference settings.
+
+    Scoped under ``/customers/{customer_pk}/preferences/``.
     """
 
-    queryset = CustomerPreference.available_objects.all()
+    queryset = CustomerPreference.available_objects.select_related(
+        "customer", "preference_type"
+    ).all()
     serializer_class = CustomerPreferenceSerializer

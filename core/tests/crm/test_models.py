@@ -144,7 +144,7 @@ class TestCRMModelsDB:
         phone1 = CustomerPhone.objects.create(
             customer=customer,
             phone="+919876543210",
-            phone_type=ContactTypeChoices.PRIMARY,
+            phone_type=ContactTypeChoices.PERSONAL,
             is_primary=True,
         )
         phone2 = CustomerPhone.objects.create(
@@ -188,8 +188,8 @@ class TestCRMModelsDB:
         email3 = CustomerEmail.objects.create(
             customer=customer,
             email="bob.new@example.com",
-            is_primary=True,
         )
+        CustomerEmail.objects.set_primary(email3)
         email1.refresh_from_db()
         email2.refresh_from_db()
 
