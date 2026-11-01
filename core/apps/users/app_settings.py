@@ -22,6 +22,11 @@ class UsersSettings(BaseSettings):
         data_type=SettingsType.DEFFERED_IMPORT.value,
         help_text="Base user model from which AbstractUser inherits.",
     )
+    AUTO_CREATE_CUSTOMER = Settings(
+        default=True,
+        data_type=bool,
+        help_text="Auto Create a Customer along with user signup.",
+    )
 
     # Serializer Bindings
     USER_DETAILS_SERIALIZER: type["UserDetailsSerializer"] = Settings(

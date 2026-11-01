@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 from django.conf import settings
@@ -16,7 +18,7 @@ from core.apps.crm.constants import (
     IdentityTypeChoices,
     PreferenceDataTypeChoices,
 )
-from core.apps.crm.managers import CustomerAttributeManager
+from core.apps.crm.managers import CustomerAttributeManager, CustomerManager
 from core.utils.models import AbstractAddress, AbstractParty, BaseModel
 
 
@@ -33,14 +35,21 @@ class AbstractCustomer(BaseModel, AbstractParty):
     status = models.CharField(
         max_length=32,
         choices=CustomerStatusChoices.choices,
-        default=CustomerStatusChoices.LEAD,
+        default=CustomerStatusChoices.ONBOARDING,
     )
+    is_active = models.BooleanField(null=False, blank=False, default=True)
     date_of_birth = models.DateField(null=True, blank=True)
-    gender = models.CharField(max_length=32, null=True, blank=True)
     details = models.JSONField(default=dict, blank=True, encoder=DjangoJSONEncoder)
     user = models.ForeignKey(
         to=settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True
     )
+
+    objects: CustomerManager = CustomerManager()
+
+    if typing.TYPE_CHECKING:
+        phones = models.Manager["AbstractCustomerPhone"]
+        emails = models.Manager["AbstractCustomerEmail"]
+        addresses = models.Manager["AbstractCustomerAddress"]
 
     class Meta:
         abstract = True
@@ -80,7 +89,7 @@ class AbstractCustomerPhone(BaseModel):
     phone_type = models.CharField(
         max_length=32,
         choices=ContactTypeChoices.choices,
-        default=ContactTypeChoices.PRIMARY,
+        default=ContactTypeChoices.PERSONAL,
     )
     is_primary = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
@@ -91,17 +100,16 @@ class AbstractCustomerPhone(BaseModel):
         abstract = True
         verbose_name = "Customer Phone"
         verbose_name_plural = "Customer Phones"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["customer"],
+                condition=[models.Q(is_primary=True, is_removed=False)],
+                name="unique_available_primary_phone_per_customer",
+            )
+        ]
 
     def __str__(self):
         return f"{self.phone} ({self.customer})"
-
-    def save(self, *args, **kwargs):
-        """Save phone and ensure a single primary phone per customer."""
-        if self.is_primary and self.customer_id:
-            self.__class__.objects.filter(customer_id=self.customer_id).exclude(
-                pk=self.pk
-            ).filter(is_primary=True).update(is_primary=False)
-        super().save(*args, **kwargs)
 
 
 class AbstractCustomerEmail(BaseModel):
@@ -118,7 +126,7 @@ class AbstractCustomerEmail(BaseModel):
     email_type = models.CharField(
         max_length=32,
         choices=ContactTypeChoices.choices,
-        default=ContactTypeChoices.PRIMARY,
+        default=ContactTypeChoices.PERSONAL,
     )
     is_primary = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
@@ -129,17 +137,16 @@ class AbstractCustomerEmail(BaseModel):
         abstract = True
         verbose_name = "Customer Email"
         verbose_name_plural = "Customer Emails"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["customer"],
+                condition=[models.Q(is_primary=True, is_removed=False)],
+                name="unique_available_primary_email_per_customer",
+            )
+        ]
 
     def __str__(self):
         return f"{self.email} ({self.customer})"
-
-    def save(self, *args, **kwargs):
-        """Save email and ensure a single primary email per customer."""
-        if self.is_primary and self.customer_id:
-            self.__class__.objects.filter(customer_id=self.customer_id).exclude(
-                pk=self.pk
-            ).filter(is_primary=True).update(is_primary=False)
-        super().save(*args, **kwargs)
 
 
 class AbstractCustomerAddress(BaseModel, AbstractAddress):
@@ -166,17 +173,16 @@ class AbstractCustomerAddress(BaseModel, AbstractAddress):
         abstract = True
         verbose_name = "Customer Address"
         verbose_name_plural = "Customer Addresses"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["customer"],
+                condition=[models.Q(is_primary=True, is_removed=False)],
+                name="unique_available_primary_address_per_customer",
+            )
+        ]
 
     def __str__(self):
         return f"{self.full_address} ({self.customer})"
-
-    def save(self, *args, **kwargs):
-        """Save address and ensure a single primary address per customer."""
-        if self.is_primary and self.customer_id:
-            self.__class__.objects.filter(customer_id=self.customer_id).exclude(
-                pk=self.pk
-            ).filter(is_primary=True).update(is_primary=False)
-        super().save(*args, **kwargs)
 
 
 class AbstractCustomerIdentification(BaseModel):

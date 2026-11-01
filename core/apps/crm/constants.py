@@ -12,19 +12,14 @@ class CustomerTypeChoices(models.TextChoices):
 class CustomerStatusChoices(models.TextChoices):
     """Customer onboarding and account status choices."""
 
-    LEAD = "lead", _("Lead")
-    PROSPECT = "prospect", _("Prospect")
     ONBOARDING = "onboarding", _("Onboarding")
-    ACTIVE = "active", _("Active")
-    INACTIVE = "inactive", _("Inactive")
+    VERIFIED = "verified", _("Verified")
     SUSPENDED = "suspended", _("Suspended")
 
 
 class ContactTypeChoices(models.TextChoices):
     """Contact channel type choices."""
 
-    PRIMARY = "primary", _("Primary")
-    SECONDARY = "secondary", _("Secondary")
     WORK = "work", _("Work")
     PERSONAL = "personal", _("Personal")
     OTHER = "other", _("Other")
