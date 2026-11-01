@@ -1,6 +1,7 @@
 import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 
 from core.apps.crm import (
     get_customer_address_model,
@@ -13,11 +14,14 @@ from core.apps.crm import (
 )
 from core.apps.crm.constants import (
     ContactTypeChoices,
+    CustomerStatusChoices,
     CustomerTypeChoices,
     IdentityTypeChoices,
     PreferenceDataTypeChoices,
 )
+from core.apps.users import get_user_model
 
+User = get_user_model()
 Customer = get_customer_model()
 CustomerPhone = get_customer_phone_model()
 CustomerEmail = get_customer_email_model()
@@ -168,7 +172,7 @@ class TestCRMModelsDB:
         assert customer.primary_phone == phone2
 
     def test_customer_email_primary_manager(self):
-        """Test get_primary and primary toggle on CustomerEmail save."""
+        """Test get_primary and set_primary on CustomerEmail manager."""
         customer = Customer.objects.create(first_name="Bob", last_name="Smith")
         email1 = CustomerEmail.objects.create(
             customer=customer,
@@ -271,3 +275,80 @@ class TestCRMModelsDB:
         )
         assert pref.value is True
         assert customer.preferences.filter(preference_type=pref_type).first() == pref
+
+    def test_customer_get_or_create_for_user_creates_customer_and_contacts(self):
+        """Test CustomerQuerySet.get_or_create_for_user provisioning customer, phone and email."""
+        user = User.objects.create_user(
+            username="johndoe_crm",
+            first_name="John",
+            last_name="Doe",
+            email="johndoe.crm@example.com",
+            phone_number="+919876543210",
+        )
+
+        customer, created = Customer.objects.get_or_create_for_user(
+            user=user,
+            email_verified=True,
+            phone_verified=True,
+        )
+
+        assert created is True
+        assert customer.user == user
+        assert customer.first_name == "John"
+        assert customer.last_name == "Doe"
+        assert customer.customer_type == CustomerTypeChoices.INDIVIDUAL
+        assert customer.status == CustomerStatusChoices.ONBOARDING
+        assert customer.is_active is True
+
+        # Check linked primary contacts
+        primary_phone = customer.primary_phone
+        assert primary_phone is not None
+        assert str(primary_phone.phone) == "+919876543210"
+        assert primary_phone.is_primary is True
+        assert primary_phone.is_verified is True
+
+        primary_email = customer.primary_email
+        assert primary_email is not None
+        assert primary_email.email == "johndoe.crm@example.com"
+        assert primary_email.is_primary is True
+        assert primary_email.is_verified is True
+
+        # Subsequent call is idempotent
+        same_customer, created_again = Customer.objects.get_or_create_for_user(
+            user=user
+        )
+        assert created_again is False
+        assert same_customer.id == customer.id
+        assert customer.phones.count() == 1
+        assert customer.emails.count() == 1
+
+    def test_customer_unique_primary_constraints_enforced(self):
+        """Test UniqueConstraint prevents duplicate active primary records but allows after soft delete."""
+        customer = Customer.objects.create(first_name="Grace", last_name="Hopper")
+        phone1 = CustomerPhone.objects.create(
+            customer=customer,
+            phone="+919876543210",
+            is_primary=True,
+        )
+
+        # Inserting a second active primary phone raises IntegrityError
+        with pytest.raises(IntegrityError):
+            with transaction.atomic():
+                CustomerPhone.objects.create(
+                    customer=customer,
+                    phone="+919123456789",
+                    is_primary=True,
+                )
+
+        # Soft delete the first primary phone
+        phone1.delete()
+        assert phone1.is_removed is True
+
+        # Now creating another primary phone succeeds because is_removed=False
+        phone2 = CustomerPhone.objects.create(
+            customer=customer,
+            phone="+919123456789",
+            is_primary=True,
+        )
+        assert phone2.is_primary is True
+        assert customer.primary_phone == phone2

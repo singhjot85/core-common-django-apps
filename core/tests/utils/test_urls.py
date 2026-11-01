@@ -4,10 +4,17 @@ Tests for URL pattern resolution and explicit route building in `core.utils.urls
 
 import pytest
 from django.urls import URLResolver, resolve, reverse
+from rest_framework import viewsets
+from rest_framework.routers import DefaultRouter, SimpleRouter
+from rest_framework_nested.routers import (
+    NestedDefaultRouter,
+    NestedSimpleRouter,
+)
 
 import core.config.public_urls
 import core.config.urls
 from core.config.api_protected import core_api_url_patterns, core_url_mapping
+from core.utils.routers import get_api_router_instance, get_nested_api_router_instance
 from core.utils.urls import resolve_and_build_paths
 
 
@@ -111,3 +118,40 @@ class TestCoreAPIURLConfiguration:
         """Verify root urlconfs can be imported without error."""
         assert len(core.config.urls.urlpatterns) > 0
         assert len(core.config.public_urls.urlpatterns) > 0
+
+
+class TestRouterUtilities:
+    """Test suite for top-level and nested router instance factories."""
+
+    def test_get_api_router_instance_environment_awareness(self, settings):
+        """get_api_router_instance returns DefaultRouter in DEBUG and SimpleRouter in production."""
+        settings.DEBUG = True
+        router_debug = get_api_router_instance()
+        assert isinstance(router_debug, DefaultRouter)
+
+        settings.DEBUG = False
+        router_prod = get_api_router_instance()
+        assert isinstance(router_prod, SimpleRouter)
+        assert not isinstance(router_prod, DefaultRouter)
+
+    def test_get_nested_api_router_instance_environment_awareness(self, settings):
+        """get_nested_api_router_instance returns NestedDefaultRouter in DEBUG and NestedSimpleRouter in production."""
+
+        class DummyViewSet(viewsets.GenericViewSet):
+            pass
+
+        parent_router = SimpleRouter()
+        parent_router.register(r"parents", DummyViewSet, basename="parent")
+
+        settings.DEBUG = True
+        nested_debug = get_nested_api_router_instance(
+            parent_router, r"parents", lookup="parent"
+        )
+        assert isinstance(nested_debug, NestedDefaultRouter)
+
+        settings.DEBUG = False
+        nested_prod = get_nested_api_router_instance(
+            parent_router, r"parents", lookup="parent"
+        )
+        assert isinstance(nested_prod, NestedSimpleRouter)
+        assert not isinstance(nested_prod, NestedDefaultRouter)
