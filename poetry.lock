@@ -733,6 +733,22 @@ python-jose = ["python-jose (==3.3.0)"]
 test = ["cryptography", "freezegun", "pytest", "pytest-cov", "pytest-django", "pytest-xdist", "tox"]
 
 [[package]]
+name = "drf-nested-routers"
+version = "0.95.3"
+description = "Nested resources for the Django Rest Framework"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "drf_nested_routers-0.95.3-py3-none-any.whl", hash = "sha256:bb02f4fea712f7f0fc649fc1399718e458a06387fdb2fb161cc9aeaad314f4ef"},
+    {file = "drf_nested_routers-0.95.3.tar.gz", hash = "sha256:3d5ffad87b110c9d58ee0c688cf540a7fa4ccbf1080b2d318a5e2cf634322d96"},
+]
+
+[package.dependencies]
+Django = ">=4.2"
+djangorestframework = ">=3.15.0"
+
+[[package]]
 name = "drf-spectacular"
 version = "0.30.0"
 description = "Sane and flexible OpenAPI 3 schema generation for Django REST framework"
@@ -2918,4 +2934,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4"
-content-hash = "24423f30f9d285a8203ca544e3b85f2412e9d0fd331041d8b9fb8deb968bf79f"
+content-hash = "f222aff7528397c92db96eb81fafb2a7968c9151a7cf4c2ecd9846519708ca70"
