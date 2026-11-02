@@ -51,8 +51,6 @@ class CustomerAddressInline(admin.StackedInline):
         "state",
         "postal_code",
         "country",
-        # "latitude",
-        # "longitude",
         "is_removed",
     )
 
@@ -63,16 +61,12 @@ class CustomerIdentificationInline(admin.TabularInline):
     model = CustomerIdentification
     extra = 1
     fields = (
-        "identity_type",
-        "identity_number",
-        "content_type",
+        "statustype",
         "object_id",
-        "issue_date",
-        "expiry_date",
-        "issuing_authority",
         "is_verified",
         "is_removed",
     )
+    readonly_fields = ["is_removed"]
 
 
 class CustomerPreferenceInline(admin.TabularInline):
@@ -188,15 +182,14 @@ class CustomerIdentificationAdmin(admin.ModelAdmin):
     """Admin configuration for CustomerIdentification records."""
 
     list_display = (
-        "identity_type",
-        "identity_number",
+        "type",
+        "status",
         "customer",
         "is_verified",
         "is_removed",
     )
-    list_filter = ("identity_type", "is_verified", "is_removed")
+    list_filter = ("type", "is_verified", "is_removed")
     search_fields = (
-        "identity_number",
         "customer__first_name",
         "customer__last_name",
         "customer__business_name",

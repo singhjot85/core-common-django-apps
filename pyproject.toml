@@ -28,6 +28,7 @@ dependencies = [
     "drf-spectacular (>=0.30.0,<0.31.0)",
     "django-phonenumber-field (>=9.0.0,<10.0.0)",
     "phonenumbers (>=9.0.42,<10.0.0)",
+    "drf-nested-routers (>=0.95.3,<0.96.0)",
 ]
 
 

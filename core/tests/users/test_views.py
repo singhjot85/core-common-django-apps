@@ -23,10 +23,15 @@ class TestUsersViews:
     def setup_method(self):
         self.factory = APIRequestFactory()
 
+    @patch(
+        "core.apps.users.api.serializers.base.Customer.objects.get_or_create_for_user"
+    )
     @patch.object(User.objects, "filter")
     @patch("core.apps.users.api.views.get_jwt_tokens_for_user")
     @patch.object(User.objects, "create_user")
-    def test_signup_view_success(self, mock_create_user, mock_jwt, mock_filter):
+    def test_signup_view_success(
+        self, mock_create_user, mock_jwt, mock_filter, mock_customer
+    ):
         mock_filter.return_value.exists.return_value = False
         mock_user = User(
             id="123e4567-e89b-12d3-a456-426614174000",
@@ -34,6 +39,7 @@ class TestUsersViews:
             email="john@example.com",
         )
         mock_create_user.return_value = mock_user
+        mock_customer.return_value = (None, True)
         mock_jwt.return_value = {"access": "access-xyz", "refresh": "refresh-xyz"}
 
         view = PasswordAuthViewSet.as_view({"post": "signup"})

@@ -1,9 +1,12 @@
 from unittest.mock import patch
 
 import pytest
+from django.test import override_settings
 
+from core.apps.crm import get_customer_model
 from core.apps.users import get_user_model
 from core.apps.users.api.serializers import (
+    EmailOTPSignupSerializer,
     GoogleLoginSerializer,
     LoginSerializer,
     OTPSendSerializer,
@@ -16,6 +19,7 @@ from core.apps.users.api.serializers import (
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
 
 User = get_user_model()
+Customer = get_customer_model()
 
 
 class TestSignupSerializer:
@@ -303,3 +307,105 @@ class TestLoginSerializer:
         )
         assert not serializer.is_valid()
         assert "disabled" in str(serializer.errors["non_field_errors"][0]).lower()
+
+
+@pytest.mark.django_db
+class TestSignupCustomerAutoCreation:
+    """Integration tests verifying automatic CRM Customer provisioning upon user signup."""
+
+    def test_signup_auto_creates_customer_profile_and_primary_contacts(self):
+        """SignupSerializer provisions a Customer profile with primary phone and email."""
+        data = {
+            "first_name": "Rosalind",
+            "last_name": "Franklin",
+            "username": "rfranklin",
+            "email": "rosalind@example.com",
+            "phone_number": "+12025550199",
+            "password": "StrongPassword123!",  # pragma: allowlist secret
+        }
+        serializer = SignupSerializer(data=data)
+        assert serializer.is_valid(), serializer.errors
+        user = serializer.save()
+
+        assert Customer.objects.filter(user=user).exists()
+        customer = Customer.objects.get(user=user)
+        assert customer.first_name == "Rosalind"
+        assert customer.last_name == "Franklin"
+        assert customer.is_active is True
+
+        primary_phone = customer.primary_phone
+        assert primary_phone is not None
+        assert str(primary_phone.phone) == "+12025550199"
+        assert primary_phone.is_primary is True
+        assert primary_phone.is_verified is False
+
+        primary_email = customer.primary_email
+        assert primary_email is not None
+        assert primary_email.email == "rosalind@example.com"
+        assert primary_email.is_primary is True
+        assert primary_email.is_verified is False
+
+    @override_settings(CORE_USERS_SETTINGS={"AUTO_CREATE_CUSTOMER": False})
+    def test_signup_respects_auto_create_customer_flag_disabled(self):
+        """When AUTO_CREATE_CUSTOMER is False, no customer profile is created."""
+        data = {
+            "first_name": "Dorothy",
+            "last_name": "Hodgkin",
+            "username": "dhodgkin",
+            "email": "dorothy@example.com",
+            "phone_number": "+12025550188",
+            "password": "StrongPassword123!",  # pragma: allowlist secret
+        }
+        serializer = SignupSerializer(data=data)
+        assert serializer.is_valid(), serializer.errors
+        user = serializer.save()
+
+        assert not Customer.objects.filter(user=user).exists()
+
+    @patch("core.apps.users.api.serializers.base.OTPServiceFactory.verify_otp")
+    def test_email_otp_signup_auto_creates_customer_with_verified_email(
+        self, mock_verify_otp
+    ):
+        """EmailOTPSignupSerializer marks customer primary email as verified."""
+        mock_verify_otp.return_value = (True, "OTP verified successfully")
+
+        data = {
+            "first_name": "Chien-Shiung",
+            "last_name": "Wu",
+            "username": "cswu",
+            "email": "wu@example.com",
+            "otp_code": "123456",
+            "password": "StrongPassword123!",  # pragma: allowlist secret
+        }
+        serializer = EmailOTPSignupSerializer(data=data)
+        assert serializer.is_valid(), serializer.errors
+        user = serializer.save()
+
+        customer = Customer.objects.get(user=user)
+        primary_email = customer.primary_email
+        assert primary_email is not None
+        assert primary_email.is_verified is True
+
+    @patch("core.apps.users.api.serializers.base.OTPServiceFactory.verify_otp")
+    def test_phone_otp_signup_auto_creates_customer_with_verified_phone(
+        self, mock_verify_otp
+    ):
+        """PhoneOTPSignupSerializer marks customer primary phone as verified."""
+        mock_verify_otp.return_value = (True, "OTP verified successfully")
+
+        data = {
+            "first_name": "Lise",
+            "last_name": "Meitner",
+            "username": "lmeitner",
+            "phone_number": "+12025550177",
+            "otp_code": "123456",
+            "password": "StrongPassword123!",  # pragma: allowlist secret
+        }
+        serializer = PhoneOTPSignupSerializer(data=data)
+        assert serializer.is_valid(), serializer.errors
+        user = serializer.save()
+
+        customer = Customer.objects.get(user=user)
+        primary_phone = customer.primary_phone
+        assert primary_phone is not None
+        assert primary_phone.is_verified is True

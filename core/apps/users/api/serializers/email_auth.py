@@ -142,6 +142,7 @@ class EmailOTPSignupSerializer(BaseOTPVerificationSerializer, BaseSignupSerializ
             User: Newly provisioned user instance.
         """
         validated_data.pop("otp_code", None)
+        validated_data.update({"customer_create_kwargs": {"email_verified": True}})
         return super().create(validated_data)
 
 

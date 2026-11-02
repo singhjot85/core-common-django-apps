@@ -1,14 +1,14 @@
 [
     {
         "customer__first_name": "Charlie",
-        "phone": "+911234567892",
-        "phone_type": "primary",
-        "is_primary": true
+        "phone": "+911234567792",
+        "phone_type": "work",
+        "is_primary": false
     },
     {
         "customer__first_name": "Diana",
         "phone": "+911234567893",
-        "phone_type": "primary",
+        "phone_type": "work",
         "is_primary": true
     }
 ]

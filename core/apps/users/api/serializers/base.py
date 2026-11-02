@@ -16,6 +16,7 @@ from phonenumber_field.phonenumber import to_python
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
+from core.apps.crm import get_customer_model
 from core.apps.users import app_settings, get_user_model
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
 from core.apps.users.services.auth_lockout import AuthLockoutService
@@ -23,6 +24,7 @@ from core.apps.users.services.otp import OTPServiceFactory
 from core.apps.users.tasks import send_otp_task
 from core.utils.tasks import queue_task
 
+Customer = get_customer_model()
 User = get_user_model()
 LOGGER = logging.getLogger(__name__)
 
@@ -178,7 +180,23 @@ class BaseSignupSerializer(serializers.Serializer):
         Returns:
             User: The newly created user instance.
         """
-        return User.objects.create_user(**validated_data)
+        customer_create_kwargs = validated_data.pop("customer_create_kwargs", {})
+
+        user = User.objects.create_user(**validated_data)
+
+        if app_settings.AUTO_CREATE_CUSTOMER:
+            customer, created = Customer.objects.get_or_create_for_user(
+                user=user, **customer_create_kwargs
+            )
+
+            LOGGER.info(
+                "Customer: %s, created for user: %s (newly_created=%s)",
+                customer,
+                user,
+                created,
+            )
+
+        return user
 
 
 class SendOTPMixin:

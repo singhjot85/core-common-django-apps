@@ -92,9 +92,6 @@ class DevInvoicePartySeeder(BaseSeeder):
         depends_on = [get_customer_model()]
         execution_order = 3
 
-    def seed(self, data):
-        return super().seed(data)
-
 
 class DevInvoicePartyEmailSeeder(BaseSeeder):
     """Dev seeder for mock invoice party emails."""

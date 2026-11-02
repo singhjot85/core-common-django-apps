@@ -12,19 +12,14 @@ class CustomerTypeChoices(models.TextChoices):
 class CustomerStatusChoices(models.TextChoices):
     """Customer onboarding and account status choices."""
 
-    LEAD = "lead", _("Lead")
-    PROSPECT = "prospect", _("Prospect")
     ONBOARDING = "onboarding", _("Onboarding")
-    ACTIVE = "active", _("Active")
-    INACTIVE = "inactive", _("Inactive")
+    VERIFIED = "verified", _("Verified")
     SUSPENDED = "suspended", _("Suspended")
 
 
 class ContactTypeChoices(models.TextChoices):
     """Contact channel type choices."""
 
-    PRIMARY = "primary", _("Primary")
-    SECONDARY = "secondary", _("Secondary")
     WORK = "work", _("Work")
     PERSONAL = "personal", _("Personal")
     OTHER = "other", _("Other")
@@ -47,11 +42,17 @@ class IdentityTypeChoices(models.TextChoices):
     AADHAAR = "aadhaar", _("Aadhaar Card")
     PAN = "pan", _("PAN Card")
     DRIVING_LICENSE = "driving_license", _("Driving License")
-    PASSPORT = "passport", _("Passport")
-    VOTER_ID = "voter_id", _("Voter ID")
-    GSTIN = "gstin", _("GSTIN")
-    CIN = "cin", _("CIN")
+    SOCIAL_SECURITY = "social_security", _("Social Security")
     OTHER = "other", _("Other")
+
+
+class IdentityStatusChoices(models.TextChoices):
+    """Government and regulatory identification document status choices."""
+
+    UNVERIFIED = "un-verified", _("Unverified")
+    VERIFIED = "verified", _("Verified")
+    VERIFICATION_FAILED = "verification-failed", _("Verification Failed")
+    VERIFICATION_EXPIRED = "verification-expired", _("Verification Expired")
 
 
 class PreferenceDataTypeChoices(models.TextChoices):
