@@ -102,11 +102,11 @@ class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
     """
     Serialize customer KYC, identity credentials, and verification status.
 
-    Includes the human-readable ``identity_type_display`` label.
+    Includes the human-readable ``get_type_display`` label.
     """
 
     identity_type_display = serializers.CharField(
-        source="get_identity_type_display", read_only=True
+        source="get_type_display", read_only=True
     )
 
     class Meta:
@@ -114,10 +114,11 @@ class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
         fields = [
             "id",
             "customer",
-            "identity_type",
+            "type",
             "document",
             "identity_type_display",
-            "statusis_verified",
+            "status",
+            "is_verified",
             "verified_on",
             "details",
         ]

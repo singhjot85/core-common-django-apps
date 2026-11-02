@@ -18,7 +18,7 @@ def crm_identity_document_path(
     """
     Document file save path for AbstractCustomerIdentification
     """
-    path = f"{connection.schema_name}/{instance.identity_type}"
+    path = f"{connection.schema_name}/{instance.type}"
     if instance.customer:
         path += f"/{instance.customer.id}"
 
@@ -37,7 +37,7 @@ class AbstractCustomerIdentification(BaseModel):
     is_verified = models.BooleanField(default=False)
     verified_on = models.DateField(null=True, blank=True)
     status = StatusField(
-        choices_name=VERIFICATION_STATUSES,
+        choices_name="VERIFICATION_STATUSES",
         default=IdentityStatusChoices.UNVERIFIED.value,
     )
 
@@ -54,8 +54,8 @@ class AbstractCustomerIdentification(BaseModel):
     document = models.FileField(
         verbose_name=_("Document File"),
         upload_to=DOCUMENT_UPLOAD_PATH,
-        is_null=True,
-        is_blank=True,
+        null=True,
+        blank=True,
     )
 
     # Generic Foreign Key (GFK) to link a identity model on identification
@@ -78,4 +78,4 @@ class AbstractCustomerIdentification(BaseModel):
         verbose_name_plural = "Customer Identifications"
 
     def __str__(self):
-        return f"{self.get_identity_type_display()}: ({self.customer})"
+        return f"{self.get_type_display()}: ({self.customer})"
