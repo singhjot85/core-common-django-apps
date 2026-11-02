@@ -13,9 +13,10 @@ from rest_framework_nested.routers import (
 
 import core.config.public_urls
 import core.config.urls
-from core.config.api_protected import core_api_url_patterns, core_url_mapping
+from core.config.api_protected import core_tenant_url_mapping, resolve_and_build_paths
 from core.utils.routers import get_api_router_instance, get_nested_api_router_instance
-from core.utils.urls import resolve_and_build_paths
+
+core_api_url_patterns = resolve_and_build_paths(core_tenant_url_mapping)
 
 
 class TestResolveAndBuildPaths:
@@ -96,7 +97,7 @@ class TestCoreAPIURLConfiguration:
 
     def test_core_url_mapping_and_patterns_defined(self):
         """Verify core_url_mapping contains expected registered apps."""
-        registered_apps = [entry[0] for entry in core_url_mapping]
+        registered_apps = [entry[0] for entry in core_tenant_url_mapping]
         assert "core.apps.users.urls" in registered_apps
         assert "core.apps.crm.urls" in registered_apps
 
