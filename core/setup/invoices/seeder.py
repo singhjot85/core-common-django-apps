@@ -33,7 +33,6 @@ class DevBillingOrganizationSeeder(BaseSeeder):
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
             os.path.join(
-                settings.CORE_BASE_DIR,
                 "setup/invoices/dev_billing_organization/organizations.json",
             )
         )
@@ -48,7 +47,6 @@ class DevOrganizationEmailSeeder(BaseSeeder):
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
             os.path.join(
-                settings.CORE_BASE_DIR,
                 "setup/invoices/dev_organization_email/emails.json",
             )
         )
@@ -64,7 +62,6 @@ class DevOrganizationPhoneSeeder(BaseSeeder):
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
             os.path.join(
-                settings.CORE_BASE_DIR,
                 "setup/invoices/dev_organization_phone/phones.json",
             )
         )
@@ -85,7 +82,6 @@ class DevInvoicePartySeeder(BaseSeeder):
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
             os.path.join(
-                settings.CORE_BASE_DIR,
                 "setup/invoices/dev_invoice_party/parties.json",
             )
         )
@@ -102,7 +98,6 @@ class DevInvoicePartyEmailSeeder(BaseSeeder):
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
             os.path.join(
-                settings.CORE_BASE_DIR,
                 "setup/invoices/dev_invoice_party_email/emails.json",
             )
         )
@@ -118,7 +113,6 @@ class DevInvoicePartyPhoneSeeder(BaseSeeder):
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
             os.path.join(
-                settings.CORE_BASE_DIR,
                 "setup/invoices/dev_invoice_party_phone/phones.json",
             )
         )
@@ -134,7 +128,6 @@ class DevInvoiceItemSeeder(BaseSeeder):
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
             os.path.join(
-                settings.CORE_BASE_DIR,
                 "setup/invoices/dev_invoice_item/items.json",
             )
         )

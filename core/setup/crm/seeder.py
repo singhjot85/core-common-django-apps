@@ -32,9 +32,7 @@ class DevCustomerSeeder(BaseSeeder):
         ]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
-            os.path.join(
-                settings.CORE_BASE_DIR, "setup/crm/dev_customer/customers.json"
-            )
+            os.path.join("setup/crm/dev_customer/customers.json")
         )
         depends_on = [get_user_model()]
         execution_order = 2
@@ -48,9 +46,7 @@ class DevCustomerPhoneSeeder(BaseSeeder):
         fields = ["customer__first_name", "phone", "phone_type", "is_primary"]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
-            os.path.join(
-                settings.CORE_BASE_DIR, "setup/crm/dev_customer_phone/phones.json"
-            )
+            os.path.join("setup/crm/dev_customer_phone/phones.json")
         )
         depends_on = [get_customer_model()]
 
@@ -63,9 +59,7 @@ class DevCustomerEmailSeeder(BaseSeeder):
         fields = ["customer__first_name", "email", "email_type", "is_primary"]
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
-            os.path.join(
-                settings.CORE_BASE_DIR, "setup/crm/dev_customer_email/emails.json"
-            )
+            os.path.join("setup/crm/dev_customer_email/emails.json")
         )
         depends_on = [get_customer_model()]
 
@@ -88,7 +82,6 @@ class DevCustomerAddressSeeder(BaseSeeder):
         tenant_type = settings.TENANT_TYPE_ORGANIZATION
         data_source = FileDataSource(
             os.path.join(
-                settings.CORE_BASE_DIR,
                 "setup/crm/dev_customer_address/addresses.json",
             )
         )

@@ -52,10 +52,20 @@ def _seed_dev_tenants():
     # Seed multiple tenants from a given file
     setup_path = app_settings.DEV_SEEDER_SETUP_PATH
     file_path = os.path.join(settings.BASE_DIR, setup_path, "tenants", "tenants.json")
+
+    LOGGER.info(f"Paths >>> {file_path}, {settings.BASE_DIR}, {setup_path}")
     data = None
 
     with open(file_path, "r") as f:
         data = json.load(f)
+
+    if not data:
+        # Host doesn't have fixture, fallback to core fixture
+        file_path = os.path.join(
+            settings.CORE_BASE_DIR, setup_path, "tenants", "tenants.json"
+        )
+        with open(file_path, "r") as f:
+            data = json.load(f)
 
     if data:
         for tenant_data in data:
