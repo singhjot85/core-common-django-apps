@@ -1,7 +1,5 @@
 from constance.admin import Config, ConstanceAdmin
 from django.contrib import admin
-from django.contrib.auth.admin import GroupAdmin, UserAdmin
-from django.contrib.auth.models import Group, User
 from django.shortcuts import redirect
 
 
@@ -40,13 +38,12 @@ class TenantAdminSite(admin.AdminSite):
 
 private_admin_site = TenantAdminSite(name="private_admin")
 
+
 # =============================
 #   Register Core / Third Party Admins
 # =============================
 
 public_admin_site.register([Config], ConstanceAdmin)
-public_admin_site.register(User, UserAdmin)
-public_admin_site.register(Group, GroupAdmin)
 try:
     from django_celery_results.admin import GroupResultAdmin, TaskResultAdmin
     from django_celery_results.models import GroupResult, TaskResult
@@ -57,5 +54,3 @@ except (ImportError, Exception):
     pass
 
 private_admin_site.register([Config], ConstanceAdmin)
-private_admin_site.register(User, UserAdmin)
-private_admin_site.register(Group, GroupAdmin)
