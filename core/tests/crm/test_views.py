@@ -178,8 +178,7 @@ class TestCustomerViewSetAPI:
         )
         CustomerIdentification.objects.create(
             customer=customer,
-            identity_type=IdentityTypeChoices.PASSPORT,
-            identity_number="P12345678",
+            type=IdentityTypeChoices.SOCIAL_SECURITY,
             is_verified=True,
         )
         pref_type = CustomerPreferenceType.objects.create(
@@ -211,7 +210,7 @@ class TestCustomerViewSetAPI:
         assert len(data["addresses"]) == 1
         assert "10 Babbage Way" in data["addresses"][0]["full_address"]
         assert len(data["identifications"]) == 1
-        assert data["identifications"][0]["identity_type_display"] == "Passport"
+        assert data["identifications"][0]["identity_type_display"] == "Social Security"
         assert len(data["preferences"]) == 1
         assert data["preferences"][0]["preference_code"] == "lang"
 

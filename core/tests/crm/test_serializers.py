@@ -87,8 +87,7 @@ class TestCRMSerializers:
         )
         CustomerIdentification.objects.create(
             customer=customer,
-            identity_type=IdentityTypeChoices.PASSPORT,
-            identity_number="P9876543",
+            type=IdentityTypeChoices.SOCIAL_SECURITY,
         )
         pref_type = CustomerPreferenceType.objects.create(
             code="notifications",
@@ -114,7 +113,7 @@ class TestCRMSerializers:
         assert len(data["addresses"]) == 1
         assert "1 Computer Way" in data["addresses"][0]["full_address"]
         assert len(data["identifications"]) == 1
-        assert data["identifications"][0]["identity_type_display"] == "Passport"
+        assert data["identifications"][0]["identity_type_display"] == "Social Security"
         assert len(data["preferences"]) == 1
         assert data["preferences"][0]["preference_code"] == "notifications"
 

@@ -109,7 +109,7 @@ class CustomerAttributeManager(
         Returns:
             models.Model | None: The active primary attribute record, or None if no primary is set.
         """
-        return self.filter(customer=customer, is_primary=True).first()
+        return self.filter(customer=customer, is_primary=True, is_removed=False).first()
 
     def set_primary(
         self,

@@ -234,15 +234,14 @@ class TestCRMModelsDB:
 
         ident = CustomerIdentification.objects.create(
             customer=customer,
-            identity_type=IdentityTypeChoices.AADHAAR,
-            identity_number="1234-5678-9012",
+            type=IdentityTypeChoices.AADHAAR,
             content_type=customer_ct,
             object_id=str(customer.pk),
             is_verified=True,
         )
 
-        assert ident.customer_identity == customer
-        assert str(ident) == f"Aadhaar Card: 1234-5678-9012 ({customer})"
+        assert ident.attribute == customer
+        assert str(ident) == f"Aadhaar Card: ({customer})"
 
     def test_customer_soft_delete(self):
         """Test soft deletion and exclusion from available_objects."""
@@ -351,4 +350,5 @@ class TestCRMModelsDB:
             is_primary=True,
         )
         assert phone2.is_primary is True
+        assert CustomerPhone.objects.get_primary(customer) == phone2
         assert customer.primary_phone == phone2

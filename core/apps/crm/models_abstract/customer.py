@@ -64,7 +64,7 @@ class AbstractCustomer(BaseModel, AbstractParty):
         Returns:
             AbstractCustomerPhone | None: The active primary phone record if set, else None.
         """
-        return self.phones.filter(is_primary=True).first()
+        return self.phones.filter(is_primary=True, is_removed=False).first()
 
     @property
     def primary_email(self) -> typing.Optional["AbstractCustomerEmail"]:
@@ -74,7 +74,7 @@ class AbstractCustomer(BaseModel, AbstractParty):
         Returns:
             AbstractCustomerEmail | None: The active primary email record if set, else None.
         """
-        return self.emails.filter(is_primary=True).first()
+        return self.emails.filter(is_primary=True, is_removed=False).first()
 
     @property
     def primary_address(self) -> typing.Optional["AbstractCustomerAddress"]:
@@ -84,4 +84,4 @@ class AbstractCustomer(BaseModel, AbstractParty):
         Returns:
             AbstractCustomerAddress | None: The active primary address record if set, else None.
         """
-        return self.addresses.filter(is_primary=True).first()
+        return self.addresses.filter(is_primary=True, is_removed=False).first()
