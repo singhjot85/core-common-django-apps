@@ -115,16 +115,20 @@ class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
             "id",
             "customer",
             "identity_type",
+            "document",
             "identity_type_display",
-            "identity_number",
-            "content_type",
-            "object_id",
-            "issue_date",
-            "expiry_date",
-            "issuing_authority",
-            "is_verified",
+            "statusis_verified",
+            "verified_on",
+            "details",
         ]
-        read_only_fields = ["id", "identity_type_display"]
+        read_only_fields = [
+            "id",
+            "identity_type_display",
+            "status",
+            "is_verified",
+            "verified_on",
+            "details",
+        ]
 
 
 class CustomerPreferenceSerializer(serializers.ModelSerializer):
