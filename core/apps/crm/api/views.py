@@ -15,6 +15,7 @@ Provides:
 
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework_nested.viewsets import NestedViewSetMixin
 
@@ -80,6 +81,38 @@ class BaseCustomerEntityViewSet(
 
     # Mapping for NestedViewSetMixin
     parent_lookup_kwargs = {"customer_pk": "customer_id"}
+
+    def get_customer(self):
+        """
+        Resolve the parent customer instance from URL kwargs.
+
+        Returns:
+            Customer: Customer instance matching customer_pk.
+
+        Raises:
+            Http404: If the customer does not exist.
+        """
+        customer_pk = self.kwargs.get("customer_pk")
+        return get_object_or_404(Customer.available_objects, pk=customer_pk)
+
+    def get_queryset(self):
+        """
+        Filter queryset by parent customer after validating customer exists.
+
+        Returns:
+            models.QuerySet: Scoped customer child queryset.
+        """
+        if getattr(self, "swagger_fake_view", False):
+            return super().get_queryset()
+
+        self.get_customer()
+        return super().get_queryset()
+
+    def perform_create(self, serializer):
+        """
+        Bind the parent customer from the URL kwargs to the created instance.
+        """
+        serializer.save(customer=self.get_customer())
 
 
 class CustomerViewSet(BaseCustomerViewSet):

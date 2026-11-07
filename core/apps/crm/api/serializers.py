@@ -54,7 +54,7 @@ class CustomerPhoneSerializer(DynamicReadOnlyModelSerializer):
             "is_primary",
             "is_verified",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "customer"]
 
 
 class CustomerEmailSerializer(DynamicReadOnlyModelSerializer):
@@ -67,7 +67,7 @@ class CustomerEmailSerializer(DynamicReadOnlyModelSerializer):
     class Meta:
         model = CustomerEmail
         fields = ["id", "customer", "email", "email_type", "is_primary", "is_verified"]
-        read_only_fields = ["id"]
+        read_only_fields = ["id", "customer"]
 
 
 class CustomerAddressSerializer(DynamicReadOnlyModelSerializer):
@@ -95,7 +95,7 @@ class CustomerAddressSerializer(DynamicReadOnlyModelSerializer):
             "country",
             "full_address",
         ]
-        read_only_fields = ["id", "full_address"]
+        read_only_fields = ["id", "customer", "full_address"]
 
 
 class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
@@ -124,6 +124,7 @@ class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "customer",
             "identity_type_display",
             "status",
             "is_verified",
@@ -156,7 +157,7 @@ class CustomerPreferenceSerializer(serializers.ModelSerializer):
             "preference_label",
             "value",
         ]
-        read_only_fields = ["id", "preference_code", "preference_label"]
+        read_only_fields = ["id", "customer", "preference_code", "preference_label"]
 
 
 class CustomerDetailsSerializer(ReadOnlyModelSerializer):

@@ -48,13 +48,13 @@ from core.apps.crm import (
 
 ## API Endpoints & Method Policies
 
-- **Customer Entity Endpoints**: `DELETE` and global `GET /` (list) are disallowed across all customer resources. Detailed retrieval, creation, and updates are supported.
+- **Customer Entity Endpoints**: `DELETE` and global `GET /` (list) are disallowed across all customer resources. Detailed retrieval, creation, and updates are supported. Child attributes are nested under the customer URL; `customer` is derived from the URL path (`customer_pk`) and is read-only in mutation request bodies to prevent cross-customer data injection.
   - `/customers/`: Detail/create/update customer profiles (nested contacts, addresses, identifications, preferences).
-  - `/customer-phones/`: Detail/create/update phone numbers (with `POST .../set-primary/`).
-  - `/customer-emails/`: Detail/create/update email addresses (with `POST .../set-primary/`).
-  - `/customer-addresses/`: Detail/create/update addresses (with `POST .../set-primary/`).
-  - `/customer-identifications/`: Detail/create/update customer KYC/identity records.
-  - `/customer-preferences/`: Detail/create/update customer preference values.
+  - `/customers/{customer_pk}/phones/`: Detail/create/update phone numbers (with `POST .../set-primary/`).
+  - `/customers/{customer_pk}/emails/`: Detail/create/update email addresses (with `POST .../set-primary/`).
+  - `/customers/{customer_pk}/addresses/`: Detail/create/update addresses (with `POST .../set-primary/`).
+  - `/customers/{customer_pk}/identifications/`: Detail/create/update customer KYC/identity records.
+  - `/customers/{customer_pk}/preferences/`: Detail/create/update customer preference values.
 - **Preference Types Configuration**:
   - `/customer-preference-types/`: Lists and retrieves available preference type definitions (`DELETE` disallowed).
 
