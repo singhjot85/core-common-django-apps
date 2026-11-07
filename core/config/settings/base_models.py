@@ -111,8 +111,7 @@ PROJECT_APPS = [
     INTEGRATIONS_APP,
     INTEGRATIONS_EMAIL_APP,
     INTEGRATIONS_SMS_APP,
-    INTEGRATIONS_PAYMENTS_APP,
-    # "apps.setup",
+    # INTEGRATIONS_PAYMENTS_APP,
     # "apps.notifications",
 ]
 
@@ -141,8 +140,6 @@ DJANGO_TENANT_PRIVATE_APPS = [
     INTEGRATIONS_APP,
     INTEGRATIONS_EMAIL_APP,
     INTEGRATIONS_SMS_APP,
-    INTEGRATIONS_PAYMENTS_APP,
-    # "apps.payments_management",
-    # "apps.setup",
+    # INTEGRATIONS_PAYMENTS_APP,
     # "apps.notifications",
 ]
