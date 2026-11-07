@@ -18,7 +18,7 @@ from core.utils.checks import is_development
 LOGGER = logging.getLogger(__name__)
 
 
-def auto_discover_seeders() -> list:
+def _autodiscover(setup_path) -> list:
     """
     Discover and import all seeder modules across development setup and core apps.
 
@@ -29,10 +29,6 @@ def auto_discover_seeders() -> list:
         list: List of discovered and imported module objects.
     """
     discovered = []
-
-    # 1. Discover development seeders from configured setup path
-    setup_path = app_settings.DEV_SEEDER_SETUP_PATH
-    setup_path = os.path.join(settings.BASE_DIR, setup_path)
 
     dev_discovery = AutoDiscovery(
         root_path=setup_path,
@@ -50,6 +46,21 @@ def auto_discover_seeders() -> list:
         file_name=["seeder.py", "seeders.py"],
     )
     discovered.extend(fixtures_discovery.autodiscover())
+
+    return discovered
+
+
+def auto_discover_seeders():
+    # 1. Discover development seeders from configured setup path
+    setup_path = os.path.join(settings.BASE_DIR, app_settings.DEV_SEEDER_SETUP_PATH)
+    discovered = _autodiscover(setup_path)
+
+    if not discovered:
+        # 2. If nothing found, load from core setup
+        setup_path = os.path.join(
+            settings.CORE_BASE_DIR, app_settings.DEV_SEEDER_SETUP_PATH
+        )
+        discovered = _autodiscover(setup_path)
 
     return discovered
 

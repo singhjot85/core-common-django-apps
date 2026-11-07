@@ -12,16 +12,15 @@ from core.apps.crm.constants import IdentityStatusChoices, IdentityTypeChoices
 from core.utils.models import BaseModel
 
 
-def crm_identity_document_path(
-    instance: AbstractCustomerIdentification,
-):
+def crm_identity_document_path(instance: AbstractCustomerIdentification, filename):
     """
     Document file save path for AbstractCustomerIdentification
     """
-    path = f"{connection.schema_name}/{instance.type}"
+    path = f"{connection.schema_name}"
     if instance.customer:
         path += f"/{instance.customer.id}"
 
+    path += f"/{instance.type}/{filename}"
     return path
 
 

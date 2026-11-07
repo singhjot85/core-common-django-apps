@@ -78,6 +78,7 @@ SHARED_EXTRA_DEPENDENCIES = [
     "dj_rest_auth",
     "constance",
     "drf_spectacular",
+    "storages",
 ]
 PUBLIC_ONLY_EXTRA_DEPENDENCIES = [
     "django_celery_results",

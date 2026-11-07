@@ -14,6 +14,8 @@ import typing
 from enum import Enum
 from pathlib import Path
 
+from django.conf import settings
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -83,6 +85,9 @@ class FileDataSource(AbstractDataSource):
         """
         Resolve the file or directory path relative to settings.CORE_BASE_DIR,
         settings.BASE_DIR, or as an absolute path.
+        - First priority is given to provided path, if a file exists, load it
+        - then checks from BASE_DIR, as projects can override seed data.
+        - If no override defined, check form CORE_DIR.
 
         Returns:
             Path: Resolved filesystem Path object.
@@ -98,20 +103,18 @@ class FileDataSource(AbstractDataSource):
                 f"FileDataSource absolute path does not exist: {path}"
             )
 
-        from django.conf import settings
-
         core_base = getattr(settings, "CORE_BASE_DIR", None)
         base_dir = getattr(settings, "BASE_DIR", None)
-
-        if core_base:
-            resolved_core = Path(core_base) / path
-            if resolved_core.exists():
-                return resolved_core
 
         if base_dir:
             resolved_base = Path(base_dir) / path
             if resolved_base.exists():
                 return resolved_base
+
+        if core_base:
+            resolved_core = Path(core_base) / path
+            if resolved_core.exists():
+                return resolved_core
 
         raise FileNotFoundError(
             f"FileDataSource path does not exist relative to CORE_BASE_DIR ({core_base}) "

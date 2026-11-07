@@ -57,3 +57,41 @@ from core.apps.crm import (
   - `/customer-preferences/`: Detail/create/update customer preference values.
 - **Preference Types Configuration**:
   - `/customer-preference-types/`: Lists and retrieves available preference type definitions (`DELETE` disallowed).
+
+## Document Storage & Upload Strategies
+
+`CustomerIdentification.document` handles KYC identity files (Aadhaar, PAN, DL, etc.). In production, files must be stored in dedicated object storage (AWS S3, Google Cloud Storage, or MinIO).
+
+### Option 1: Django-Managed Storage (`django-storages`)
+Django streams file uploads directly to the configured storage backend.
+
+- **Configuration:**
+  ```python
+  STORAGES = {
+      "default": {
+          "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+          "OPTIONS": {
+              "bucket_name": os.getenv("AWS_STORAGE_BUCKET_NAME"),
+              "region_name": os.getenv("AWS_S3_REGION_NAME", "ap-south-1"),
+              "default_acl": None,  # Private bucket
+              "querystring_auth": True,  # Generates expiring signed URLs for retrieval
+          },
+      },
+  }
+  ```
+- **Trade-offs:** Seamless integration with existing `FileField` serializers; however, large uploads stream through the Django worker process, consuming server memory and bandwidth.
+
+### Option 2: Direct-to-Storage Presigned URLs (Recommended)
+Clients upload file binaries directly to cloud object storage, bypassing the Django application server.
+
+- **Workflow:**
+  1. **Request Upload URL:** Client calls an endpoint (e.g., `POST .../identifications/upload-url/`) with document metadata (`mime_type`, `type`).
+  2. **Generate Presigned URL:** Django validates permissions and generates a time-limited S3/GCS presigned `PUT` URL.
+  3. **Direct Upload:** Client executes a `PUT` request with the binary payload directly to S3/GCS.
+  4. **Register Identification:** Client submits the resulting object key to the nested identifications endpoint (`POST /customers/{customer_pk}/identifications/`).
+  5. **Async Processing:** Background tasks (OCR/KYC validation) are queued via `queue_task()` without blocking the request thread.
+- **Trade-offs:** Requires a two-step client flow, but eliminates backend I/O bottlenecks and supports horizontal scale.
+
+### Security & Multi-Tenancy Rules
+- **Tenant Isolation:** Storage keys are partitioned by schema: `<tenant_schema>/<type>/<customer_id>/<filename>`.
+- **Private Access:** S3 Block Public Access must remain enabled. Identity documents contain sensitive PII and must only be accessed via expiring presigned GET URLs.

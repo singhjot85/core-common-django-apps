@@ -20,10 +20,6 @@ LOGGING_CONFIG_PATH = "config.logs"
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # Path to /backend
 APP_DIR = os.path.join(BASE_DIR, APP_NAME)  # Path to /backend/apps
-
-# -----------------------------
-#   Core Framework Directories
-# -----------------------------
 CORE_BASE_DIR = Path(__file__).resolve().parent.parent.parent
 CORE_APP_DIR = os.path.join(CORE_BASE_DIR, APP_NAME)
 CORE_SETUP_DIR = os.path.join(CORE_BASE_DIR, "setup")
@@ -62,7 +58,7 @@ LOGGING = get_logging_config(LOGGING_CONFIG_PATH)
 
 STATIC_URL = "/static/"
 ROOT_URLCONF = "core.config.urls"
-PUBLIC_SCHEMA_URLCONF = "config.public_urls"
+PUBLIC_SCHEMA_URLCONF = "core.config.public_urls"
 
 TENANT_TYPE_PUBLIC = "public"
 TENANT_TYPE_ORGANIZATION = "organization"
@@ -201,6 +197,21 @@ TEMPLATES = [
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
+
+# -----------------------------
+#   Media Files & Storage Configuration
+# -----------------------------
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 # -----------------------------
 #   Django Middleware

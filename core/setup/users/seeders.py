@@ -4,8 +4,6 @@ Development mock seeders for Users app.
 
 import os
 
-from django.conf import settings
-
 from core.apps.users import get_user_model
 from core.seeder.base import BaseMeta, BaseSeeder
 from core.seeder.datasource import FileDataSource
@@ -25,9 +23,7 @@ class DevUserSeeder(BaseSeeder):
             "create_superuser",  # custom field
         ]
         execution_order = 1
-        data_source = FileDataSource(
-            os.path.join(settings.CORE_BASE_DIR, "setup/users/dev_users/users.json")
-        )
+        data_source = FileDataSource(os.path.join("setup/users/dev_users/users.json"))
 
     def to_internal_values(self, data):
         self.context.update({"create_superuser": data.pop("create_superuser", False)})
