@@ -13,9 +13,14 @@ TEMPLATES[0]["DIRS"] = [
     SAMPLE_PROJECT_TEMPLATES_DIR,
 ]
 
+PROJECT_MIGRATION_PATH = "db_migrations"
 MIGRATION_MODULES = {
-    app.replace("core.apps.", "").replace("apps.", "").replace(".", "_"): (
-        f"{PROJECT_MIGRATION_PATH}.{app.replace('core.apps.', '').replace('apps.', '').replace('.', '_')}"
-    )
-    for app in PROJECT_APPS
+    "configurations": f"{PROJECT_MIGRATION_PATH}.configurations",
+    "crm": f"{PROJECT_MIGRATION_PATH}.crm",
+    "integrations": f"{PROJECT_MIGRATION_PATH}.integrations",
+    "integrations_email": f"{PROJECT_MIGRATION_PATH}.integrations_email",
+    "integrations_sms": f"{PROJECT_MIGRATION_PATH}.integrations_sms",
+    "invoices": f"{PROJECT_MIGRATION_PATH}.invoices",
+    "tenants": f"{PROJECT_MIGRATION_PATH}.tenants",
+    "users": f"{PROJECT_MIGRATION_PATH}.users",
 }
