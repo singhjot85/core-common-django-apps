@@ -13,10 +13,3 @@ TEMPLATES[0]["DIRS"] = [
     *TEMPLATES[0]["DIRS"],
     SAMPLE_PROJECT_TEMPLATES_DIR,
 ]
-
-MIGRATION_MODULES = {
-    app.replace("core.apps.", "").replace("apps.", "").replace(".", "_"): (
-        f"{PROJECT_MIGRATION_PATH}.{app.replace('core.apps.', '').replace('apps.', '').replace('.', '_')}"
-    )
-    for app in PROJECT_APPS
-}
