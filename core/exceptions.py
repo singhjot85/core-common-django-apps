@@ -41,7 +41,9 @@ class ObjectNotFound(Exception):
         return self.model.__name__
 
     def _build_message(self):
-        from .utils.error_handling.content_masking import ContentMaskingUtils
+        from .utils.error_handling.content_masking import (  # noqa: PLC0415
+            ContentMaskingUtils,
+        )
 
         model_name = self._get_model_name()
 

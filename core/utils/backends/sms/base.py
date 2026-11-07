@@ -1,3 +1,7 @@
+"""
+Abstract base definitions for SMS delivery backends.
+"""
+
 import abc
 
 
@@ -5,7 +9,8 @@ class BaseSMSBackend(abc.ABC):
     """
     Abstract interface for SMS delivery adapter backends.
 
-    Subclasses must implement `send_sms(to, message)`.
+    Subclasses must implement the ``send_sms`` method to interface with specific
+    SMS transport providers (e.g. Twilio, AWS SNS, Console).
     """
 
     @abc.abstractmethod

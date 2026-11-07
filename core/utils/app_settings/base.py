@@ -62,7 +62,7 @@ class BaseDescriptor:
         """
         Validate if setting is formed correctly
         """
-        from core.exceptions import InvalidTypeError
+        from core.exceptions import InvalidTypeError  # noqa: PLC0415
 
         if value is None:
             value = self.default
@@ -190,7 +190,7 @@ class SettingsMeta(type):
             }
         }
         """
-        from core.exceptions import InvalidTypeError
+        from core.exceptions import InvalidTypeError  # noqa: PLC0415
 
         # Create the class
         cls: type[BaseSettings] = super().__new__(mcs, name, bases, attrs)
@@ -255,7 +255,9 @@ class BaseSettings(metaclass=SettingsMeta):
         if not file:
             return
 
-        from core.apps.configurations.constants import InterfaceTypeChoices
+        from core.apps.configurations.constants import (  # noqa: PLC0415
+            InterfaceTypeChoices,
+        )
 
         interface_classes = classes_from_file(file)
         for kls in interface_classes:

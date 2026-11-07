@@ -41,12 +41,12 @@ class BaseLogModel(UUIDModel, TimeStampedModel, StatusModel):
     DEFAULT_ORDERING = ("-created", "-modified", "-pk")
 
     STATUS = DefaultLogStatusChoices.choices
-    message_type = models.CharField(
-        max_length=124,
+
+    reference_id = models.CharField(
+        max_length=255,
         null=True,
         blank=True,
-        default=DefaultLogTypeChoices.INFO,
-        verbose_name=_("Message Type"),
+        verbose_name=_("Message"),
     )
     message = models.CharField(
         max_length=255,
