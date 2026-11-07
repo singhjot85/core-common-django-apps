@@ -58,7 +58,7 @@ class JWTCookieAuthenticationMiddleware:
         "/api/users/v1/auth/",
         "/api/v1/auth/",
         "/static/",
-        # "/media/",
+        "/media/",
         # "/set-language/",
         "/favicon.ico",
     )
