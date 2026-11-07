@@ -1,3 +1,7 @@
+"""
+Abstract base service and execution workflow for payment processing.
+"""
+
 import abc
 import logging
 from decimal import Decimal
@@ -13,10 +17,20 @@ LOGGER = logging.getLogger(__name__)
 
 class BasePaymentService(abc.ABC):
     """
-    Template and execution workflow for payment processing services.
+    Execution workflow for payment processing services.
+
+    Orchestrates authorization, capture, refunds, error handling, and asynchronous
+    audit log dispatch via Celery.
     """
 
     def __init__(self, integration=None):
+        """
+        Initialize the payment service with an optional Integration model instance.
+
+        Args:
+            integration (AbstractIntegration, optional): Active integration configuration.
+                Defaults to None.
+        """
         self.integration = integration
 
     def charge(
@@ -28,6 +42,19 @@ class BasePaymentService(abc.ABC):
     ) -> Dict[str, Any]:
         """
         Execute payment charge and queue audit logging.
+
+        Args:
+            amount (Decimal): Transaction amount to charge.
+            currency (str, optional): ISO 3-letter currency code. Defaults to app_settings.DEFAULT_CURRENCY.
+            source (str, optional): Payment source or token identifier. Defaults to "default".
+            **kwargs (Any): Additional parameters passed to backend.
+
+        Side effects:
+            - Asynchronously queues ``log_payment_dispatch`` Celery task to persist a PaymentLog.
+            - Performs payment authorization/capture via backend adapter.
+
+        Returns:
+            dict: Result payload containing at least 'success' and 'transaction_id'.
         """
         currency = currency or app_settings.DEFAULT_CURRENCY
         status = PaymentLogStatusChoices.FAILED
@@ -75,6 +102,19 @@ class BasePaymentService(abc.ABC):
     ) -> Dict[str, Any]:
         """
         Execute refund and queue audit logging.
+
+        Args:
+            transaction_id (str): Original gateway transaction identifier.
+            amount (Decimal, optional): Refund amount. None for full refund.
+                Defaults to None.
+            **kwargs (Any): Additional parameters passed to backend.
+
+        Side effects:
+            - Asynchronously queues ``log_payment_dispatch`` Celery task to persist a PaymentLog.
+            - Performs refund via backend adapter.
+
+        Returns:
+            dict: Result payload containing at least 'success' and 'refund_id'.
         """
         status = PaymentLogStatusChoices.FAILED
         traceback_str = ""
@@ -114,16 +154,45 @@ class BasePaymentService(abc.ABC):
             )
 
     def get_gateway_name(self) -> str:
+        """
+        Return the identifier name of the underlying payment gateway.
+
+        Returns:
+            str: Class name or configured gateway identifier string.
+        """
         return self.__class__.__name__
 
     @abc.abstractmethod
     def _charge(
         self, amount: Decimal, currency: str, source: str, **kwargs: Any
     ) -> Dict[str, Any]:
+        """
+        Execute concrete gateway charge operation.
+
+        Args:
+            amount (Decimal): Transaction amount.
+            currency (str): ISO 3-letter currency code.
+            source (str): Payment source or token identifier.
+            **kwargs (Any): Gateway-specific options.
+
+        Returns:
+            dict: Gateway response payload with 'success' and 'transaction_id'.
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def _refund(
         self, transaction_id: str, amount: Optional[Decimal] = None, **kwargs: Any
     ) -> Dict[str, Any]:
+        """
+        Execute concrete gateway refund operation.
+
+        Args:
+            transaction_id (str): Original gateway transaction identifier.
+            amount (Decimal, optional): Refund amount. Defaults to None.
+            **kwargs (Any): Gateway-specific options.
+
+        Returns:
+            dict: Gateway response payload with 'success' and 'refund_id'.
+        """
         raise NotImplementedError

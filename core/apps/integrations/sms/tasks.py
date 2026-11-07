@@ -1,3 +1,7 @@
+"""
+Asynchronous Celery tasks for persisting SMS delivery logs.
+"""
+
 import logging
 from typing import Any, Dict, Optional
 
@@ -22,6 +26,28 @@ def log_sms_dispatch(
 ) -> str:
     """
     Persist an SMSLog record asynchronously within the current tenant schema.
+
+    Args:
+        recipient (str): Destination phone number.
+        status (str): Delivery status choice string from ``SMSLogStatusChoices``.
+        template_id (str, optional): Primary key of the SMSTemplate used, if any.
+            Defaults to None.
+        tracking_id (str, optional): Correlation identifier for tracking and logs.
+            Defaults to None.
+        backend (str, optional): Identifier name of the backend adapter.
+            Defaults to "".
+        message (str, optional): Status summary or error message.
+            Defaults to "".
+        traceback (str, optional): Exception stack trace on failure.
+            Defaults to "".
+        context (dict, optional): Context parameters used during rendering.
+            Defaults to None.
+
+    Side effects:
+        - Creates a new ``SMSLog`` record in the database.
+
+    Returns:
+        str: String representation of the newly created SMSLog UUID primary key.
     """
     SMSLog = get_sms_log_model()
     log = SMSLog.objects.create(

@@ -1,3 +1,7 @@
+"""
+Console SMS backend for development and test environments.
+"""
+
 import logging
 
 from .base import BaseSMSBackend
@@ -17,6 +21,11 @@ class ConsoleSMSBackend(BaseSMSBackend):
         Args:
             to (str): Recipient phone number.
             message (str): SMS payload message string.
+            **kwargs: Optional delivery arguments.
+
+        Side effects:
+            - Emits info log record with recipient and message payload.
+            - Prints message block to stdout.
 
         Returns:
             bool: Always returns True.

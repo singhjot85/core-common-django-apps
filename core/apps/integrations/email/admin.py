@@ -1,3 +1,7 @@
+"""
+Admin site registrations for email logs and versioned email templates.
+"""
+
 from django.contrib import admin
 
 from core.apps.integrations.email import (
@@ -12,6 +16,10 @@ EmailTemplate = get_email_template_model()
 
 @admin.register(EmailLog, site=private_admin_site)
 class EmailLogAdmin(admin.ModelAdmin):
+    """
+    Admin configuration for EmailLog model on the private tenant site.
+    """
+
     list_display = ("id", "recipient", "subject", "status", "backend", "created")
     list_filter = ("status", "backend")
     search_fields = ("recipient", "subject")
@@ -19,6 +27,10 @@ class EmailLogAdmin(admin.ModelAdmin):
 
 @admin.register(EmailTemplate, site=private_admin_site)
 class EmailTemplateAdmin(admin.ModelAdmin):
+    """
+    Admin configuration for EmailTemplate model on the private tenant site.
+    """
+
     list_display = ("id", "interface_type", "subject", "version", "is_active")
     list_filter = ("interface_type", "is_active")
     search_fields = ("interface_type", "subject")

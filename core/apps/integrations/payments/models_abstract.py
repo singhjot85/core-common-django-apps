@@ -1,3 +1,7 @@
+"""
+Abstract base models for payment transaction and operation logs.
+"""
+
 from decimal import Decimal
 
 from django.db import models
@@ -10,6 +14,18 @@ from core.utils.models import BaseLogModel
 class AbstractPaymentLog(BaseLogModel):
     """
     Log of payment operations (charges, refunds, authorizations).
+
+    Tracks gateway responses, transaction IDs, amounts, currencies, and status
+    for billing and compliance audit trails. Inherits audit timestamps and status
+    management from ``BaseLogModel``.
+
+    Attributes:
+        transaction_id (str): Unique transaction identifier returned by gateway.
+        amount (Decimal): Transaction amount with two decimal places.
+        currency (str): Three-letter ISO currency code (e.g. 'USD').
+        gateway (str): Identifier name of the payment gateway used.
+        source (str): Identifier of the payment source, customer, or token.
+        details (dict): Raw JSON response payload returned by the gateway.
     """
 
     STATUS = PaymentLogStatusChoices.choices
@@ -56,4 +72,10 @@ class AbstractPaymentLog(BaseLogModel):
         verbose_name_plural = _("Payment Logs")
 
     def __str__(self) -> str:
+        """
+        Return gateway, amount, currency, and status summary.
+
+        Returns:
+            str: Formatted string representing transaction summary.
+        """
         return f"{self.gateway} {self.amount} {self.currency} [{self.get_status_display()}] ({self.transaction_id})"

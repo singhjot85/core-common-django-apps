@@ -1,3 +1,7 @@
+"""
+Payments integration app configuration and dynamic model getters.
+"""
+
 import typing
 
 from django.apps import apps as django_apps
@@ -15,7 +19,12 @@ app_settings: IntegrationsPaymentsSettings = IntegrationsPaymentsSettings()
 
 
 def get_payment_log_model():
-    """Return the configured PaymentLog model."""
+    """
+    Return the configured concrete PaymentLog model class.
+
+    Returns:
+        type[AbstractPaymentLog]: Swapped or default PaymentLog model class.
+    """
     return typing.cast(
         type["AbstractPaymentLog"],
         django_apps.get_model(

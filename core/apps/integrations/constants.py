@@ -1,3 +1,7 @@
+"""
+Enumerations and choices for integrations and credentials management.
+"""
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 

@@ -1,3 +1,7 @@
+"""
+Utility SMS backends.
+"""
+
 from core.utils.backends.sms.base import BaseSMSBackend
 from core.utils.backends.sms.console import ConsoleSMSBackend
 

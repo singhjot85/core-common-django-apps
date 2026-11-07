@@ -1,3 +1,7 @@
+"""
+Payment service factory and service exports.
+"""
+
 from django.core.exceptions import ImproperlyConfigured
 
 from core.apps.integrations import get_integration_model
@@ -10,9 +14,18 @@ from .payment import PaymentService
 
 def get_payment_service() -> BasePaymentService:
     """
-    Return MockPaymentService or PaymentService.
-    If name is provided, resolves the Integration by label.
-    If neither name nor integration is provided, returns default PaymentService without DB queries.
+    Resolve and instantiate the appropriate payment service for the current tenant.
+
+    Queries the active tenant schema for a payment Integration record.
+    Returns ``MockPaymentService`` if mock mode is enabled on the integration,
+    or ``PaymentService`` for live gateway processing.
+
+    Returns:
+        BasePaymentService: Configured active payment service instance.
+
+    Raises:
+        ImproperlyConfigured:
+        - When no Integration record exists with ``integration_key="payment"``.
     """
     Integration = get_integration_model()
     integration = Integration.objects.filter(

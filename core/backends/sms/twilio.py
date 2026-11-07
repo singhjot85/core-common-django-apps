@@ -1,3 +1,7 @@
+"""
+Twilio SMS backend using the Twilio REST SDK.
+"""
+
 import logging
 from typing import Any, Optional
 
@@ -15,7 +19,7 @@ except ImportError:
 
 class TwilioSMSBackend(BaseSMSBackend):
     """
-    Twilio SMS Backend, based on Twilio REST APIs using the Twilio SDK to send an SMS.
+    Deliver SMS messages via the Twilio REST API using the Twilio Python SDK.
     """
 
     def __init__(
@@ -24,6 +28,17 @@ class TwilioSMSBackend(BaseSMSBackend):
         auth_token: Optional[str] = None,
         _from: Optional[str] = None,
     ):
+        """
+        Initialize Twilio client credentials and default sender phone number.
+
+        Args:
+            account_sid (str, optional): Twilio Account SID identifier.
+                Defaults to None.
+            auth_token (str, optional): Twilio Auth Token credential.
+                Defaults to None.
+            _from (str, optional): Sender phone number or Twilio Messaging Service SID.
+                Defaults to None.
+        """
         super().__init__(_from=_from)
         self.account_sid = account_sid
         self.auth_token = auth_token
@@ -33,11 +48,19 @@ class TwilioSMSBackend(BaseSMSBackend):
         Send an SMS through the Twilio SDK.
 
         Args:
-            to (str): Recipient phone number.
-            message (str): Rendered message to send.
+            to (str): Recipient phone number in E.164 format.
+            message (str): Rendered message body to send.
+            **kwargs (Any): Additional delivery parameters.
+
+        Side effects:
+            - Performs external network HTTP request to Twilio API.
 
         Returns:
             bool: True representing success, False on failure.
+
+        Raises:
+            ImproperlyConfigured:
+            - When the ``twilio`` package is not installed.
         """
         if not Client:
             raise ImproperlyConfigured("twilio package is not installed.")

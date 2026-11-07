@@ -1,3 +1,7 @@
+"""
+Enumerations and choices for payment statuses and gateway types.
+"""
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 

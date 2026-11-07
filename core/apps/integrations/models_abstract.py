@@ -1,3 +1,7 @@
+"""
+Abstract base models and upload path generators for integrations and credentials.
+"""
+
 from django.conf import settings
 from django.db import connection, models
 from django.utils.translation import gettext_lazy as _
@@ -12,6 +16,13 @@ from core.utils.models import BaseModel
 def get_credentials_file_path(instance, filename: str) -> str:
     """
     Generate dynamic schema-aware upload path for credentials files.
+
+    Args:
+        instance (AbstractCredentialsManager): Instance owning the uploaded credential file.
+        filename (str): Base name of the uploaded credential file.
+
+    Returns:
+        str: Schema-prefixed storage path for file uploads.
     """
     name = getattr(instance, "name", "credentials")
     return f"{connection.schema_name}/credentials/{name}_{filename}"
@@ -19,7 +30,19 @@ def get_credentials_file_path(instance, filename: str) -> str:
 
 class AbstractCredentialsManager(BaseModel):
     """
-    Manages provider credentials, secrets, tokens, or configuration key files.
+    Manage provider credentials, secrets, tokens, or configuration key files.
+
+    Provides tenant-scoped credential storage with optional expiration tracking
+    and schema-isolated file attachments (such as APNs certificates or service accounts).
+
+    Relations:
+        integrations (ReverseForeignKey): Integration records referencing these credentials.
+
+    Attributes:
+        name (str): Provider choice name from ``CredentialsNameChoices``.
+        details (dict): Structured JSON dictionary containing API secrets and keys.
+        file (FieldFile): Optional key or certificate file stored in schema path.
+        expires_on (datetime): Optional expiration timestamp for the credential.
     """
 
     CREDENTIAL_FILE_CALLABLE = get_credentials_file_path
@@ -58,12 +81,31 @@ class AbstractCredentialsManager(BaseModel):
         verbose_name_plural = _("Credentials Managers")
 
     def __str__(self) -> str:
+        """
+        Return the display label and primary key for the credentials instance.
+
+        Returns:
+            str: Formatted provider name display with primary key.
+        """
         return f"{self.get_name_display()} ({self.pk})"
 
 
 class AbstractIntegration(BaseModel):
     """
-    Core integration entity managing service activation, credentials, and mock routing.
+    Manage service activation, provider credentials, and mock routing.
+
+    Controls whether specific integration categories (email, SMS, payments)
+    are enabled for the current tenant and whether operations should route to mock services.
+
+    Relations:
+        credentials (ForeignKey): CredentialsManager instance providing API keys or certs.
+
+    Attributes:
+        integration_key (str): Service category choice from ``IntegrationKeyChoices``.
+        label (str): Human-friendly name for this integration configuration.
+        is_active (bool): Whether the integration is active for live operations.
+        has_webhooks (bool): Indicates if the integration handles inbound webhooks.
+        mock (bool): When True, bypasses third-party APIs and routes to mock services.
     """
 
     integration_key = models.CharField(
@@ -110,4 +152,10 @@ class AbstractIntegration(BaseModel):
         verbose_name_plural = _("Integrations")
 
     def __str__(self) -> str:
+        """
+        Return the human-readable label and integration category.
+
+        Returns:
+            str: Formatted label with category display name.
+        """
         return f"{self.label} ({self.get_integration_key_display()})"

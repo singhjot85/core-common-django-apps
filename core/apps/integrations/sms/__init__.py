@@ -1,3 +1,7 @@
+"""
+SMS integration app configuration and dynamic model getters.
+"""
+
 import typing
 
 from django.apps import apps as django_apps
@@ -13,7 +17,12 @@ app_settings: IntegrationsSMSSettings = IntegrationsSMSSettings()
 
 
 def get_sms_log_model():
-    """Return the configured SMSLog model."""
+    """
+    Return the configured concrete SMSLog model class.
+
+    Returns:
+        type[AbstractSMSLog]: Swapped or default SMSLog model class.
+    """
     return typing.cast(
         type["AbstractSMSLog"],
         django_apps.get_model(
@@ -23,7 +32,12 @@ def get_sms_log_model():
 
 
 def get_sms_template_model():
-    """Return the configured SMSTemplate model."""
+    """
+    Return the configured concrete SMSTemplate model class.
+
+    Returns:
+        type[AbstractSMSTemplate]: Swapped or default SMSTemplate model class.
+    """
     return typing.cast(
         type["AbstractSMSTemplate"],
         django_apps.get_model(

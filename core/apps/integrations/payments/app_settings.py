@@ -1,10 +1,14 @@
+"""
+Settings definitions for the payments integrations sub-app.
+"""
+
 from core.utils.app_settings import BaseSettings
 from core.utils.app_settings.types import Settings, SettingsType
 
 
 class IntegrationsPaymentsSettings(BaseSettings):
     """
-    Settings for the Payments Integration sub-app.
+    Settings descriptor container for payment processing defaults and gateway drivers.
     """
 
     SETTINGS_KEY = "CORE_INTEGRATIONS_PAYMENTS_SETTINGS"

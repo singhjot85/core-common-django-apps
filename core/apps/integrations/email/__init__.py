@@ -1,3 +1,7 @@
+"""
+Email integration app configuration and dynamic model getters.
+"""
+
 import typing
 
 from django.apps import apps as django_apps
@@ -13,7 +17,12 @@ app_settings: IntegrationsEmailSettings = IntegrationsEmailSettings()
 
 
 def get_email_log_model():
-    """Return the configured EmailLog model."""
+    """
+    Return the configured concrete EmailLog model class.
+
+    Returns:
+        type[AbstractEmailLog]: Swapped or default EmailLog model class.
+    """
     return typing.cast(
         type["AbstractEmailLog"],
         django_apps.get_model(
@@ -23,7 +32,12 @@ def get_email_log_model():
 
 
 def get_email_template_model():
-    """Return the configured EmailTemplate model."""
+    """
+    Return the configured concrete EmailTemplate model class.
+
+    Returns:
+        type[AbstractEmailTemplate]: Swapped or default EmailTemplate model class.
+    """
     return typing.cast(
         type["AbstractEmailTemplate"],
         django_apps.get_model(

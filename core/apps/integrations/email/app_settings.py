@@ -1,10 +1,14 @@
+"""
+Settings definitions for the email integrations sub-app.
+"""
+
 from core.utils.app_settings import BaseSettings
 from core.utils.app_settings.types import Settings, SettingsType
 
 
 class IntegrationsEmailSettings(BaseSettings):
     """
-    Settings for the Email Integration sub-app.
+    Settings descriptor container for email integration defaults and backend drivers.
     """
 
     SETTINGS_KEY = "CORE_INTEGRATIONS_EMAIL_SETTINGS"

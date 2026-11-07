@@ -1,10 +1,14 @@
+"""
+Enumerations and choices for SMS delivery statuses and template categories.
+"""
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
 class SMSLogStatusChoices(models.TextChoices):
     """
-    Delivery status choices for SMS logs.
+    Delivery status choices for SMS dispatch logs.
     """
 
     QUEUED = "queued", _("Queued")

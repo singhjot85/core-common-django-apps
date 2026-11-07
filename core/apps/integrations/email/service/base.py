@@ -1,3 +1,7 @@
+"""
+Abstract base service and template workflow for email delivery.
+"""
+
 import abc
 import logging
 import traceback
@@ -17,15 +21,31 @@ EmailLog = get_email_log_model()
 
 class BaseEmailService(abc.ABC):
     """
-    Template and execution workflow for email delivery services.
+    Template rendering and execution workflow for email delivery services.
+
+    Handles template resolution from Redis cache, context rendering for plain text
+    and HTML alternatives, error handling, and asynchronous audit log dispatch via Celery.
     """
 
     def __init__(self, integration=None):
+        """
+        Initialize the email service with an optional Integration model instance.
+
+        Args:
+            integration (AbstractIntegration, optional): Active integration configuration.
+                Defaults to None.
+        """
         self.integration = integration
 
     def load_template(self, template_key: str) -> Dict[str, Any]:
         """
         Fetch the cached active template dictionary for an interface type.
+
+        Args:
+            template_key (str): Interface type identifying the template.
+
+        Returns:
+            dict: Cached template mapping with 'subject', 'template', and 'html_template'.
         """
         return EmailTemplate.get_template(template_key)
 
@@ -34,6 +54,13 @@ class BaseEmailService(abc.ABC):
     ) -> Tuple[str, str, str]:
         """
         Render subject, plain text, and HTML body from cached template data.
+
+        Args:
+            template_data (dict): Dictionary containing raw template strings.
+            context (dict): Context variables used for placeholder substitution.
+
+        Returns:
+            tuple[str, str, str]: Rendered (subject, plain_content, html_content).
         """
         raw_subject = template_data.get("subject", "")
         subject = EmailTemplate.render_template(raw_subject, context)
@@ -58,7 +85,30 @@ class BaseEmailService(abc.ABC):
     ) -> bool:
         """
         Execute email dispatch and asynchronously queue delivery audit logging.
-        Strict two paths: template-driven rendering OR raw content values.
+
+        Supports two dispatch paths: template-driven rendering using a registered template
+        key, or raw subject and body values.
+
+        Args:
+            to (str): Recipient email address.
+            template (str, optional): Key identifying the email template to load.
+                Defaults to None.
+            subject (str, optional): Direct email subject line if not using template.
+                Defaults to None.
+            context (dict, optional): Context dictionary for template substitution.
+                Defaults to None.
+            plain_body (str, optional): Direct plain text body if not using template.
+                Defaults to None.
+            html_body (str, optional): Direct HTML body if not using template.
+                Defaults to None.
+            **kwargs (Any): Additional options passed through to underlying delivery backend.
+
+        Side effects:
+            - Asynchronously queues ``log_email_dispatch`` Celery task to persist an EmailLog.
+            - Performs delivery transport via subclass ``_send`` implementation.
+
+        Returns:
+            bool: True if dispatch succeeded, False on error.
         """
         context = context or {}
         if template:
@@ -82,7 +132,8 @@ class BaseEmailService(abc.ABC):
                 subject=subject,
                 plain_body=plain_body,
                 html_body=html_body,
-                tracking_id=tracking_id**kwargs,
+                tracking_id=tracking_id,
+                **kwargs,
             )
             if success:
                 log_message = "Delivered"
@@ -110,7 +161,10 @@ class BaseEmailService(abc.ABC):
 
     def get_backend_name(self) -> str:
         """
-        Identifier name of the underlying backend.
+        Return the identifier name of the underlying backend.
+
+        Returns:
+            str: Class name or configured backend identifier string.
         """
         return self.__class__.__name__
 
@@ -124,6 +178,16 @@ class BaseEmailService(abc.ABC):
         **kwargs: Any,
     ) -> bool:
         """
-        Subclasses implement concrete delivery transport.
+        Execute concrete transport delivery for the email message.
+
+        Args:
+            to (str): Recipient email address.
+            subject (str): Rendered subject line.
+            plain_body (str): Rendered plain text body.
+            html_body (str, optional): Rendered HTML alternative body. Defaults to None.
+            **kwargs (Any): Additional transport options.
+
+        Returns:
+            bool: True if message was accepted/sent, False otherwise.
         """
         raise NotImplementedError

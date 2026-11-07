@@ -1,3 +1,7 @@
+"""
+Admin site registrations for payment transaction logs.
+"""
+
 from django.contrib import admin
 
 from core.apps.integrations.payments import get_payment_log_model
@@ -8,6 +12,10 @@ PaymentLog = get_payment_log_model()
 
 @admin.register(PaymentLog, site=private_admin_site)
 class PaymentLogAdmin(admin.ModelAdmin):
+    """
+    Admin configuration for PaymentLog model on the private tenant site.
+    """
+
     list_display = (
         "id",
         "transaction_id",

@@ -1,9 +1,15 @@
+"""
+Settings definitions for the core integrations framework.
+"""
+
 from core.utils.app_settings import BaseSettings
 
 
 class IntegrationsSettings(BaseSettings):
     """
-    Settings for Integrations framework. The singleton is created in __init__.py, never here.
+    Settings descriptor container for the integrations framework.
+
+    The shared singleton is instantiated in ``core.apps.integrations.__init__``.
     """
 
     SETTINGS_KEY = "CORE_INTEGRATIONS_SETTINGS"

@@ -1,3 +1,7 @@
+"""
+SMS service factory and service exports.
+"""
+
 from django.core.exceptions import ImproperlyConfigured
 
 from core.apps.integrations import get_integration_model
@@ -10,9 +14,18 @@ from .sms import SMSService
 
 def get_sms_service() -> BaseSMSService:
     """
-    Return MockSMSService or SMSService.
-    If name is provided, resolves the Integration by label.
-    If neither name nor integration is provided, returns default SMSService without DB queries.
+    Resolve and instantiate the appropriate SMS service for the current tenant.
+
+    Queries the active tenant schema for an SMS Integration record.
+    Returns ``MockSMSService`` if mock mode is enabled on the integration,
+    or ``SMSService`` for live delivery.
+
+    Returns:
+        BaseSMSService: Configured active SMS service instance.
+
+    Raises:
+        ImproperlyConfigured:
+        - When no Integration record exists with ``integration_key="sms"``.
     """
     Integration = get_integration_model()
     integration = Integration.objects.filter(

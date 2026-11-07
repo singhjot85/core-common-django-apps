@@ -1,3 +1,3 @@
 """
-Utility communication and integration backends.
+Communication and integration delivery adapter backends.
 """

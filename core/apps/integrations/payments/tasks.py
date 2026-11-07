@@ -1,3 +1,7 @@
+"""
+Asynchronous Celery tasks for persisting payment operation logs.
+"""
+
 import logging
 from decimal import Decimal
 from typing import Any, Dict, Optional
@@ -26,6 +30,23 @@ def log_payment_dispatch(
 ) -> str:
     """
     Persist a PaymentLog record asynchronously within the current tenant schema.
+
+    Args:
+        transaction_id (str): Transaction identifier from the gateway.
+        amount (str): String representation of the Decimal transaction amount.
+        currency (str): Three-letter ISO currency code.
+        status (str): Status choice string from ``PaymentLogStatusChoices``.
+        gateway (str, optional): Name of the payment gateway adapter. Defaults to "".
+        source (str, optional): Source account or payment token. Defaults to "".
+        message (str, optional): Status summary or failure message. Defaults to "".
+        traceback (str, optional): Exception stack trace if operation failed. Defaults to "".
+        details (dict, optional): Raw gateway response dictionary. Defaults to None.
+
+    Side effects:
+        - Creates a new ``PaymentLog`` record in the database.
+
+    Returns:
+        str: String representation of the newly created PaymentLog UUID primary key.
     """
     PaymentLog = get_payment_log_model()
     log = PaymentLog.objects.create(

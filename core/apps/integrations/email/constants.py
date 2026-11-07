@@ -1,10 +1,14 @@
+"""
+Enumerations and choices for email delivery statuses and template categories.
+"""
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
 class EmailLogStatusChoices(models.TextChoices):
     """
-    Delivery status choices for email logs.
+    Delivery status choices for email dispatch logs.
     """
 
     QUEUED = "queued", _("Queued")

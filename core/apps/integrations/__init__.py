@@ -1,3 +1,7 @@
+"""
+Core integrations application framework and dynamic model getters.
+"""
+
 import typing
 
 from django.apps import apps as django_apps
@@ -13,7 +17,12 @@ app_settings: IntegrationsSettings = IntegrationsSettings()
 
 
 def get_integration_model():
-    """Return the configured Integration model."""
+    """
+    Return the configured concrete Integration model class.
+
+    Returns:
+        type[AbstractIntegration]: Swapped or default Integration model class.
+    """
     return typing.cast(
         type["AbstractIntegration"],
         django_apps.get_model(
@@ -23,7 +32,12 @@ def get_integration_model():
 
 
 def get_credentials_manager_model():
-    """Return the configured CredentialsManager model."""
+    """
+    Return the configured concrete CredentialsManager model class.
+
+    Returns:
+        type[AbstractCredentialsManager]: Swapped or default CredentialsManager model class.
+    """
     return typing.cast(
         type["AbstractCredentialsManager"],
         django_apps.get_model(

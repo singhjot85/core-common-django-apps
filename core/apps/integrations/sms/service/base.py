@@ -1,3 +1,7 @@
+"""
+Abstract base service and template workflow for SMS delivery.
+"""
+
 import abc
 import logging
 import uuid
@@ -15,15 +19,31 @@ SMSTemplate = get_sms_template_model()
 
 class BaseSMSService(abc.ABC):
     """
-    Template and execution workflow for SMS delivery services.
+    Template rendering and execution workflow for SMS delivery services.
+
+    Handles template resolution from Redis cache, context rendering for plain text,
+    error handling, and asynchronous audit log dispatch via Celery.
     """
 
     def __init__(self, integration=None):
+        """
+        Initialize the SMS service with an optional Integration model instance.
+
+        Args:
+            integration (AbstractIntegration, optional): Active integration configuration.
+                Defaults to None.
+        """
         self.integration = integration
 
     def load_template(self, template_key: str) -> Dict[str, Any]:
         """
         Fetch the cached active template dictionary for an interface type.
+
+        Args:
+            template_key (str): Interface type identifying the template.
+
+        Returns:
+            dict: Cached template mapping containing 'template' string.
         """
         return SMSTemplate.get_template(template_key)
 
@@ -32,6 +52,13 @@ class BaseSMSService(abc.ABC):
     ) -> str:
         """
         Render SMS text payload using template data.
+
+        Args:
+            template_data (dict): Dictionary containing raw template string.
+            context (dict): Context variables used for placeholder substitution.
+
+        Returns:
+            str: Rendered SMS message body string.
         """
         plain_template = template_data.get("template", "") or ""
         return SMSTemplate.render_template(plain_template, context)
@@ -46,7 +73,26 @@ class BaseSMSService(abc.ABC):
     ) -> bool:
         """
         Execute SMS dispatch and asynchronously queue delivery audit logging.
-        Strict two paths: template-driven rendering OR raw message value.
+
+        Supports two dispatch paths: template-driven rendering using a registered template
+        key, or raw message content.
+
+        Args:
+            to (str): Recipient phone number in E.164 or normalized format.
+            message (str, optional): Direct SMS message body if not using template.
+                Defaults to None.
+            template (str, optional): Key identifying the SMS template to load.
+                Defaults to None.
+            context (dict, optional): Context dictionary for template substitution.
+                Defaults to None.
+            **kwargs (Any): Additional options passed through to underlying delivery backend.
+
+        Side effects:
+            - Asynchronously queues ``log_sms_dispatch`` Celery task to persist an SMSLog.
+            - Performs delivery transport via subclass ``_send`` implementation.
+
+        Returns:
+            bool: True if dispatch succeeded, False on error.
         """
         context = context or {}
         if template:
@@ -91,13 +137,24 @@ class BaseSMSService(abc.ABC):
 
     def get_backend_name(self) -> str:
         """
-        Identifier name of the underlying backend.
+        Return the identifier name of the underlying backend.
+
+        Returns:
+            str: Class name or configured backend identifier string.
         """
         return self.__class__.__name__
 
     @abc.abstractmethod
     def _send(self, to: str, message: str, **kwargs: Any) -> bool:
         """
-        Subclasses implement concrete delivery transport.
+        Execute concrete transport delivery for the SMS message.
+
+        Args:
+            to (str): Recipient phone number.
+            message (str): Rendered message body text.
+            **kwargs (Any): Additional transport options.
+
+        Returns:
+            bool: True if dispatch succeeded, False otherwise.
         """
         raise NotImplementedError
