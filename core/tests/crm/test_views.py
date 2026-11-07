@@ -1,3 +1,4 @@
+import uuid
 from types import SimpleNamespace
 
 import pytest
@@ -364,6 +365,143 @@ class TestNestedCustomerEntitiesAPI:
         addr2.refresh_from_db()
         assert addr2.is_primary is True
         assert addr1.is_primary is False
+
+    def test_create_identification_uses_url_customer_pk_without_body_customer_id(self):
+        """POST /customers/{customer_pk}/identifications/ does not require customer in request body."""
+        view = CustomerIdentificationViewSet.as_view({"post": "create"})
+        payload = {"type": IdentityTypeChoices.AADHAAR.value}
+        request = self.factory.post(
+            f"/customers/{self.customer1.id}/identifications/", payload, format="json"
+        )
+        force_authenticate(request, user=self.user)
+        response = view(request, customer_pk=str(self.customer1.id))
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["customer"] == self.customer1.id
+        assert CustomerIdentification.objects.filter(
+            customer=self.customer1, type=IdentityTypeChoices.AADHAAR
+        ).exists()
+
+    def test_create_identification_ignores_malicious_body_customer_id(self):
+        """POST /customers/{customer_pk}/identifications/ ignores customer passed in payload."""
+        view = CustomerIdentificationViewSet.as_view({"post": "create"})
+        payload = {
+            "type": IdentityTypeChoices.DRIVING_LICENSE.value,
+            "customer": str(self.customer2.id),  # Attempt to spoof customer2
+        }
+        request = self.factory.post(
+            f"/customers/{self.customer1.id}/identifications/", payload, format="json"
+        )
+        force_authenticate(request, user=self.user)
+        response = view(request, customer_pk=str(self.customer1.id))
+
+        assert response.status_code == status.HTTP_201_CREATED
+        # Must be bound to customer1 from URL, not customer2 from body
+        assert response.data["customer"] == self.customer1.id
+        ident = CustomerIdentification.objects.get(id=response.data["id"])
+        assert ident.customer_id == self.customer1.id
+        assert not CustomerIdentification.objects.filter(
+            customer=self.customer2, type=IdentityTypeChoices.DRIVING_LICENSE
+        ).exists()
+
+    def test_create_phone_uses_url_customer_pk_without_body_customer(self):
+        """POST /customers/{customer_pk}/phones/ does not require customer in request body."""
+        view = CustomerPhoneViewSet.as_view({"post": "create"})
+        payload = {
+            "phone": "+919988776655",
+            "phone_type": ContactTypeChoices.WORK.value,
+            "is_primary": True,
+        }
+        request = self.factory.post(
+            f"/customers/{self.customer1.id}/phones/", payload, format="json"
+        )
+        force_authenticate(request, user=self.user)
+        response = view(request, customer_pk=str(self.customer1.id))
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["customer"] == self.customer1.id
+        assert CustomerPhone.objects.filter(
+            customer=self.customer1, phone="+919988776655"
+        ).exists()
+
+    def test_create_email_uses_url_customer_pk_without_body_customer(self):
+        """POST /customers/{customer_pk}/emails/ does not require customer in request body."""
+        view = CustomerEmailViewSet.as_view({"post": "create"})
+        payload = {
+            "email": "user@example.com",
+            "email_type": ContactTypeChoices.PERSONAL.value,
+            "is_primary": True,
+        }
+        request = self.factory.post(
+            f"/customers/{self.customer1.id}/emails/", payload, format="json"
+        )
+        force_authenticate(request, user=self.user)
+        response = view(request, customer_pk=str(self.customer1.id))
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["customer"] == self.customer1.id
+        assert CustomerEmail.objects.filter(
+            customer=self.customer1, email="user@example.com"
+        ).exists()
+
+    def test_create_address_uses_url_customer_pk_without_body_customer(self):
+        """POST /customers/{customer_pk}/addresses/ does not require customer in request body."""
+        view = CustomerAddressViewSet.as_view({"post": "create"})
+        payload = {
+            "address_type": AddressTypeChoices.PERMANENT.value,
+            "address_line_1": "Flat 4B, Baker St",
+            "city": "London",
+            "country": "GB",
+        }
+        request = self.factory.post(
+            f"/customers/{self.customer1.id}/addresses/", payload, format="json"
+        )
+        force_authenticate(request, user=self.user)
+        response = view(request, customer_pk=str(self.customer1.id))
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["customer"] == self.customer1.id
+        assert CustomerAddress.objects.filter(
+            customer=self.customer1, city="London"
+        ).exists()
+
+    def test_create_preference_uses_url_customer_pk_without_body_customer(self):
+        """POST /customers/{customer_pk}/preferences/ does not require customer in request body."""
+        pref_type = CustomerPreferenceType.objects.create(
+            code="sms_alerts",
+            label="SMS Alerts",
+            data_type=PreferenceDataTypeChoices.BOOLEAN.value,
+            default_value=True,
+        )
+        view = CustomerPreferenceViewSet.as_view({"post": "create"})
+        payload = {
+            "preference_type": str(pref_type.id),
+            "value": True,
+        }
+        request = self.factory.post(
+            f"/customers/{self.customer1.id}/preferences/", payload, format="json"
+        )
+        force_authenticate(request, user=self.user)
+        response = view(request, customer_pk=str(self.customer1.id))
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["customer"] == self.customer1.id
+        assert CustomerPreference.objects.filter(
+            customer=self.customer1, preference_type=pref_type
+        ).exists()
+
+    def test_nested_creation_404_when_customer_not_found(self):
+        """POST /customers/{fake_pk}/identifications/ returns 404 when parent customer does not exist."""
+        fake_pk = str(uuid.uuid4())
+        view = CustomerIdentificationViewSet.as_view({"post": "create"})
+        payload = {"type": IdentityTypeChoices.PAN.value}
+        request = self.factory.post(
+            f"/customers/{fake_pk}/identifications/", payload, format="json"
+        )
+        force_authenticate(request, user=self.user)
+        response = view(request, customer_pk=fake_pk)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.django_db
