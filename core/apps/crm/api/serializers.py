@@ -239,6 +239,25 @@ class CustomerSerializer(serializers.ModelSerializer):
             "date_of_birth",
         ]
 
+    def validate(self, attrs):
+        """
+        Validate the customer data before creation, cross field validations.
+        """
+        business_name = attrs.get("business_name")
+        if business_name and any(
+            [
+                attrs.get(attr)
+                for attr in ["suffix", "first_name", "middle_name", "last_name"]
+            ]
+        ):
+            raise serializers.ValidationError(
+                {
+                    "business_name": "Customer cannot have both a business_name and a person name"
+                }
+            )
+
+        return attrs
+
     def create(self, validated_data):
         """
         Create and return a new Customer instance.

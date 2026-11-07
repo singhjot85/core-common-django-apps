@@ -43,7 +43,7 @@ class ReadOnlyModelSerializer(serializers.ModelSerializer):
         )
 
 
-class DynamicReadOnlyModelSerializer(ReadOnlyModelSerializer):
+class DynamicReadOnlyModelSerializer(serializers.ModelSerializer):
     """
     Read-only serializer with ability to specify which fields are read-only.
 
@@ -69,7 +69,7 @@ class DynamicReadOnlyModelSerializer(ReadOnlyModelSerializer):
 
     def __init__(self, *args, **kwargs):
         # Initialize the base ModelSerializer first
-        super(ReadOnlyModelSerializer, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         if self.read_only_fields:
             for field_name in self.read_only_fields:

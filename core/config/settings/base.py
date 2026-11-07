@@ -199,6 +199,21 @@ STATICFILES_DIRS = [
 ]
 
 # -----------------------------
+#   Media Files & Storage Configuration
+# -----------------------------
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+# -----------------------------
 #   Django Middleware
 # -----------------------------
 MIDDLEWARE = [

@@ -7,6 +7,7 @@ Routes:
     - Backend API: `/api/<app>/<version>/...` (auto-discovered tenant private apps)
 """
 
+from django.conf import settings
 from django.urls import path
 
 from core.apps.users.api.template_views import (
@@ -30,3 +31,8 @@ urlpatterns = [
     # Backend API Endpoints
     *resolve_and_build_paths(core_tenant_url_mapping),
 ]
+
+if settings.DEBUG:
+    from django.conf.urls.static import static
+
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
