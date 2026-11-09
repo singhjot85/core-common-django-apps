@@ -2,26 +2,10 @@ import typing
 
 from django.db import models
 
+from core.libraries.seeder.exceptions import FieldException
+
 if typing.TYPE_CHECKING:
     from .seeder import BaseSeeder
-
-
-class InvalidFieldError(Exception):
-    """ """
-
-    def __init__(self, field_name, model_kls: type[models.Model], *args):
-        """ """
-        message = f"{field_name}, is an Invalid field for model: {model_kls.__name__}"
-        super().__init__(message, *args)
-
-
-class FieldException(Exception):
-    """ """
-
-    def __init__(self, field_name, model_kls, message, *args):
-        """ """
-        message = f"Error in {field_name} of {model_kls.__name__}: {message}"
-        super().__init__(message, *args)
 
 
 class SeederField:
