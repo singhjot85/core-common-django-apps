@@ -5,7 +5,7 @@ from django.db import models
 from core.libraries.seeder.exceptions import FieldException
 
 if typing.TYPE_CHECKING:
-    from .seeder import BaseSeeder
+    from core.libraries.seeder.seeder import BaseSeeder
 
 
 class SeederField:
@@ -107,7 +107,7 @@ class RelationField(SeederField):
             self.related_instance = self.retrieve_related_instance()
 
         if self.field_name in self.related_seeder_map:
-            CustomSeeder = self.related_seeder_map[self.field_name]
+            CustomSeeder: type["BaseSeeder"] = self.related_seeder_map[self.field_name]
             return CustomSeeder().run(self.data)
 
     def link_relation(self, instance: "models.Model") -> None:

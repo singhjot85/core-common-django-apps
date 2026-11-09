@@ -1,4 +1,3 @@
-from core.libraries.seeder.loaders.static import (
-    FactoryBasedLoader as FactoryBasedLoader,
-    FileBasedLoader as FileBasedLoader,
-)
+from core.libraries.seeder.loaders.static import FactoryBasedLoader, FileBasedLoader
+
+__all__ = ["FactoryBasedLoader", "FileBasedLoader"]

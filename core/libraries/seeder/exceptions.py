@@ -15,7 +15,12 @@ class SeederDataLoaderException(Exception):
 class SeederException(Exception):
     """ """
 
-    pass
+    def __init__(self, label: str = None, *args):
+        message = super().__init__(*args)
+        if label:
+            return f"[{label}] {message}"
+
+        return message
 
 
 class InvalidFieldError(Exception):
