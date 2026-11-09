@@ -5,9 +5,9 @@ from functools import lru_cache
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from core.libraries.seeder.exceptions import InvalidFieldError
 from core.libraries.seeder.fields import (
     ForwardSingularRelation,
-    InvalidFieldError,
     ManagerRelation,
     ReverseSingularRelation,
     SeederField,
@@ -164,7 +164,6 @@ class BaseObjectMethods:
         """
         Seed the instance to database using the configured methods logic.
         """
-        # Phase 1: Raw → validated Python values
         prepared_fields = self.prepare_fields(data)  # calls field.clean() per field
         self.run_full_clean(prepared_fields, seeder)
         instance = self.perform_seed()
