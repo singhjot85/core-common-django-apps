@@ -1,3 +1,9 @@
+"""
+Field and relationship descriptors for database seeders.
+"""
+
+from __future__ import annotations
+
 import typing
 
 from django.db import models
@@ -9,223 +15,261 @@ if typing.TYPE_CHECKING:
 
 
 class SeederField:
-    """ """
+    """Represents a standard model field within a seeder payload."""
 
     field_name: str
-    model: models.Model
+    model: type[models.Model]
     data: typing.Any
 
-    def __init__(self, field_name: str, model: type[models.Model], data: typing.Any):
-        """ """
+    def __init__(
+        self, field_name: str, model: type[models.Model], data: typing.Any
+    ) -> None:
         self.field_name = field_name
         self.model = model
         self.data = data
 
-        self.field.clean(self.data)
-
     @property
     def field(self) -> models.Field:
-        """ """
+        """Resolve model field metadata from the Django model."""
         return self.model._meta.get_field(self.field_name)
 
     @property
     def is_required(self) -> bool:
-        """ """
+        """
+        Determine if the field is mandatory for model persistence.
+
+        Returns False if the field allows NULL or specifies a default value.
+        """
         if self.field.null or self.field.has_default():
             return False
-
         return not self.field.blank
 
-    def get_value(self, seeder: "BaseSeeder") -> typing.Any:
-        """ """
+    def get_value(self, seeder: BaseSeeder) -> typing.Any:
+        """
+        Retrieve transformed field value, delegating to seeder hook if defined.
+
+        Checks for custom transform method `get_<field_name>(raw_value)` on the seeder.
+        """
         raw_value = self.data
-
-        if hasattr(seeder, f"get_{self.field_name}"):
-            return getattr(seeder, f"get_{self.field_name}")(raw_value)
-
+        hook_name = f"get_{self.field_name}"
+        if hasattr(seeder, hook_name):
+            return getattr(seeder, hook_name)(raw_value)
         return raw_value
 
 
 class RelationField(SeederField):
-    """ """
+    """Base descriptor for model relationship fields (FK, OneToOne, ManyToMany)."""
 
     is_relation: bool = True
-    related_instance: models.Model
-    related_seeder_map: dict[str, "BaseSeeder"]
+    related_instance: typing.Any = None
+    related_seeder_map: dict[str, type[BaseSeeder]]
 
-    def __init__(self, related_seeder_map: dict, *args):
-        """ """
+    def __init__(
+        self,
+        related_seeder_map: dict[str, type[BaseSeeder]],
+        field_name: str,
+        model: type[models.Model],
+        data: typing.Any,
+    ) -> None:
+        self.related_seeder_map = related_seeder_map or {}
+        super().__init__(field_name=field_name, model=model, data=data)
 
-        self.related_seeder_map = related_seeder_map
-
-        super().__init__(*args)
-
-    def get_value(self, seeder: "BaseSeeder") -> typing.Any:
-        """ """
-        raw_value = self.data
-
-        if hasattr(seeder, f"get_{self.field_name}"):
-            return getattr(seeder, f"get_{self.field_name}")(raw_value)
-
-        return self.create_related_instance(None)
+    def get_value(self, seeder: BaseSeeder) -> typing.Any:
+        """Resolve relation value via seeder hook or return raw data."""
+        hook_name = f"get_{self.field_name}"
+        if hasattr(seeder, hook_name):
+            return getattr(seeder, hook_name)(self.data)
+        return self.data
 
     def retrieve_related_instance(self) -> models.Model:
         """
-        Retrieve an existing related model instance using the unique attribute.
+        Retrieve an existing related model instance using lookup criteria under `$ref`.
 
-        Payload Example:
-        >>> {"$ref": {"attr": "first_name", "value": "Charlie"}}
-
-        Returns:
-            models.Model: The matched related model instance from the database.
-
-        Raises:
-            - ObjectDoesNotExist: If no record matches the lookup.
-            - ManyObjectsExist: If multiple records matches the lookup.
+        Expected Payload:
+            {"$ref": {"email": "user@example.com"}}
         """
-        self.data: dict
-        self.field: models.ForeignObjectRel
+        if not isinstance(self.data, dict):
+            raise FieldException(
+                self.field_name,
+                self.model,
+                "Malformed payload; expected dictionary containing '$ref' key.",
+            )
 
-        RelatedModel = (
-            self.field.field.model  # Reverse 1-1 need this special access route for the realted model
-            if self.field.one_to_one and self.field.auto_created
-            else self.field.related_model
+        ref_lookup = self.data.get("$ref")
+        if not isinstance(ref_lookup, dict):
+            raise FieldException(
+                self.field_name,
+                self.model,
+                "Malformed $ref payload; expected dictionary under '$ref' key.",
+            )
+
+        # For reverse OneToOne relations, field points back from the target model
+        is_reverse_one_to_one = bool(
+            getattr(self.field, "one_to_one", False)
+            and getattr(self.field, "auto_created", False)
         )
+        if is_reverse_one_to_one:
+            target_model = self.field.field.model
+        else:
+            target_model = self.field.related_model
 
-        lookup_map = {}
-        for attr, val in self.data.items():
-            lookup_map[attr] = val
+        return target_model._default_manager.get(**ref_lookup)
 
-        return RelatedModel._default_manager.get(**lookup_map)
-
-    def create_related_instance(self, seeding_instance: "models.Model"):
+    def create_related_instance(
+        self, seeding_instance: models.Model | None
+    ) -> typing.Any:
         """
-        Create the realted instance from data, and field
+        Instantiate or look up the related instance.
 
+        Resolves either via `$ref` dictionary lookup or delegating to a child seeder.
         """
-        if isinstance(self.data, dict) and self.data.keys()[0] == "$ref":
+        if isinstance(self.data, dict) and "$ref" in self.data:
             self.related_instance = self.retrieve_related_instance()
+            return self.related_instance
 
         if self.field_name in self.related_seeder_map:
-            CustomSeeder: type["BaseSeeder"] = self.related_seeder_map[self.field_name]
-            return CustomSeeder().run(self.data)
+            child_seeder_cls = self.related_seeder_map[self.field_name]
+            child_seeder = child_seeder_cls()
+            self.related_instance = child_seeder.seed_data(
+                self.data, parent=seeding_instance
+            )
+            return self.related_instance
 
-    def link_relation(self, instance: "models.Model") -> None:
-        """
-        Attach the related instance to `instance` via the accessor.
-        Override in subclasses if the accessor semantics differ.
-        """
+        return None
+
+    def link_relation(self, instance: models.Model) -> None:
+        """Attach related instances to the parent model instance."""
         raise NotImplementedError
 
 
 class ForwardSingularRelation(RelationField):
-    """ """
+    """Descriptor for forward ForeignKey and OneToOneField relationships."""
 
     @property
-    def is_required(self):
-        """ """
-        field = self.related_instance._meta.get_field(self.field_name)
+    def is_required(self) -> bool:
+        """
+        Determine if the forward foreign key is mandatory for model persistence.
 
-        if field.null or field.has_default():
+        A forward relation is required if the field on self.model cannot be null,
+        or if it participates in a UniqueConstraint or unique_together on self.model.
+        """
+        if self.field.null or self.field.has_default():
             return False
 
-        if self._constraint_requires_field(self.related_instance, self.field_name):
+        if self._constraint_requires_field(self.model, self.field_name):
             return True
 
-        return not field.blank
+        return not self.field.blank
 
-    def _constraint_requires_field(model: models.Model, field_name: str) -> bool:
+    @staticmethod
+    def _constraint_requires_field(model: type[models.Model], field_name: str) -> bool:
         """
-        Return True if any UniqueConstraint/Index includes field_name.
-
-        Args:
-            model: class or object of the model.
-            field_name (str): Attribute name of the field.
-
-        Returns:
-            True if the field in model constraints.
+        Check if field_name is part of any UniqueConstraint or unique_together on model.
         """
-        for constraint in model._meta.constraints:
-            if isinstance(constraint, (models.UniqueConstraint, models.Index)):
-                if field_name in constraint.fields:
+        for constraint in getattr(model._meta, "constraints", []):
+            if isinstance(constraint, models.UniqueConstraint):
+                if field_name in getattr(constraint, "fields", ()):
                     return True
 
-        for index in model._meta.indexes:
-            if field_name in index.fields:
+        for unique_set in getattr(model._meta, "unique_together", ()):
+            if field_name in unique_set:
                 return True
 
         return False
 
-    def link_relation(self, instance):
-        """
-        Link the related object to the instance.
-        """
-        setattr(instance, self.field_name, self.related_instance)
-        instance.save(update_fields=[self.field_name])
+    def link_relation(self, instance: models.Model) -> None:
+        """Assign related instance and persist the foreign key attribute."""
+        if self.related_instance is not None:
+            setattr(instance, self.field_name, self.related_instance)
+            instance.save(update_fields=[self.field_name])
 
 
 class ReverseSingularRelation(RelationField):
-    """
-    Reverse ``OneToOne`` set FK on the *related* instance and save it.
-    Only special handling that is different from all.
-    """
+    """Descriptor for reverse OneToOne relationships."""
 
-    accessor_name: str  # field name on the other model.
+    accessor_name: str
 
-    def __init__(self, related_seeder_map, *args):
-        super().__init__(related_seeder_map, *args)
-
+    def __init__(
+        self,
+        related_seeder_map: dict[str, type[BaseSeeder]],
+        field_name: str,
+        model: type[models.Model],
+        data: typing.Any,
+    ) -> None:
+        super().__init__(
+            related_seeder_map=related_seeder_map,
+            field_name=field_name,
+            model=model,
+            data=data,
+        )
+        # Accessor on the related model that points back to self.model
         self.accessor_name = self.field.field.name
 
     @property
-    def is_required(self):
-        """ """
+    def is_required(self) -> bool:
+        """Reverse relationships are never required on parent creation."""
         return False
 
-    def create_related_instance(self, seeding_instance):
-        """ """
-        if not (isinstance(self.data, dict) and self.data.keys()[0] == "$ref"):
-            if not seeding_instance:
+    def create_related_instance(
+        self, seeding_instance: models.Model | None
+    ) -> typing.Any:
+        """Inject parent instance into child data before triggering child seeder."""
+        if not (isinstance(self.data, dict) and "$ref" in self.data):
+            if seeding_instance is None:
                 raise FieldException(
                     self.field_name,
-                    self.model.__class__,
-                    "Seeding Instance not provided",
+                    self.model,
+                    "Parent seeding instance must be provided for reverse relation.",
                 )
-
-            self.data[self.accessor_name] = seeding_instance
+            if isinstance(self.data, dict):
+                self.data[self.accessor_name] = seeding_instance
 
         return super().create_related_instance(seeding_instance)
 
-    def link_relation(self, instance):
-        """
-        No need to link reverse OneToOne relation, create_related_instance links current seeding_object
-        on the other side model.
-        """
+    def link_relation(self, instance: models.Model) -> None:
+        """Link relation if not already associated during child creation."""
+        if self.related_instance is not None:
+            if getattr(self.related_instance, self.accessor_name, None) != instance:
+                setattr(self.related_instance, self.accessor_name, instance)
+                self.related_instance.save(update_fields=[self.accessor_name])
 
 
 class ManagerRelation(RelationField):
-    """
-    Forward ``ManyToMany``, reverse ``ForeignKey``and reverse ``ManyToMany``
-    All these fetch a RelatedManager using the accessor and a ``.add()``
-    """
+    """Descriptor for forward ManyToMany, reverse ForeignKey, and reverse ManyToMany."""
 
-    accessor_name: str  # field name (forward) or get_accessor_name() (reverse)
+    accessor_name: str
 
-    def __init__(self, related_seeder_map, *args):
-        super().__init__(related_seeder_map, *args)
-
+    def __init__(
+        self,
+        related_seeder_map: dict[str, type[BaseSeeder]],
+        field_name: str,
+        model: type[models.Model],
+        data: typing.Any,
+    ) -> None:
+        super().__init__(
+            related_seeder_map=related_seeder_map,
+            field_name=field_name,
+            model=model,
+            data=data,
+        )
         self.accessor_name = (
             self.field.get_accessor_name()
-            if self.field.auto_created
+            if getattr(self.field, "auto_created", False)
             else self.field_name
         )
 
     @property
-    def is_required(self):
-        """ """
+    def is_required(self) -> bool:
+        """Manager relationships are populated post-save and not required for initial insert."""
         return False
 
-    def link_relation(self, instance):
-        """ """
-        RelatedManager = getattr(instance, self.accessor_name)
-        RelatedManager.add(self.related_instance)
+    def link_relation(self, instance: models.Model) -> None:
+        """Add seeded related instances to the related manager."""
+        if self.related_instance is None:
+            return
+
+        related_manager = getattr(instance, self.accessor_name)
+        if isinstance(self.related_instance, (list, tuple)):
+            related_manager.add(*self.related_instance)
+        else:
+            related_manager.add(self.related_instance)
