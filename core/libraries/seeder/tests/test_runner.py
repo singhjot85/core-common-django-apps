@@ -117,6 +117,28 @@ class TestSeederRunnerDAG:
             ModelDepCustomerSeeder
         )
 
+    def test_dag_cycle_detection_raises_seeder_exception(self):
+        """Cyclic dependencies between seeders must raise SeederException."""
+        registry = ClassRegistry()
+
+        class SeederA(BaseSeeder):
+            label = "seeder_a"
+
+        class SeederB(BaseSeeder):
+            label = "seeder_b"
+            depends_on = [SeederA]
+
+        # Close the cycle: A depends on B, B depends on A
+        SeederA.depends_on = [SeederB]
+
+        registry.register(SeederA, key="seeder_a")
+        registry.register(SeederB, key="seeder_b")
+
+        runner = SeederRunner(seeder_registry=registry)
+        with pytest.raises(SeederException) as exc_info:
+            runner.run()
+        assert "Cyclic dependency" in str(exc_info.value)
+
 
 # ---------------------------------------------------------------------------
 # Test Runner Execution & Tenant Isolation
@@ -183,3 +205,28 @@ class TestSeederRunnerExecution:
         # Pinned schema 'public' must execute only in 'public', never in tenant schemas
         context_calls = [c.args[0] for c in mock_schema_context.call_args_list]
         assert context_calls == ["public"]
+
+    @patch("core.libraries.seeder.runner.transaction.atomic")
+    @patch("core.libraries.seeder.runner.core_schema_context")
+    def test_runner_executes_explicit_schemas_list(
+        self, mock_schema_context, mock_atomic
+    ):
+        registry = ClassRegistry()
+
+        mock_method = MagicMock()
+        mock_loader = MagicMock()
+        mock_loader.get_data.return_value = [{"name": "Config"}]
+
+        class ExplicitSchemasSeeder(BaseSeeder):
+            label = "explicit_schemas_seeder"
+            schemas = ["custom_schema_1", "custom_schema_2"]
+            loader = mock_loader
+            method = mock_method
+
+        registry.register(ExplicitSchemasSeeder, key="explicit_schemas_seeder")
+        runner = SeederRunner(seeder_registry=registry)
+        runner.run()
+
+        called_schemas = [c.args[0] for c in mock_schema_context.call_args_list]
+        assert "custom_schema_1" in called_schemas
+        assert "custom_schema_2" in called_schemas

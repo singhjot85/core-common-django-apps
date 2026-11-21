@@ -25,6 +25,7 @@ from core.libraries.seeder.methods.base import BaseObjectMethods
 from core.libraries.seeder.methods.defaults import (
     CreateObject,
     GetorCreateObject,
+    UpdateOrCreateObject,
 )
 from core.libraries.seeder.registry import fixture_registry, seeder_registry
 from core.libraries.seeder.seeder import BaseSeeder
@@ -118,6 +119,15 @@ class TestSeederFields:
 
         val = field.get_value(SampleSeeder())
         assert val == "ALPHA"
+
+    def test_seeder_field_set_hook(self):
+        field = SeederField("details", DummyParentModel, "template/path.json")
+
+        class HookSeeder:
+            def set_details(self, raw_value):
+                return {"loaded_from": raw_value}
+
+        assert field.get_value(HookSeeder()) == {"loaded_from": "template/path.json"}
 
     def test_seeder_field_get_value_without_hook(self):
         field = SeederField("name", DummyParentModel, "alpha")
@@ -253,6 +263,46 @@ class TestPersistenceMethods:
         assert len(prepared) == 1
         assert prepared[0].field_name == "name"
 
+    def test_get_or_create_handles_non_model_virtual_fields(self):
+        strategy = GetorCreateObject(
+            model=DummyParentModel,
+            lookup_fields=["name"],
+            default_fields=["code", "non_model_flag"],
+        )
+        payload = {"name": "Test", "code": "DEF", "non_model_flag": True}
+        prepared = strategy.prepare_fields(payload)
+
+        class DummySeeder:
+            pass
+
+        dummy_seeder = DummySeeder()
+        # Should not raise FieldDoesNotExist during validation or splitting
+        strategy.run_full_clean(prepared, dummy_seeder)
+        lookups, defaults, related = strategy.split_fields(prepared, dummy_seeder)
+
+        assert lookups == {"name": "Test"}
+        assert defaults == {"code": "DEF", "non_model_flag": True}
+        assert related == []
+
+    def test_update_or_create_split_fields(self):
+        strategy = UpdateOrCreateObject(
+            model=DummyParentModel,
+            lookup_fields=["name"],
+            default_fields=["code", "notes"],
+        )
+        prepared = [
+            SeederField("name", DummyParentModel, "Alpha"),
+            SeederField("code", DummyParentModel, "MODIFIED"),
+        ]
+
+        class DummySeeder:
+            pass
+
+        lookups, defaults, related = strategy.split_fields(prepared, DummySeeder())
+        assert lookups == {"name": "Alpha"}
+        assert defaults == {"code": "MODIFIED"}
+        assert related == []
+
 
 # ---------------------------------------------------------------------------
 # Tests for BaseSeeder Subclasses & Registry
@@ -289,3 +339,34 @@ class TestBaseSeederSubclasses:
         with pytest.raises(SeederException) as exc_info:
             seeder.run(data=[{"name": "X"}])
         assert "No persistence method configured" in str(exc_info.value)
+
+    def test_nested_relations_with_parent_injection(self):
+        """Verify that child seeder automatically receives parent instance on matching foreign key field."""
+        parent_instance = DummyParentModel(name="Parent 1")
+
+        class ChildMethod(BaseObjectMethods):
+            def seed(self, data, seeder):
+                return DummyChildModel(
+                    parent=data["parent"],
+                    title=data["title"],
+                )
+
+        class DummyChildSeeder(BaseSeeder):
+            is_root = False
+            method = ChildMethod(
+                model=DummyChildModel,
+                fields=["parent", "title"],
+            )
+
+        child_seeder = DummyChildSeeder()
+        # Data does not contain 'parent' key; seed_data should detect DummyParentModel FK and inject parent
+        children = child_seeder.seed_data(
+            [{"title": "Child A"}, {"title": "Child B"}],
+            parent=parent_instance,
+        )
+
+        assert len(children) == 2
+        assert children[0].parent is parent_instance
+        assert children[0].title == "Child A"
+        assert children[1].parent is parent_instance
+        assert children[1].title == "Child B"

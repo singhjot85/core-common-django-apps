@@ -16,7 +16,12 @@ if typing.TYPE_CHECKING:
 
 
 class SeederField:
-    """Represents a standard model field within a seeder payload."""
+    """
+    Represents a standard model field within a seeder payload.
+
+    Encapsulates field introspection, requirement calculation, and value transformation
+    via seeder instance hooks (``set_<field_name>`` or ``get_<field_name>``).
+    """
 
     field_name: str
     model: type[models.Model]
@@ -25,13 +30,26 @@ class SeederField:
     def __init__(
         self, field_name: str, model: type[models.Model], data: typing.Any
     ) -> None:
+        """
+        Initialize field descriptor.
+
+        Args:
+            field_name (str): Field attribute name on the target model.
+            model (type[models.Model]): Target Django model class.
+            data (typing.Any): Raw input data value from the seeder loader.
+        """
         self.field_name = field_name
         self.model = model
         self.data = data
 
     @property
     def field(self) -> models.Field | None:
-        """Resolve model field metadata from the Django model."""
+        """
+        Resolve model field metadata from the Django model.
+
+        Returns:
+            models.Field | None: Django model field object, or None if field does not exist on model.
+        """
         try:
             return self.model._meta.get_field(self.field_name)
         except FieldDoesNotExist:
@@ -42,7 +60,8 @@ class SeederField:
         """
         Determine if the field is mandatory for model persistence.
 
-        Returns False if the field allows NULL or specifies a default value.
+        Returns:
+            bool: True if the field is non-null, non-blank, and lacks a default value.
         """
         if self.field is None:
             return False
@@ -54,7 +73,14 @@ class SeederField:
         """
         Retrieve transformed field value, delegating to seeder hook if defined.
 
-        Checks for custom transform method `set_<field_name>(raw_value)` or `get_<field_name>(raw_value)` on the seeder.
+        Checks for custom transform methods ``set_<field_name>(raw_value)`` or
+        ``get_<field_name>(raw_value)`` on the seeder. If neither exists, returns the raw data.
+
+        Args:
+            seeder (BaseSeeder): Active seeder instance executing the seed routine.
+
+        Returns:
+            typing.Any: Transformed or raw value ready for model persistence.
         """
         raw_value = self.data
         if hasattr(seeder, f"set_{self.field_name}"):
@@ -65,7 +91,12 @@ class SeederField:
 
 
 class RelationField(SeederField):
-    """Base descriptor for model relationship fields (FK, OneToOne, ManyToMany)."""
+    """
+    Base descriptor for model relationship fields (FK, OneToOne, ManyToMany).
+
+    Supports resolving existing target records via ``$ref`` lookups or instantiating
+    nested child instances through ``related_seeder_map``.
+    """
 
     is_relation: bool = True
     related_instance: typing.Any = None
@@ -78,11 +109,30 @@ class RelationField(SeederField):
         model: type[models.Model],
         data: typing.Any,
     ) -> None:
+        """
+        Initialize relationship descriptor.
+
+        Args:
+            related_seeder_map (dict[str, type[BaseSeeder]]): Mapping of relation keys to child seeders.
+            field_name (str): Relationship field name on the model.
+            model (type[models.Model]): Target Django model class.
+            data (typing.Any): Relationship payload (dict with '$ref', list of records, or scalar).
+        """
         self.related_seeder_map = related_seeder_map or {}
         super().__init__(field_name=field_name, model=model, data=data)
 
     def get_value(self, seeder: BaseSeeder) -> typing.Any:
-        """Resolve relation value via seeder hook or return raw data."""
+        """
+        Resolve relation value via seeder hook or return raw data.
+
+        Resolves ``$ref`` payloads into live model instances if present.
+
+        Args:
+            seeder (BaseSeeder): Active seeder instance.
+
+        Returns:
+            typing.Any: Resolved model instance, transformed value, or raw payload.
+        """
         if hasattr(seeder, f"set_{self.field_name}"):
             return getattr(seeder, f"set_{self.field_name}")(self.data)
         if hasattr(seeder, f"get_{self.field_name}"):
@@ -93,10 +143,15 @@ class RelationField(SeederField):
 
     def retrieve_related_instance(self) -> models.Model:
         """
-        Retrieve an existing related model instance using lookup criteria under `$ref`.
+        Retrieve an existing related model instance using lookup criteria under ``$ref``.
 
-        Expected Payload:
-            {"$ref": {"email": "user@example.com"}}
+        Queries the related model's default manager using lookup key-values.
+
+        Returns:
+            models.Model: Existing database instance matched by lookup criteria.
+
+        Raises:
+            FieldException: If payload is malformed or not a dictionary with ``$ref``.
         """
         if not isinstance(self.data, dict):
             raise FieldException(

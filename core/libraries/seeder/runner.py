@@ -16,6 +16,7 @@ from django.db import DEFAULT_DB_ALIAS, transaction
 from django_tenants.utils import get_tenant_model
 from rest_framework.exceptions import MethodNotAllowed
 
+from core.exceptions import CycleError
 from core.libraries.seeder.exceptions import SeederException
 from core.libraries.seeder.registry import (
     fixture_registry,
@@ -175,25 +176,73 @@ class SeederRunner(InstanceDAGBuilder):
         Execute all registered root seeders in topologically sorted dependency order.
 
         Instantiates a fresh seeder per schema context to guarantee full tenant isolation.
+
+        Side effects:
+            - Executes database operations across isolated schema contexts within an atomic transaction.
+
+        Returns:
+            list[models.Model]: All model instances created across all executed seeders and schemas.
+
+        Raises:
+            SeederException: If a dependency cycle is detected or seeder execution fails.
         """
         LOGGER.info("Seeder Runner execution started...")
-        sorted_seeders: list[type[BaseSeeder]] = self.topo_sorted_instances()
+        try:
+            sorted_seeders: list[type[BaseSeeder]] = self.topo_sorted_instances()
+        except CycleError as exc:
+            LOGGER.error("Cyclic dependency detected among seeders: %s", exc)
+            raise SeederException(
+                "runner", f"Cyclic dependency detected among seeders: {exc}"
+            ) from exc
+
         all_instances: list[models.Model] = []
 
         with transaction.atomic(using=DEFAULT_DB_ALIAS):
             for SeederCls in sorted_seeders:
                 label = self.seeder_label(SeederCls)
                 try:
-                    # 1. Pinned explicit schema (e.g. 'public')
+                    # 1. Explicit schemas list
+                    explicit_schemas = getattr(SeederCls, "schemas", None)
+                    if explicit_schemas:
+                        target_schemas = (
+                            [explicit_schemas]
+                            if isinstance(explicit_schemas, str)
+                            else list(explicit_schemas)
+                        )
+                        for sch in target_schemas:
+                            if sch == getattr(
+                                settings, "TENANT_TYPE_ORGANIZATION", "organization"
+                            ):
+                                for t_sch in self.get_tenant_schemas():
+                                    all_instances.extend(
+                                        self._execute_seeder_in_schema(SeederCls, t_sch)
+                                    )
+                            elif sch == getattr(
+                                settings, "TENANT_TYPE_PUBLIC", "public"
+                            ):
+                                all_instances.extend(
+                                    self._execute_seeder_in_schema(
+                                        SeederCls, get_public_schema_name()
+                                    )
+                                )
+                            else:
+                                all_instances.extend(
+                                    self._execute_seeder_in_schema(SeederCls, sch)
+                                )
+                        LOGGER.info("Successfully executed seeder >>> %s", label)
+                        continue
+
+                    # 2. Pinned explicit schema (e.g. 'public')
                     explicit_schema = getattr(SeederCls, "schema_name", None)
                     if explicit_schema:
                         instances = self._execute_seeder_in_schema(
                             SeederCls, explicit_schema
                         )
                         all_instances.extend(instances)
+                        LOGGER.info("Successfully executed seeder >>> %s", label)
                         continue
 
-                    # 2. Public tenant type or non-multitenant environment
+                    # 3. Public tenant type or non-multitenant environment
                     tenant_type = getattr(SeederCls, "tenant_type", None)
                     is_public_tenant = tenant_type == getattr(
                         settings, "TENANT_TYPE_PUBLIC", "public"
@@ -203,9 +252,10 @@ class SeederRunner(InstanceDAGBuilder):
                             SeederCls, get_public_schema_name()
                         )
                         all_instances.extend(instances)
+                        LOGGER.info("Successfully executed seeder >>> %s", label)
                         continue
 
-                    # 3. Tenant schemas (fresh seeder instance per tenant)
+                    # 4. Tenant schemas (fresh seeder instance per tenant)
                     tenant_schemas = self.get_tenant_schemas()
                     for schema_name in tenant_schemas:
                         instances = self._execute_seeder_in_schema(

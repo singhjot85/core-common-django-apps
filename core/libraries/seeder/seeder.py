@@ -45,12 +45,18 @@ class BaseSeeder:
     is_root: bool = True
     tenant_type: str = getattr(settings, "TENANT_TYPE_ORGANIZATION", "organization")
     schema_name: str | None = None
+    schemas: list[str] | None = None
 
     depends_on: list[type[BaseSeeder]] = []
     execution_order: int | None = None
 
     def __init_subclass__(cls, **kwargs) -> None:
-        """Register subclasses in seeder and fixture registries."""
+        """
+        Register seeder subclasses into class registries.
+
+        Automatically registers each subclass into ``seeder_registry`` under its snake_case label,
+        and into ``fixture_registry`` if ``is_fixture = True``.
+        """
         super().__init_subclass__(**kwargs)
 
         registry_key = cls.label or camel_to_snake_case(cls.__name__)
@@ -61,7 +67,12 @@ class BaseSeeder:
 
     @property
     def seeder_label(self) -> str:
-        """Return the explicit label or the snake_cased class name."""
+        """
+        Return the explicit label or the snake_case class name.
+
+        Returns:
+            str: Unique registry identifier string.
+        """
         return self.label or camel_to_snake_case(self.__class__.__name__)
 
     def seed_data(
@@ -70,9 +81,21 @@ class BaseSeeder:
         parent: models.Model | None = None,
     ) -> models.Model | list[models.Model]:
         """
-        Seed one or more records within the caller's active schema context.
+        Seed one or more child records within the caller's active schema context.
 
-        Used when invoked as a child seeder via related_seeder_map.
+        Invoked by parent seeders through ``related_seeder_map``. Automatically inspects
+        foreign key relationships on the child model and injects the parent model instance
+        if not explicitly provided in the payload.
+
+        Args:
+            data (dict | list[dict]): Single record dictionary or list of record dictionaries.
+            parent (models.Model, optional): Parent model instance to bind child foreign keys to.
+
+        Returns:
+            models.Model | list[models.Model]: Seeded model instance(s).
+
+        Raises:
+            SeederException: If no persistence method is configured on this seeder.
         """
         if self.method is None:
             raise SeederException(
@@ -107,7 +130,21 @@ class BaseSeeder:
         """
         Execute seeding for all records within the current schema context.
 
-        Each record is processed within its own atomic transaction.
+        Loads records from ``self.loader`` if ``data`` is not passed directly.
+        Processes each record inside its own atomic database transaction.
+
+        Side effects:
+            - Performs database operations (create/get_or_create/update_or_create).
+            - Dispatches child seeders defined in ``related_seeder_map``.
+
+        Args:
+            data (dict | list[dict], optional): Explicit data to seed instead of loading from loader.
+
+        Returns:
+            list[models.Model]: Successfully persisted model instances.
+
+        Raises:
+            SeederException: If no method/loader is configured or if a record persistence fails.
         """
         if self.method is None:
             raise SeederException(

@@ -29,6 +29,9 @@ LOGGER = logging.getLogger(__name__)
 class BaseObjectMethods:
     """
     Base strategy class managing model object extraction, validation, and persistence.
+
+    Coordinates data field validation, relation descriptor creation, and persistence.
+    Subclasses customize how instances are created or updated in the database.
     """
 
     model: type[models.Model]
@@ -42,6 +45,14 @@ class BaseObjectMethods:
         related_seeder_map: dict[str, type[BaseSeeder]] | None = None,
         fields: list[str] | tuple[str, ...] | None = None,
     ) -> None:
+        """
+        Initialize base persistence method.
+
+        Args:
+            model (type[models.Model]): Target Django model class to seed.
+            related_seeder_map (dict[str, type[BaseSeeder]], optional): Child seeders for relation fields.
+            fields (list[str] | tuple[str, ...], optional): Declared allow-list of field names.
+        """
         self.model = model
         self.related_seeder_map = related_seeder_map or {}
         self.fields = list(fields) if fields is not None else []
@@ -50,7 +61,18 @@ class BaseObjectMethods:
         """
         Map a field name and value to a concrete SeederField or RelationField descriptor.
 
-        Returns None if field_name is not configured in allowed self.fields.
+        Returns None if field_name is not configured in allowed self.fields. Non-model
+        virtual fields or flags (e.g. 'create_superuser') are wrapped as generic SeederField.
+
+        Args:
+            field_name (str): Attribute name from input record.
+            value (typing.Any): Raw input data value.
+
+        Returns:
+            SeederField | None: Configured descriptor instance, or None if field is ignored.
+
+        Raises:
+            InvalidFieldError: If the model field type cannot be mapped to any descriptor.
         """
         if field_name not in self.fields:
             LOGGER.warning(
@@ -99,7 +121,15 @@ class BaseObjectMethods:
         raise InvalidFieldError(field_name, self.model)
 
     def prepare_fields(self, data: dict) -> list[SeederField]:
-        """Convert input data dictionary into prepared SeederField descriptors."""
+        """
+        Convert input data dictionary into prepared SeederField descriptors.
+
+        Args:
+            data (dict): Raw input dictionary from loader.
+
+        Returns:
+            list[SeederField]: List of mapped field descriptors.
+        """
         cleaned_fields: list[SeederField] = []
         for field_name, value in data.items():
             field_descriptor = self._create_field(field_name, value)
@@ -115,6 +145,15 @@ class BaseObjectMethods:
         Separate regular field values from non-required relation descriptors.
 
         Does not trigger side-effecting database creation for relationships.
+
+        Args:
+            prepared_fields (list[SeederField]): List of prepared field descriptors.
+            seeder (BaseSeeder): Active seeder instance.
+
+        Returns:
+            tuple[dict[str, typing.Any], list[RelationField]]:
+                - create_kwargs: Dict of resolved values for initial model creation.
+                - related_fields: List of relation descriptors to attach post-creation.
         """
         create_kwargs: dict[str, typing.Any] = {}
         related_fields: list[RelationField] = []
@@ -139,6 +178,16 @@ class BaseObjectMethods:
     ) -> None:
         """
         Validate data against model field validation rules without creating related DB rows.
+
+        Instantiates a temporary probe instance with non-relation fields and calls
+        ``probe.full_clean(validate_unique=False)``.
+
+        Args:
+            prepared_fields (list[SeederField]): List of field descriptors.
+            seeder (BaseSeeder): Active seeder instance.
+
+        Raises:
+            ValidationError: If model field validation fails.
         """
         try:
             probe_kwargs: dict[str, typing.Any] = {}
@@ -166,7 +215,16 @@ class BaseObjectMethods:
     def _link_related_instances(
         self, instance: models.Model, related_fields: list[RelationField]
     ) -> None:
-        """Create and link all related child instances post-parent persistence."""
+        """
+        Create and link all related child instances post-parent persistence.
+
+        Args:
+            instance (models.Model): Parent model instance already saved to DB.
+            related_fields (list[RelationField]): Relation descriptors to instantiate and link.
+
+        Side effects:
+            - Executes child seeders and writes related rows to the database.
+        """
         for field in related_fields:
             try:
                 field.create_related_instance(instance)
@@ -184,7 +242,19 @@ class BaseObjectMethods:
     def perform_seed(
         self, prepared_fields: list[SeederField], seeder: BaseSeeder
     ) -> models.Model:
-        """Persist model instance using the configured manager seed method."""
+        """
+        Persist model instance using the configured manager seed method.
+
+        Args:
+            prepared_fields (list[SeederField]): List of prepared field descriptors.
+            seeder (BaseSeeder): Active seeder instance.
+
+        Returns:
+            models.Model: Successfully persisted model instance.
+
+        Side effects:
+            - Inserts instance and related objects into database.
+        """
         create_kwargs, related_fields = self.split_fields(prepared_fields, seeder)
         manager = self.model._default_manager
         instance = getattr(manager, self.seed_method)(**create_kwargs)
@@ -194,7 +264,16 @@ class BaseObjectMethods:
         return instance
 
     def seed(self, data: dict, seeder: BaseSeeder) -> models.Model:
-        """Execute full seeding pipeline: prepare fields, validate, and persist."""
+        """
+        Execute full seeding pipeline: prepare fields, validate, and persist.
+
+        Args:
+            data (dict): Single record payload from loader.
+            seeder (BaseSeeder): Active seeder instance.
+
+        Returns:
+            models.Model: Persisted model instance.
+        """
         prepared_fields = self.prepare_fields(data)
         self.run_full_clean(prepared_fields, seeder)
         return self.perform_seed(prepared_fields, seeder)
