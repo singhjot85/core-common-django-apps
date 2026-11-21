@@ -58,14 +58,8 @@ class FactoryBasedLoader(FileBasedLoader):
         super().__init__(directory_name, load_method)
 
     def validate_data(self, data, file):
-        """ """
-        data = super().validate_data(data, file)
-        if data:
-            if isinstance(data, dict):
-                data = [data]
-
-            randomized_data = []
-            for item in data:
-                randomized_data.append(self.factory.stub(**item).__dict__)
-
-        return randomized_data
+        """
+        Implement a DjangoFactory based factory implementation
+        That adds randomized data.
+        """
+        pass

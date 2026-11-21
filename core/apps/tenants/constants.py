@@ -2,6 +2,12 @@ from django.db.models import TextChoices
 from django.utils.translation import gettext_lazy as _
 
 
+class TenantTypeChoices(TextChoices):
+    """ """
+
+    ORGANIZATION = "organization", _("Organization")
+
+
 class TenantStatus(TextChoices):
     """
     Tenant Status Choices
