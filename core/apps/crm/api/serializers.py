@@ -15,6 +15,7 @@ Provides:
 from rest_framework import serializers
 
 from core.apps.crm import (
+    app_settings,
     get_customer_address_model,
     get_customer_email_model,
     get_customer_identification_model,
@@ -23,6 +24,8 @@ from core.apps.crm import (
     get_customer_preference_model,
     get_customer_preference_type_model,
 )
+from core.apps.crm.constants import IdentityStatusChoices
+from core.apps.crm.services.ocr.validators import validate_pdf
 from core.utils.serializers import (
     DynamicReadOnlyModelSerializer,
     ReadOnlyModelSerializer,
@@ -131,6 +134,37 @@ class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
             "verified_on",
             "details",
         ]
+
+    def validate_document(self, value):
+        """
+        Validate uploaded document file size and PDF format.
+        """
+        if not value:
+            return value
+        max_size = app_settings.max_document_upload_size
+        if value.size > max_size:
+            max_mb = max_size // (1024 * 1024)
+            raise serializers.ValidationError(
+                f"Document file must not exceed {max_mb} MB."
+            )
+        try:
+            content = value.read()
+            validate_pdf(content, max_size=max_size)
+        finally:
+            value.seek(0)
+        return value
+
+    def create(self, validated_data):
+        if validated_data.get("document"):
+            validated_data["status"] = IdentityStatusChoices.PENDING.value
+            validated_data["is_verified"] = False
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if validated_data.get("document"):
+            validated_data["status"] = IdentityStatusChoices.PENDING.value
+            validated_data["is_verified"] = False
+        return super().update(instance, validated_data)
 
 
 class CustomerPreferenceSerializer(serializers.ModelSerializer):

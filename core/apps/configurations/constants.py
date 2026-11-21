@@ -20,3 +20,4 @@ class DefaultConfigurationInterfaceTypeChoices(TextChoices):
 
     UI_CONFIGURATION = "ui_configuration", _("UI Configuration")
     USERS_TEMPLATE_LABEL = "users_template_label", _("Users Template Label")
+    CRM_CONFIGURATION = "crm_configuration", _("CRM Configuration")
