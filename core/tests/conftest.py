@@ -1,3 +1,5 @@
+import os
+import shutil
 import typing
 
 import pytest
@@ -67,3 +69,16 @@ def tenant_schema(request):
             yield
     else:
         yield
+
+
+@pytest.fixture(autouse=True)
+def cleanup_media():
+    """
+    Ensure files uploaded to storage during tests in the tenant schema are deleted after each test.
+    """
+    yield
+    media_root = getattr(settings, "MEDIA_ROOT", None)
+    if media_root:
+        test_media_dir = os.path.join(media_root, tenant_schema_name)
+        if os.path.exists(test_media_dir):
+            shutil.rmtree(test_media_dir, ignore_errors=True)

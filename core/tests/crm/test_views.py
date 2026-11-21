@@ -415,14 +415,20 @@ class TestNestedCustomerEntitiesAPI:
             type=IdentityTypeChoices.AADHAAR,
             document=dummy_file,
         )
-        view = CustomerIdentificationViewSet.as_view({"get": "download_file"})
-        request = self.factory.get(
-            f"/customers/{self.customer1.id}/identifications/{ident.id}/download/"
-        )
-        force_authenticate(request, user=self.user)
-        response = view(request, customer_pk=str(self.customer1.id), pk=str(ident.id))
-        assert response.status_code == status.HTTP_200_OK
-        assert response["Content-Type"] == "application/pdf"
+        try:
+            view = CustomerIdentificationViewSet.as_view({"get": "download_file"})
+            request = self.factory.get(
+                f"/customers/{self.customer1.id}/identifications/{ident.id}/download/"
+            )
+            force_authenticate(request, user=self.user)
+            response = view(
+                request, customer_pk=str(self.customer1.id), pk=str(ident.id)
+            )
+            assert response.status_code == status.HTTP_200_OK
+            assert response["Content-Type"] == "application/pdf"
+        finally:
+            if ident.document:
+                ident.document.delete(save=False)
 
     def test_create_phone_uses_url_customer_pk_without_body_customer(self):
         """POST /customers/{customer_pk}/phones/ does not require customer in request body."""

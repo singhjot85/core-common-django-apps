@@ -263,28 +263,31 @@ class TestOCRTasksAndBeatCron:
             document=dummy_pdf,
             status=IdentityStatusChoices.PENDING.value,
         )
+        try:
+            mock_result = {
+                "status": "ok",
+                "document_type": "aadhaar",
+                "confidence": 0.9,
+                "data": {
+                    "aadhaar_number": "999912345678",
+                    "name": "Jane Doe",
+                    "dob": "1990-08-15",
+                },
+            }
 
-        mock_result = {
-            "status": "ok",
-            "document_type": "aadhaar",
-            "confidence": 0.9,
-            "data": {
-                "aadhaar_number": "999912345678",
-                "name": "Jane Doe",
-                "dob": "1990-08-15",
-            },
-        }
+            with patch("core.apps.crm.tasks.process_document", return_value=mock_result):
+                success = process_identification_record(identification)
 
-        with patch("core.apps.crm.tasks.process_document", return_value=mock_result):
-            success = process_identification_record(identification)
-
-        assert success is True
-        identification.refresh_from_db()
-        assert identification.status == IdentityStatusChoices.VERIFIED.value
-        assert identification.is_verified is True
-        assert identification.verified_on == timezone.now().date()
-        assert identification.details["aadhaar_number"] == "999912345678"
-        assert identification.details["name"] == "Jane Doe"
+            assert success is True
+            identification.refresh_from_db()
+            assert identification.status == IdentityStatusChoices.VERIFIED.value
+            assert identification.is_verified is True
+            assert identification.verified_on == timezone.now().date()
+            assert identification.details["aadhaar_number"] == "999912345678"
+            assert identification.details["name"] == "Jane Doe"
+        finally:
+            if identification.document:
+                identification.document.delete(save=False)
 
     def test_process_identification_record_failure(self):
         customer = Customer.objects.create(first_name="John", last_name="Doe")
@@ -297,16 +300,19 @@ class TestOCRTasksAndBeatCron:
             document=dummy_pdf,
             status=IdentityStatusChoices.PENDING.value,
         )
+        try:
+            mock_error = {"status": "error", "error_code": "no_text", "data": {}}
+            with patch("core.apps.crm.tasks.process_document", return_value=mock_error):
+                success = process_identification_record(identification)
 
-        mock_error = {"status": "error", "error_code": "no_text", "data": {}}
-        with patch("core.apps.crm.tasks.process_document", return_value=mock_error):
-            success = process_identification_record(identification)
-
-        assert success is False
-        identification.refresh_from_db()
-        assert identification.status == IdentityStatusChoices.VERIFICATION_FAILED.value
-        assert identification.is_verified is False
-        assert identification.details.get("error") == "no_text"
+            assert success is False
+            identification.refresh_from_db()
+            assert identification.status == IdentityStatusChoices.VERIFICATION_FAILED.value
+            assert identification.is_verified is False
+            assert identification.details.get("error") == "no_text"
+        finally:
+            if identification.document:
+                identification.document.delete(save=False)
 
     def test_process_unverified_identifications_cron_batch(self):
         customer = Customer.objects.create(first_name="Batch", last_name="User")
@@ -329,20 +335,24 @@ class TestOCRTasksAndBeatCron:
             document=dummy_pdf2,
             status=IdentityStatusChoices.PENDING.value,
         )
+        try:
+            mock_ok = {
+                "status": "ok",
+                "document_type": "driving_license",
+                "confidence": 0.85,
+                "data": {"license_number": "DL-1234"},
+            }
 
-        mock_ok = {
-            "status": "ok",
-            "document_type": "driving_license",
-            "confidence": 0.85,
-            "data": {"license_number": "DL-1234"},
-        }
+            with patch("core.apps.crm.tasks.process_document", return_value=mock_ok):
+                stats = process_unverified_identifications_cron(batch_size=10)
 
-        with patch("core.apps.crm.tasks.process_document", return_value=mock_ok):
-            stats = process_unverified_identifications_cron(batch_size=10)
-
-        assert stats["total"] >= 2
-        assert stats["verified"] >= 2
-        id1.refresh_from_db()
-        id2.refresh_from_db()
-        assert id1.status == IdentityStatusChoices.VERIFIED.value
-        assert id2.status == IdentityStatusChoices.VERIFIED.value
+            assert stats["total"] >= 2
+            assert stats["verified"] >= 2
+            id1.refresh_from_db()
+            id2.refresh_from_db()
+            assert id1.status == IdentityStatusChoices.VERIFIED.value
+            assert id2.status == IdentityStatusChoices.VERIFIED.value
+        finally:
+            for ident in (id1, id2):
+                if ident.document:
+                    ident.document.delete(save=False)
