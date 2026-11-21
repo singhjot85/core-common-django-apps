@@ -7,13 +7,18 @@ periodic batch polling will process pending records automatically on a schedule.
 """
 
 import logging
+from typing import Any
 
 from celery import shared_task
 from django.utils import timezone
 
 from core.apps.crm import get_customer_identification_model
 from core.apps.crm.constants import IdentityStatusChoices
-from core.apps.crm.services.ocr import process_document
+from core.apps.crm.services.ocr import (
+    InvalidDocumentError,
+    OCRExtractionError,
+    process_document,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,6 +26,9 @@ LOGGER = logging.getLogger(__name__)
 def process_identification_record(identification) -> bool:
     """
     Execute OCR and verification pipeline for a single CustomerIdentification instance.
+
+    Uses a single try-except-finally block with granular exception catching
+    and unified final state persistence.
 
     Args:
         identification: CustomerIdentification instance with an attached document file.
@@ -35,64 +43,62 @@ def process_identification_record(identification) -> bool:
         )
         return False
 
+    is_verified = False
+    status_value = IdentityStatusChoices.VERIFICATION_FAILED.value
+    details: dict[str, Any] = {}
+    verified_on = None
+    update_fields = ["status", "is_verified", "details", "modified"]
+
     try:
         with identification.document.open("rb") as doc_file:
             pdf_bytes = doc_file.read()
-    except Exception as exc:
+
+        result = process_document(pdf_bytes, doc_type=identification.type)
+
+        if result.get("error_code") or not result.get("data"):
+            details = {"error": result.get("error_code", "no_data_extracted")}
+        else:
+            status_value = IdentityStatusChoices.VERIFIED.value
+            is_verified = True
+            verified_on = timezone.now().date()
+            details = result.get("data", {})
+            update_fields.append("verified_on")
+            LOGGER.info(
+                "Successfully verified identification %s (type=%s, confidence=%s)",
+                identification.pk,
+                identification.type,
+                result.get("confidence"),
+            )
+    except (InvalidDocumentError, OCRExtractionError) as exc:
+        LOGGER.warning(
+            "Document validation or OCR error for identification %s: %s",
+            identification.pk,
+            exc,
+        )
+        details = {"error": getattr(exc, "code", "document_error")}
+    except (OSError, IOError) as exc:
         LOGGER.error(
             "Could not read document file for identification %s: %s",
             identification.pk,
             exc,
         )
-        identification.status = IdentityStatusChoices.VERIFICATION_FAILED.value
-        identification.is_verified = False
-        identification.details = {"error": "file_read_error"}
-        identification.save(
-            update_fields=["status", "is_verified", "details", "modified"]
-        )
-        return False
-
-    try:
-        result = process_document(pdf_bytes, doc_type=identification.type)
+        details = {"error": "file_read_error"}
     except Exception as exc:
-        LOGGER.error(
-            "OCR processing failed for identification %s: %s",
+        LOGGER.exception(
+            "Unexpected error processing identification %s: %s",
             identification.pk,
             exc,
         )
-        identification.status = IdentityStatusChoices.VERIFICATION_FAILED.value
-        identification.is_verified = False
-        identification.details = {"error": "ocr_exception"}
-        identification.save(
-            update_fields=["status", "is_verified", "details", "modified"]
-        )
-        return False
+        details = {"error": "unexpected_error"}
+    finally:
+        identification.status = status_value
+        identification.is_verified = is_verified
+        identification.details = details
+        if verified_on is not None:
+            identification.verified_on = verified_on
+        identification.save(update_fields=list(set(update_fields)))
 
-    if result.get("error_code") or not result.get("data"):
-        identification.status = IdentityStatusChoices.VERIFICATION_FAILED.value
-        identification.is_verified = False
-        identification.details = {
-            "error": result.get("error_code", "no_data_extracted")
-        }
-        identification.save(
-            update_fields=["status", "is_verified", "details", "modified"]
-        )
-        return False
-
-    identification.status = IdentityStatusChoices.VERIFIED.value
-    identification.is_verified = True
-    identification.verified_on = timezone.now().date()
-    identification.details = result.get("data", {})
-    identification.save(
-        update_fields=["status", "is_verified", "verified_on", "details", "modified"]
-    )
-    LOGGER.info(
-        "Successfully verified identification %s (type=%s, confidence=%s)",
-        identification.pk,
-        identification.type,
-        result.get("confidence"),
-    )
-    return True
+    return is_verified
 
 
 @shared_task(
@@ -125,7 +131,9 @@ def process_customer_identification_ocr(self, identification_id: str) -> None:
     bind=True,
     name="core.apps.crm.tasks.process_unverified_identifications_cron",
 )
-def process_unverified_identifications_cron(self, batch_size: int = 50) -> dict[str, int]:
+def process_unverified_identifications_cron(
+    self, batch_size: int = 50
+) -> dict[str, int]:
     """
     Periodic Celery Beat cron task to scan and process unverified identification documents.
 

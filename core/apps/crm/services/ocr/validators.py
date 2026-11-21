@@ -2,10 +2,13 @@
 Validation and normalization helpers for the Document OCR engine.
 """
 
+import logging
 import re
 from datetime import datetime
 
 from .exceptions import InvalidDocumentError
+
+LOGGER = logging.getLogger(__name__)
 
 _VERHOEFF_D = [
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -121,6 +124,19 @@ def find_vehicle_no(text: str) -> str | None:
     return None
 
 
+def numeric_value(match: re.Match[str] | None) -> float | None:
+    """
+    Extract a sanitized float value from regex match group 1.
+
+    Args:
+        match (re.Match[str] | None): Regex match containing a numeric string.
+
+    Returns:
+        float | None: Parsed float or None.
+    """
+    return float(match.group(1).replace(",", "")) if match else None
+
+
 def validate_pdf(
     pdf_bytes: bytes,
     max_size: int = MAX_DOCUMENT_SIZE,
@@ -146,18 +162,23 @@ def validate_pdf(
         raise InvalidDocumentError("Uploaded file is not a valid PDF.")
 
     try:
-        import pymupdf
+        import pymupdf  # noqa: PLC0415
 
         doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
-    except ImportError:
-        # Fallback when pymupdf is not installed in the current environment
+    except ImportError as exc:
+        LOGGER.warning(
+            "pymupdf is not installed (%s). Skipping detailed page count and encryption checks in validate_pdf.",
+            exc,
+        )
         return
     except Exception as exc:
         raise InvalidDocumentError("Failed to parse PDF document structure.") from exc
 
     try:
         if doc.is_encrypted:
-            raise InvalidDocumentError("Encrypted or password-protected PDFs are not supported.")
+            raise InvalidDocumentError(
+                "Encrypted or password-protected PDFs are not supported."
+            )
 
         if doc.page_count < 1 or doc.page_count > max_pages:
             raise InvalidDocumentError(

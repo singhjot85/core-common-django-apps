@@ -15,6 +15,7 @@ Provides:
 from rest_framework import serializers
 
 from core.apps.crm import (
+    app_settings,
     get_customer_address_model,
     get_customer_email_model,
     get_customer_identification_model,
@@ -23,6 +24,8 @@ from core.apps.crm import (
     get_customer_preference_model,
     get_customer_preference_type_model,
 )
+from core.apps.crm.constants import IdentityStatusChoices
+from core.apps.crm.services.ocr.validators import validate_pdf
 from core.utils.serializers import (
     DynamicReadOnlyModelSerializer,
     ReadOnlyModelSerializer,
@@ -98,10 +101,6 @@ class CustomerAddressSerializer(DynamicReadOnlyModelSerializer):
         read_only_fields = ["id", "customer", "full_address"]
 
 
-from core.apps.crm.constants import IdentityStatusChoices
-from core.apps.crm.services.ocr.validators import validate_pdf
-
-
 class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
     """
     Serialize customer KYC, identity credentials, and verification status.
@@ -142,13 +141,15 @@ class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
         """
         if not value:
             return value
-        if value.size > 10 * 1024 * 1024:
+        max_size = app_settings.max_document_upload_size
+        if value.size > max_size:
+            max_mb = max_size // (1024 * 1024)
             raise serializers.ValidationError(
-                "Document file must not exceed 10 MB."
+                f"Document file must not exceed {max_mb} MB."
             )
         try:
             content = value.read()
-            validate_pdf(content)
+            validate_pdf(content, max_size=max_size)
         finally:
             value.seek(0)
         return value

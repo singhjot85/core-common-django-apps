@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from ..sanitizer import after_label, clean_name
-from ..validators import find_vehicle_no, norm_date
+from ..validators import find_vehicle_no, norm_date, numeric_value
 from .base import BaseDocumentParser
 
 
@@ -17,7 +17,7 @@ class InsuranceParser(BaseDocumentParser):
 
     doc_type = "insurance"
 
-    def parse(self, text: str, mask: bool = True) -> dict[str, Any]:
+    def parse(self, text: str, mask: bool = False) -> dict[str, Any]:
         uppercase_text = text.upper()
         policy = re.search(
             r"POLICY\s*(?:NO\.?|NUMBER|#)\s*[:\-]?\s*([A-Z0-9/\-]{6,30})",
@@ -53,9 +53,6 @@ class InsuranceParser(BaseDocumentParser):
             policy_type = "THIRD_PARTY"
         else:
             policy_type = None
-
-        def numeric_value(match: re.Match[str] | None) -> float | None:
-            return float(match.group(1).replace(",", "")) if match else None
 
         return {
             "policy_number": policy.group(1) if policy else None,

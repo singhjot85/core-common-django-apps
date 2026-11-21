@@ -19,7 +19,7 @@ class DrivingLicenseParser(BaseDocumentParser):
 
     doc_type = "driving_license"
 
-    def parse(self, text: str, mask: bool = True) -> dict[str, Any]:
+    def parse(self, text: str, mask: bool = False) -> dict[str, Any]:
         uppercase_text = text.upper()
         match = _DL_RE.search(uppercase_text)
         license_number = "".join(match.groups()) if match else None

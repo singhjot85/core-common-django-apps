@@ -14,13 +14,13 @@ class BaseDocumentParser(abc.ABC):
     doc_type: str = ""
 
     @abc.abstractmethod
-    def parse(self, text: str, mask: bool = True) -> dict[str, Any]:
+    def parse(self, text: str, mask: bool = False) -> dict[str, Any]:
         """
         Parse raw document text into structured fields.
 
         Args:
             text (str): Document text block.
-            mask (bool): Whether to mask sensitive PII numbers.
+            mask (bool): Optional flag to mask sensitive PII numbers. Defaults to False.
 
         Returns:
             dict[str, Any]: Extracted document fields.

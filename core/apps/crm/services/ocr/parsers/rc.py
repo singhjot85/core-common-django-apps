@@ -17,7 +17,7 @@ class RegistrationCertificateParser(BaseDocumentParser):
 
     doc_type = "registration_certificate"
 
-    def parse(self, text: str, mask: bool = True) -> dict[str, Any]:
+    def parse(self, text: str, mask: bool = False) -> dict[str, Any]:
         uppercase_text = text.upper()
         date_pattern = r"(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})"
         registration_date = re.search(

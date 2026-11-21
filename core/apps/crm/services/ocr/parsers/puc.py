@@ -16,7 +16,7 @@ class PUCCertificateParser(BaseDocumentParser):
 
     doc_type = "puc"
 
-    def parse(self, text: str, mask: bool = True) -> dict[str, Any]:
+    def parse(self, text: str, mask: bool = False) -> dict[str, Any]:
         uppercase_text = text.upper()
         certificate = re.search(
             r"(?:CERTIFICATE|CERT\.?|SL\.?)[ \t]*(?:NO\.?|NUMBER)[ \t]*[:\-]?[ \t]*([A-Z0-9/\-]{6,25})",

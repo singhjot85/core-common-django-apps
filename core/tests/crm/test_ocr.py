@@ -2,19 +2,23 @@
 Unit and integration tests for Core CRM Document OCR Engine and Celery Beat cron tasks.
 """
 
+import re
 from unittest.mock import patch
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 
-from core.apps.crm import get_customer_identification_model, get_customer_model
+from core.apps.crm import (
+    app_settings,
+    get_customer_identification_model,
+    get_customer_model,
+)
 from core.apps.crm.constants import IdentityStatusChoices, IdentityTypeChoices
 from core.apps.crm.services.ocr import (
     InvalidDocumentError,
     classify,
-    process_document,
-    sanitize_result,
+    numeric_value,
     validate_pdf,
 )
 from core.apps.crm.services.ocr.parsers.aadhaar import AadhaarParser
@@ -35,7 +39,6 @@ from core.apps.crm.services.ocr.validators import (
     verhoeff_ok,
 )
 from core.apps.crm.tasks import (
-    process_customer_identification_ocr,
     process_identification_record,
     process_unverified_identifications_cron,
 )
@@ -69,6 +72,11 @@ class TestOCRValidatorsAndSanitizers:
         assert find_vehicle_no("BH series: 22 BH 1234 AA") == "22BH1234AA"
         assert find_vehicle_no("No plate here") is None
 
+    def test_numeric_value(self):
+        match = re.search(r"([\d,]+(?:\.\d+)?)", "IDV: 1,25,000.50")
+        assert numeric_value(match) == 125000.50
+        assert numeric_value(None) is None
+
     def test_mask_tail(self):
         assert mask_tail("123456789012", 4) == "XXXXXXXX9012"
         assert mask_tail("1234", 4) == "1234"
@@ -95,16 +103,38 @@ class TestOCRValidatorsAndSanitizers:
         with pytest.raises(InvalidDocumentError, match="exceeds maximum"):
             validate_pdf(large_bytes, max_size=10)
 
+    def test_crm_app_settings_and_db_config(self):
+        assert app_settings.max_document_upload_size == 10 * 1024 * 1024
+        assert app_settings.ocr_native_text_min_chars == 50
+        assert app_settings.MAX_DOCUMENT_UPLOAD_SIZE == 10 * 1024 * 1024
+        assert app_settings.OCR_NATIVE_TEXT_MIN_CHARS == 50
+        config = app_settings.get_crm_config()
+        assert "max_document_upload_size" in config
+        assert "ocr_native_text_min_chars" in config
+
 
 class TestOCRClassifiersAndParsers:
     """Test heuristic classification and document-specific parsing."""
 
     def test_classify_detects_document_types(self):
-        assert classify("Government of India Unique Identification Authority of India Aadhaar") == "aadhaar"
+        assert (
+            classify(
+                "Government of India Unique Identification Authority of India Aadhaar"
+            )
+            == "aadhaar"
+        )
         assert classify("Union of India Driving Licence DL NO") == "driving_license"
-        assert classify("Pollution Under Control Certificate PUCC Emission Test") == "puc"
-        assert classify("Certificate of Insurance Motor Insurance Policy Schedule") == "insurance"
-        assert classify("Certificate of Registration Form 23 Chassis No") == "registration_certificate"
+        assert (
+            classify("Pollution Under Control Certificate PUCC Emission Test") == "puc"
+        )
+        assert (
+            classify("Certificate of Insurance Motor Insurance Policy Schedule")
+            == "insurance"
+        )
+        assert (
+            classify("Certificate of Registration Form 23 Chassis No")
+            == "registration_certificate"
+        )
         assert classify("Completely unrelated invoice content") == "unknown"
 
     def test_aadhaar_parser(self):
@@ -116,11 +146,14 @@ class TestOCRClassifiersAndParsers:
         9999 1234 5678
         """
         parser = AadhaarParser()
-        data = parser.parse(text, mask=True)
-        assert data["aadhaar_number"] == "XXXXXXXX5678"
-        assert data["name"] == "Jane Doe"
-        assert data["dob"] == "1990-08-15"
-        assert data["gender"] == "FEMALE"
+        raw_data = parser.parse(text)
+        assert raw_data["aadhaar_number"] == "999912345678"
+        assert raw_data["name"] == "Jane Doe"
+        assert raw_data["dob"] == "1990-08-15"
+        assert raw_data["gender"] == "FEMALE"
+
+        masked_data = parser.parse(text, mask=True)
+        assert masked_data["aadhaar_number"] == "XXXXXXXX5678"
 
     def test_license_parser(self):
         text = """
@@ -135,13 +168,17 @@ class TestOCRClassifiersAndParsers:
         PIN: 160017
         """
         parser = DrivingLicenseParser()
-        data = parser.parse(text, mask=True)
-        assert data["name"] == "Jane Doe"
-        assert data["guardian_name"] == "John Doe"
-        assert data["dob"] == "1990-08-15"
-        assert data["blood_group"] == "O+"
-        assert "LMV" in data["vehicle_classes"]
-        assert data["pin_code"] == "160017"
+        raw_data = parser.parse(text)
+        assert raw_data["license_number"] == "DL04 20110012345"
+        assert raw_data["name"] == "Jane Doe"
+        assert raw_data["guardian_name"] == "John Doe"
+        assert raw_data["dob"] == "1990-08-15"
+        assert raw_data["blood_group"] == "O+"
+        assert "LMV" in raw_data["vehicle_classes"]
+        assert raw_data["pin_code"] == "160017"
+
+        masked_data = parser.parse(text, mask=True)
+        assert masked_data["license_number"] == "XXXXXXXXXXXX2345"
 
     def test_puc_parser(self):
         text = """
@@ -217,7 +254,9 @@ class TestOCRTasksAndBeatCron:
 
     def test_process_identification_record_success(self):
         customer = Customer.objects.create(first_name="Jane", last_name="Doe")
-        dummy_pdf = SimpleUploadedFile("aadhaar.pdf", b"%PDF-1.4 mock content", content_type="application/pdf")
+        dummy_pdf = SimpleUploadedFile(
+            "aadhaar.pdf", b"%PDF-1.4 mock content", content_type="application/pdf"
+        )
         identification = CustomerIdentification.objects.create(
             customer=customer,
             type=IdentityTypeChoices.AADHAAR,
@@ -230,7 +269,7 @@ class TestOCRTasksAndBeatCron:
             "document_type": "aadhaar",
             "confidence": 0.9,
             "data": {
-                "aadhaar_number": "XXXXXXXX5674",
+                "aadhaar_number": "999912345678",
                 "name": "Jane Doe",
                 "dob": "1990-08-15",
             },
@@ -244,12 +283,14 @@ class TestOCRTasksAndBeatCron:
         assert identification.status == IdentityStatusChoices.VERIFIED.value
         assert identification.is_verified is True
         assert identification.verified_on == timezone.now().date()
-        assert identification.details["aadhaar_number"] == "XXXXXXXX5674"
+        assert identification.details["aadhaar_number"] == "999912345678"
         assert identification.details["name"] == "Jane Doe"
 
     def test_process_identification_record_failure(self):
         customer = Customer.objects.create(first_name="John", last_name="Doe")
-        dummy_pdf = SimpleUploadedFile("doc.pdf", b"%PDF-1.4 empty", content_type="application/pdf")
+        dummy_pdf = SimpleUploadedFile(
+            "doc.pdf", b"%PDF-1.4 empty", content_type="application/pdf"
+        )
         identification = CustomerIdentification.objects.create(
             customer=customer,
             type=IdentityTypeChoices.AADHAAR,
@@ -269,8 +310,12 @@ class TestOCRTasksAndBeatCron:
 
     def test_process_unverified_identifications_cron_batch(self):
         customer = Customer.objects.create(first_name="Batch", last_name="User")
-        dummy_pdf1 = SimpleUploadedFile("doc1.pdf", b"%PDF-1.4 doc1", content_type="application/pdf")
-        dummy_pdf2 = SimpleUploadedFile("doc2.pdf", b"%PDF-1.4 doc2", content_type="application/pdf")
+        dummy_pdf1 = SimpleUploadedFile(
+            "doc1.pdf", b"%PDF-1.4 doc1", content_type="application/pdf"
+        )
+        dummy_pdf2 = SimpleUploadedFile(
+            "doc2.pdf", b"%PDF-1.4 doc2", content_type="application/pdf"
+        )
 
         id1 = CustomerIdentification.objects.create(
             customer=customer,

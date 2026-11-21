@@ -17,50 +17,42 @@ class AadhaarParser(BaseDocumentParser):
 
     doc_type = "aadhaar"
 
-    def parse(self, text: str, mask: bool = True) -> dict[str, Any]:
-        output: dict[str, Any] = {
-            "aadhaar_number": None,
-            "name": None,
-            "gender": None,
-            "dob": None,
-            "year_of_birth": None,
-        }
-
+    def _extract_aadhaar_number(self, text: str, mask: bool = False) -> str | None:
+        """Find and validate 12-digit Aadhaar number using Verhoeff checksum."""
         raw_candidates = re.findall(r"\b(\d{4}\s\d{4}\s\d{4})\b", text)
-        if not raw_candidates:
-            raw_candidates = re.findall(r"\b(\d{12})\b", text)
-            candidates = [c for c in raw_candidates if verhoeff_ok(c)]
-        else:
+        if raw_candidates:
             candidates = [
                 c.replace(" ", "")
                 for c in raw_candidates
                 if verhoeff_ok(c.replace(" ", ""))
             ]
+        else:
+            candidates = [
+                c for c in re.findall(r"\b(\d{12})\b", text) if verhoeff_ok(c)
+            ]
 
-        if candidates:
-            output["aadhaar_number"] = (
-                mask_tail(candidates[0], 4) if mask else candidates[0]
-            )
+        if not candidates:
+            return None
+        return mask_tail(candidates[0], 4) if mask else candidates[0]
 
-        dob = re.search(
+    def _extract_dob_and_yob(self, text: str) -> tuple[str | None, int | None]:
+        """Extract date of birth or year of birth."""
+        dob_match = re.search(
             r"(?:DOB|Date of Birth|जन्म\s*तारीख|जन्म\s*तिथि)\s*[:\-]?\s*(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{4})",
             text,
             re.I,
         )
-        output["dob"] = norm_date(dob.group(1)) if dob else None
-        if not output["dob"]:
-            year_of_birth = re.search(
-                r"(?:Year of Birth|YOB)\s*[:\-]?\s*(\d{4})", text, re.I
-            )
-            output["year_of_birth"] = (
-                int(year_of_birth.group(1)) if year_of_birth else None
-            )
+        dob = norm_date(dob_match.group(1)) if dob_match else None
+        if dob:
+            return dob, None
 
-        gender = re.search(r"\b(MALE|FEMALE|TRANSGENDER)\b", text, re.I)
-        output["gender"] = gender.group(1).upper() if gender else None
+        yob_match = re.search(r"(?:Year of Birth|YOB)\s*[:\-]?\s*(\d{4})", text, re.I)
+        yob = int(yob_match.group(1)) if yob_match else None
+        return None, yob
 
+    def _extract_name(self, text: str) -> str | None:
+        """Extract person name appearing before DOB or after name label."""
         lines = [clean_text(line) for line in text.splitlines() if clean_text(line)]
-        name = None
         for index, line in enumerate(lines):
             if re.search(r"DOB|Date of Birth|Year of Birth|जन्म", line, re.I) and index:
                 candidate = clean_name(lines[index - 1])
@@ -69,11 +61,28 @@ class AadhaarParser(BaseDocumentParser):
                     and len(candidate) > 2
                     and not re.search(r"GOVERNMENT|INDIA|AADHAAR", candidate)
                 ):
-                    name = candidate
-                    break
+                    return candidate
 
-        if not name:
-            name = clean_name(after_label(text, [r"Name", r"नाम"]))
+        return clean_name(after_label(text, [r"Name", r"नाम"]))
 
-        output["name"] = name
-        return output
+    def parse(self, text: str, mask: bool = False) -> dict[str, Any]:
+        """
+        Parse Aadhaar card text and extract structured KYC fields.
+
+        Args:
+            text (str): Document text block.
+            mask (bool): Optional flag to mask sensitive Aadhaar number. Defaults to False.
+
+        Returns:
+            dict[str, Any]: Extracted document fields.
+        """
+        dob, yob = self._extract_dob_and_yob(text)
+        gender_match = re.search(r"\b(MALE|FEMALE|TRANSGENDER)\b", text, re.I)
+
+        return {
+            "aadhaar_number": self._extract_aadhaar_number(text, mask=mask),
+            "name": self._extract_name(text),
+            "gender": gender_match.group(1).upper() if gender_match else None,
+            "dob": dob,
+            "year_of_birth": yob,
+        }

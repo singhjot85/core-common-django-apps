@@ -11,7 +11,12 @@ from .validators import validate_pdf
 LOGGER = logging.getLogger(__name__)
 
 
-def extract_text(pdf_bytes: bytes, dpi: int = 300, lang: str = "eng+hin") -> str:
+def extract_text(
+    pdf_bytes: bytes,
+    dpi: int = 300,
+    lang: str = "eng+hin",
+    min_chars: int | None = None,
+) -> str:
     """
     Extract text content from a PDF document.
 
@@ -22,6 +27,7 @@ def extract_text(pdf_bytes: bytes, dpi: int = 300, lang: str = "eng+hin") -> str
         pdf_bytes (bytes): Binary PDF content.
         dpi (int): Resolution to render PDF pages when running optical character recognition.
         lang (str): Tesseract language codes separated by '+'.
+        min_chars (int, optional): Minimum characters in direct text to skip OCR. Defaults to CRM app_settings.
 
     Returns:
         str: Consolidated extracted text across all document pages.
@@ -32,16 +38,30 @@ def extract_text(pdf_bytes: bytes, dpi: int = 300, lang: str = "eng+hin") -> str
     """
     validate_pdf(pdf_bytes)
 
-    try:
-        import pymupdf
-    except ImportError as exc:
-        LOGGER.warning("pymupdf is not installed. OCR extraction cannot proceed.")
-        raise OCRExtractionError("pymupdf library is required for PDF parsing.") from exc
+    if min_chars is None:
+        try:
+            from core.apps.crm import app_settings  # noqa: PLC0415
+
+            min_chars = app_settings.ocr_native_text_min_chars
+        except Exception:
+            min_chars = 50
 
     try:
-        from PIL import Image
-        import pytesseract
-    except ImportError:
+        import pymupdf  # noqa: PLC0415
+    except ImportError as exc:
+        LOGGER.warning("pymupdf is not installed. OCR extraction cannot proceed.")
+        raise OCRExtractionError(
+            "pymupdf library is required for PDF parsing."
+        ) from exc
+
+    try:
+        import pytesseract  # noqa: PLC0415
+        from PIL import Image  # noqa: PLC0415
+    except ImportError as exc:
+        LOGGER.warning(
+            "pytesseract or Pillow is not installed (%s). Falling back to direct PDF text extraction only.",
+            exc,
+        )
         Image = None
         pytesseract = None
 
@@ -58,7 +78,13 @@ def extract_text(pdf_bytes: bytes, dpi: int = 300, lang: str = "eng+hin") -> str
         for page in doc:
             direct_text = page.get_text().strip()
             # If native text layer contains sufficient characters, prefer it over OCR
-            if len(direct_text) >= 50:
+            if len(direct_text) >= min_chars:
+                LOGGER.debug(
+                    "Native text layer on page %s has %d chars (threshold: %d); using direct text.",
+                    page.number,
+                    len(direct_text),
+                    min_chars,
+                )
                 texts.append(direct_text)
                 continue
 
@@ -70,11 +96,23 @@ def extract_text(pdf_bytes: bytes, dpi: int = 300, lang: str = "eng+hin") -> str
                     ocr_text = pytesseract.image_to_string(image, lang=lang)
                     texts.append(ocr_text.strip())
                 except Exception as exc:
-                    LOGGER.warning("Tesseract OCR failed on page %s: %s", page.number, exc)
+                    LOGGER.warning(
+                        "Tesseract OCR failed on page %s: %s", page.number, exc
+                    )
                     if direct_text:
                         texts.append(direct_text)
             elif direct_text:
+                LOGGER.info(
+                    "OCR dependencies unavailable on page %s; using native text layer fallback (%d chars).",
+                    page.number,
+                    len(direct_text),
+                )
                 texts.append(direct_text)
+            else:
+                LOGGER.warning(
+                    "Page %s has insufficient native text and OCR engine is unavailable.",
+                    page.number,
+                )
     finally:
         doc.close()
 
