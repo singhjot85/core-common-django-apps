@@ -3,12 +3,20 @@
         "first_name": "Charlie",
         "last_name": "Private",
         "party_type": "customer",
-        "customer__first_name": "Charlie"
+        "customer": {
+            "$ref": {
+                "first_name": "Charlie"
+            }
+        }
     },
     {
         "first_name": "Diana",
         "last_name": "Private",
         "party_type": "customer",
-        "customer__first_name": "Diana"
+        "customer": {
+            "$ref": {
+                "first_name": "Diana"
+            }
+        }
     }
 ]

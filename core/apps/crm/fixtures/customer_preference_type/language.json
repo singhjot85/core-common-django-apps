@@ -1,0 +1,7 @@
+{
+    "code": "language",
+    "label": "Preferred Language",
+    "data_type": "choices",
+    "default_value": "en",
+    "values": ["en", "hi", "es", "fr"]
+}

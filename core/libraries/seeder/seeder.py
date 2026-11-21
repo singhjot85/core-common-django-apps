@@ -79,6 +79,22 @@ class BaseSeeder:
                 self.seeder_label, "No persistence method configured."
             )
 
+        # Inject parent reference into child record(s) if not already explicitly present
+        if parent is not None:
+            parent_field_name = None
+            for field in getattr(self.method.model._meta, "fields", []):
+                if field.is_relation and isinstance(parent, field.related_model):
+                    parent_field_name = field.name
+                    break
+
+            if parent_field_name is not None:
+                if isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, dict) and parent_field_name not in item:
+                            item[parent_field_name] = parent
+                elif isinstance(data, dict) and parent_field_name not in data:
+                    data[parent_field_name] = parent
+
         if isinstance(data, list):
             instances: list[models.Model] = []
             for item in data:

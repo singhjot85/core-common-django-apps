@@ -15,8 +15,8 @@ from core.apps.configurations import app_settings
 from core.apps.configurations.management.commands.run_dev_seeders import (
     auto_discover_seeders,
 )
+from core.libraries.seeder.registry import seeder_registry
 from core.seeder.datasource import FileDataSource
-from core.seeder.registry import seeder_registry
 from core.utils.autodiscovery import AutoDiscovery, AutoDiscoveryError
 from core.utils.checks import is_development, is_production
 
@@ -104,15 +104,13 @@ class TestFileDataSource:
 
     def test_file_data_source_compiled_mode(self, settings):
         ds = FileDataSource(
-            os.path.join(
-                settings.CORE_BASE_DIR, "setup/crm/dev_customer/customers.json"
-            ),
+            os.path.join(settings.CORE_BASE_DIR, "setup/users/dev_users/users.json"),
             load_method=FileDataSource.LOAD_COMPILED,
         )
         data = ds.get_data()
         assert isinstance(data, list)
         assert len(data) > 0
-        assert "first_name" in data[0]
+        assert "username" in data[0]
 
     def test_file_data_source_individual_directory_mode(self, settings):
         ds = FileDataSource(
@@ -137,9 +135,7 @@ class TestFileDataSource:
         """Host project overriding BASE_DIR must not break CORE_BASE_DIR or CORE_APP_DIR data loading."""
         settings.BASE_DIR = Path("/non/existent/host/project/root")
         ds = FileDataSource(
-            os.path.join(
-                settings.CORE_BASE_DIR, "setup/crm/dev_customer/customers.json"
-            )
+            os.path.join(settings.CORE_BASE_DIR, "setup/users/dev_users/users.json")
         )
         data = ds.get_data()
         assert isinstance(data, list)
@@ -161,7 +157,9 @@ class TestDevSetupCommand:
         settings.DJANGO_ENV = "dev"
 
         out = StringIO()
-        with patch("core.seeder.runners.SeedDevelopmentData.run") as mock_run:
+        with patch(
+            "core.apps.configurations.management.commands.run_dev_seeders.SeedDevelopmentData.run"
+        ) as mock_run:
             mock_run.return_value = ["dummy_seeded_instance"]
             call_command("run_dev_seeders", stdout=out)
             assert mock_run.called

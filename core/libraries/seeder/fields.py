@@ -48,12 +48,13 @@ class SeederField:
         """
         Retrieve transformed field value, delegating to seeder hook if defined.
 
-        Checks for custom transform method `get_<field_name>(raw_value)` on the seeder.
+        Checks for custom transform method `set_<field_name>(raw_value)` or `get_<field_name>(raw_value)` on the seeder.
         """
         raw_value = self.data
-        hook_name = f"get_{self.field_name}"
-        if hasattr(seeder, hook_name):
-            return getattr(seeder, hook_name)(raw_value)
+        if hasattr(seeder, f"set_{self.field_name}"):
+            return getattr(seeder, f"set_{self.field_name}")(raw_value)
+        if hasattr(seeder, f"get_{self.field_name}"):
+            return getattr(seeder, f"get_{self.field_name}")(raw_value)
         return raw_value
 
 
@@ -76,9 +77,12 @@ class RelationField(SeederField):
 
     def get_value(self, seeder: BaseSeeder) -> typing.Any:
         """Resolve relation value via seeder hook or return raw data."""
-        hook_name = f"get_{self.field_name}"
-        if hasattr(seeder, hook_name):
-            return getattr(seeder, hook_name)(self.data)
+        if hasattr(seeder, f"set_{self.field_name}"):
+            return getattr(seeder, f"set_{self.field_name}")(self.data)
+        if hasattr(seeder, f"get_{self.field_name}"):
+            return getattr(seeder, f"get_{self.field_name}")(self.data)
+        if isinstance(self.data, dict) and "$ref" in self.data:
+            return self.retrieve_related_instance()
         return self.data
 
     def retrieve_related_instance(self) -> models.Model:

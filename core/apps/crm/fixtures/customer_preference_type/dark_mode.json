@@ -1,0 +1,7 @@
+{
+    "code": "dark_mode",
+    "label": "Dark Mode",
+    "data_type": "bool",
+    "default_value": false,
+    "values": []
+}

@@ -1,0 +1,37 @@
+{
+    "first_name": "Charlie",
+    "last_name": "Private",
+    "business_name": "Charlie Enterprises",
+    "customer_type": "individual",
+    "status": "onboarding",
+    "user": {
+        "$ref": {
+            "email": "admin1@localhost.com"
+        }
+    },
+    "phones": [
+        {
+            "phone": "+911234567792",
+            "phone_type": "work",
+            "is_primary": false
+        }
+    ],
+    "emails": [
+        {
+            "email": "charlie@private.localhost",
+            "email_type": "work",
+            "is_primary": false
+        }
+    ],
+    "addresses": [
+        {
+            "address_line_1": "303 Tech Park",
+            "city": "Hyderabad",
+            "state": "Telangana",
+            "postal_code": "500001",
+            "country": "IN",
+            "address_type": "permanent",
+            "is_primary": false
+        }
+    ]
+}

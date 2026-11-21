@@ -1,11 +1,19 @@
 [
     {
-        "invoice_party__first_name": "Charlie",
+        "invoice_party": {
+            "$ref": {
+                "first_name": "Charlie"
+            }
+        },
         "phone": "+911234567892",
         "phone_type": "primary"
     },
     {
-        "invoice_party__first_name": "Diana",
+        "invoice_party": {
+            "$ref": {
+                "first_name": "Diana"
+            }
+        },
         "phone": "+911234567893",
         "phone_type": "primary"
     }

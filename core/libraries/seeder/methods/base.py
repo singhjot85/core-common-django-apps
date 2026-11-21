@@ -117,7 +117,8 @@ class BaseObjectMethods:
         related_fields: list[RelationField] = []
 
         for field in prepared_fields:
-            if field.field.is_relation and not field.is_required:
+            is_ref = isinstance(field.data, dict) and "$ref" in field.data
+            if field.field.is_relation and not field.is_required and not is_ref:
                 if isinstance(field, RelationField):
                     related_fields.append(field)
             else:
@@ -142,7 +143,7 @@ class BaseObjectMethods:
                     probe_kwargs[field.field_name] = field.get_value(seeder)
 
             probe = self.model(**probe_kwargs)
-            probe.full_clean(exclude=excluded_fields)
+            probe.full_clean(exclude=excluded_fields, validate_unique=False)
         except ValidationError as exc:
             LOGGER.error("Validation failed for model %s: %s", self.model.__name__, exc)
             raise
