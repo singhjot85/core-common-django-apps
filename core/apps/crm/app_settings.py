@@ -35,7 +35,9 @@ class CRMSettings(BaseSettings):
             "ocr_native_text_min_chars": self.OCR_NATIVE_TEXT_MIN_CHARS,
         }
         try:
-            from core.apps.configurations import get_configuration_model  # noqa: PLC0415
+            from core.apps.configurations import (  # noqa: PLC0415
+                get_configuration_model,
+            )
 
             Configuration = get_configuration_model()
             config_details = Configuration.get_configuration(

@@ -102,10 +102,10 @@ Use for the Full-lifecycle track. Do not start a phase before the previous one i
 
 **Workflow**
 
-1. Create a log at `docs/analysis/<feature-slug>.md` before analyzing.
-2. Iterate as needed. After each iteration, edit the log in place: improve it, compact it, and remove superseded notes instead of appending.
-3. After each iteration, present a short plan summary and the open points that need discussion, each with your recommendation. Then **stop and wait for user feedback.**
-4. After the final iteration, use the log to build the task and document it (docstrings or `Readme.md`).
+1. **Create agent context log**: Create `docs/<feature-slug>/analysis.md` (and specialized specs like `<topic>.md` if needed) before analyzing. Note: `docs/` is strictly for AI agent context; human-readable docs stay alongside code in app `Readme.md` files (see `docs/Readme.md`).
+2. **Iterate in place**: Answer for the feature: input source, output contract, caching needs, async/Celery needs, DB schema changes, query performance, and error handling. After each iteration, edit `analysis.md` in place: improve it, compact it, and remove superseded notes instead of appending.
+3. **Present summary and wait**: After each iteration, present a short plan summary and the open points that need discussion, each with your recommendation. Then **stop and wait for user feedback and approval before starting Phase 2.**
+4. **Build and document**: After final approval, use the analysis log to drive implementation (Phase 2), refactoring (Phase 3), and testing (Phase 4). Document final behavior in code docstrings and the code-adjacent `Readme.md`, keeping `docs/<feature-slug>/analysis.md` updated as the persistent agent memory record.
 
 **1. System analysis**
 
@@ -341,6 +341,7 @@ Keep app-level `Readme.md` files in sync with code changes.
   - No large code dumps. Do not paste full class definitions or boilerplate.
   - Short and crisp: model relationships, architectural role, manager helpers, endpoints.
   - Minimal snippets, only for non-obvious integration or usage patterns.
+- Feature analysis and agent memory logs go in `docs/<feature-slug>/analysis.md` (see `docs/Readme.md`). Human-readable docs go directly alongside code in app `Readme.md` files.
 
 ## 6. graphify
 
