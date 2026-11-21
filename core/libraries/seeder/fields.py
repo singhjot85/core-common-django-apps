@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import typing
 
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 
 from core.libraries.seeder.exceptions import FieldException
@@ -29,9 +30,12 @@ class SeederField:
         self.data = data
 
     @property
-    def field(self) -> models.Field:
+    def field(self) -> models.Field | None:
         """Resolve model field metadata from the Django model."""
-        return self.model._meta.get_field(self.field_name)
+        try:
+            return self.model._meta.get_field(self.field_name)
+        except FieldDoesNotExist:
+            return None
 
     @property
     def is_required(self) -> bool:
@@ -40,6 +44,8 @@ class SeederField:
 
         Returns False if the field allows NULL or specifies a default value.
         """
+        if self.field is None:
+            return False
         if self.field.null or self.field.has_default():
             return False
         return not self.field.blank

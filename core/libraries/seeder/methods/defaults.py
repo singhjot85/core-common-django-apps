@@ -63,7 +63,12 @@ class GetorCreateObject(BaseObjectMethods):
             if field.field_name in self.lookup_fields:
                 lookups[field.field_name] = field.get_value(seeder)
             elif field.field_name in self.default_fields:
-                if field.field.is_relation and not field.is_required and not is_ref:
+                if (
+                    field.field is not None
+                    and field.field.is_relation
+                    and not field.is_required
+                    and not is_ref
+                ):
                     if isinstance(field, RelationField):
                         related_fields.append(field)
                 else:
@@ -77,7 +82,12 @@ class GetorCreateObject(BaseObjectMethods):
         """Validate non-relation probe attributes without writing to database."""
         try:
             lookups, defaults, _ = self.split_fields(prepared_fields, seeder)
-            probe_kwargs = {**lookups, **defaults}
+            model_field_names = {f.name for f in self.model._meta.get_fields()}
+            probe_kwargs = {
+                k: v
+                for k, v in {**lookups, **defaults}.items()
+                if k in model_field_names
+            }
             probe = self.model(**probe_kwargs)
             probe.full_clean(exclude=list(lookups.keys()), validate_unique=False)
         except ValidationError as exc:

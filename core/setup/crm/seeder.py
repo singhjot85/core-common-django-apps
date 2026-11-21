@@ -12,7 +12,6 @@ from core.apps.crm import (
 )
 from core.libraries.seeder import (
     BaseSeeder,
-    CreateObject,
     FileBasedLoader,
     GetorCreateObject,
 )
@@ -29,9 +28,10 @@ class DevCustomerPhoneSeeder(BaseSeeder):
 
     is_root: bool = False
 
-    method = CreateObject(
+    method = GetorCreateObject(
         model=CustomerPhone,
-        fields=["customer", "phone", "phone_type", "is_primary"],
+        lookup_fields=["customer", "phone"],
+        default_fields=["phone_type", "is_primary"],
     )
 
 
@@ -40,9 +40,10 @@ class DevCustomerEmailSeeder(BaseSeeder):
 
     is_root: bool = False
 
-    method = CreateObject(
+    method = GetorCreateObject(
         model=CustomerEmail,
-        fields=["customer", "email", "email_type", "is_primary"],
+        lookup_fields=["customer", "email"],
+        default_fields=["email_type", "is_primary"],
     )
 
 
@@ -51,12 +52,10 @@ class DevCustomerAddressSeeder(BaseSeeder):
 
     is_root: bool = False
 
-    method = CreateObject(
+    method = GetorCreateObject(
         model=CustomerAddress,
-        fields=[
-            "customer",
-            "address_line_1",
-            "city",
+        lookup_fields=["customer", "address_line_1", "city"],
+        default_fields=[
             "state",
             "postal_code",
             "country",

@@ -15,7 +15,6 @@ from core.apps.invoices import (
 )
 from core.libraries.seeder import (
     BaseSeeder,
-    CreateObject,
     FileBasedLoader,
     GetorCreateObject,
 )
@@ -53,9 +52,10 @@ class DevOrganizationEmailSeeder(BaseSeeder):
         directory_name="setup/invoices/dev_organization_email/emails.json",
         load_method=FileBasedLoader.LOAD_COMPILED,
     )
-    method = CreateObject(
+    method = GetorCreateObject(
         model=OrgEmail,
-        fields=["organization", "email", "type", "is_primary"],
+        lookup_fields=["organization", "email"],
+        default_fields=["type", "is_primary"],
     )
 
 
@@ -68,9 +68,10 @@ class DevOrganizationPhoneSeeder(BaseSeeder):
         directory_name="setup/invoices/dev_organization_phone/phones.json",
         load_method=FileBasedLoader.LOAD_COMPILED,
     )
-    method = CreateObject(
+    method = GetorCreateObject(
         model=OrgPhone,
-        fields=["organization", "phone", "type", "is_primary"],
+        lookup_fields=["organization", "phone"],
+        default_fields=["type", "is_primary"],
     )
 
 
@@ -100,9 +101,10 @@ class DevInvoicePartyEmailSeeder(BaseSeeder):
         directory_name="setup/invoices/dev_invoice_party_email/emails.json",
         load_method=FileBasedLoader.LOAD_COMPILED,
     )
-    method = CreateObject(
+    method = GetorCreateObject(
         model=InvoicePartyEmail,
-        fields=["invoice_party", "email", "email_type"],
+        lookup_fields=["invoice_party", "email"],
+        default_fields=["email_type"],
     )
 
 
@@ -115,9 +117,10 @@ class DevInvoicePartyPhoneSeeder(BaseSeeder):
         directory_name="setup/invoices/dev_invoice_party_phone/phones.json",
         load_method=FileBasedLoader.LOAD_COMPILED,
     )
-    method = CreateObject(
+    method = GetorCreateObject(
         model=InvoicePartyPhone,
-        fields=["invoice_party", "phone", "phone_type"],
+        lookup_fields=["invoice_party", "phone"],
+        default_fields=["phone_type"],
     )
 
 

@@ -23,7 +23,8 @@ class UserCreationMethod(GetorCreateObject):
             if is_superuser
             else manager.get_or_create_user
         )
-        instance, created = create_fn(defaults=defaults, **lookups)
+        kwargs = {**lookups, **defaults}
+        instance, created = create_fn(**kwargs)
         self._link_related_instances(instance, related_fields)
         return instance
 

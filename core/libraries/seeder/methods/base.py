@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 import typing
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import FieldDoesNotExist, ValidationError
 
 from core.libraries.seeder.exceptions import InvalidFieldError
 from core.libraries.seeder.fields import (
@@ -60,7 +60,10 @@ class BaseObjectMethods:
             )
             return None
 
-        field = self.model._meta.get_field(field_name)
+        try:
+            field = self.model._meta.get_field(field_name)
+        except FieldDoesNotExist:
+            return SeederField(field_name=field_name, model=self.model, data=value)
 
         # Standard non-relational model field
         if field.concrete and not field.is_relation:
@@ -118,7 +121,12 @@ class BaseObjectMethods:
 
         for field in prepared_fields:
             is_ref = isinstance(field.data, dict) and "$ref" in field.data
-            if field.field.is_relation and not field.is_required and not is_ref:
+            if (
+                field.field is not None
+                and field.field.is_relation
+                and not field.is_required
+                and not is_ref
+            ):
                 if isinstance(field, RelationField):
                     related_fields.append(field)
             else:
@@ -137,9 +145,9 @@ class BaseObjectMethods:
             excluded_fields: list[str] = []
 
             for field in prepared_fields:
-                if field.field.is_relation:
+                if field.field is not None and field.field.is_relation:
                     excluded_fields.append(field.field_name)
-                else:
+                elif field.field is not None:
                     probe_kwargs[field.field_name] = field.get_value(seeder)
 
             probe = self.model(**probe_kwargs)
