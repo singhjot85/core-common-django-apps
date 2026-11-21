@@ -34,7 +34,10 @@ docs/
 
 | Directory | Feature Domain | Key Documents & Agent Context |
 |---|---|---|
-| [`analysis/`](./analysis/) | Historical Feature Analyses | Archive of initial analyses (API URLs, auth views, seeder labels, integrations, login templates, OTP flows) |
+| [`users_and_auth/`](./users_and_auth/) | Authentication & User Management | [API URLs & Template Views](./users_and_auth/api-urls-and-template-views.md), [Authenticated Shell & Modular Login](./users_and_auth/authenticated-view-and-modular-login.md), [OTP Signup Flow](./users_and_auth/otp-signup-flow-corrections.md), [Post-Login Forwarding](./users_and_auth/landing-page-routing-post-login.md) |
+| [`integrations/`](./integrations/) | Third-Party Integrations Engine | [Integrations Architecture](./integrations/analysis.md) (multi-tenant provider adapters, email, SMS, and credentials manager) |
+| [`configurations/`](./configurations/) | Dynamic Configuration & Labels | [Template Labels & Seeders](./configurations/database-label-configuration-and-seeder.md) (database configuration records, multi-language fixtures) |
+| [`templates/`](./templates/) | Core Jinja2 Template System | [Login Page & Dynamic Forms](./templates/login-page-and-form-templates.md), [Template Accessibility & Escaping Fixes](./templates/template-fixes.md) |
 
 ---
 

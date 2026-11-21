@@ -111,4 +111,3 @@ The `core.apps.crm.services.ocr` package provides heuristic and OCR extraction f
 - Target records: `CustomerIdentification` with `status__in=["pending", "un-verified"]` and non-empty `document`.
 - On success: sets `status="verified"`, `is_verified=True`, `verified_on=today`, and saves extracted fields to `details`.
 - On failure: sets `status="verification-failed"`, `is_verified=False`, and records error code in `details`.
-

@@ -275,7 +275,9 @@ class TestOCRTasksAndBeatCron:
                 },
             }
 
-            with patch("core.apps.crm.tasks.process_document", return_value=mock_result):
+            with patch(
+                "core.apps.crm.tasks.process_document", return_value=mock_result
+            ):
                 success = process_identification_record(identification)
 
             assert success is True
@@ -307,7 +309,9 @@ class TestOCRTasksAndBeatCron:
 
             assert success is False
             identification.refresh_from_db()
-            assert identification.status == IdentityStatusChoices.VERIFICATION_FAILED.value
+            assert (
+                identification.status == IdentityStatusChoices.VERIFICATION_FAILED.value
+            )
             assert identification.is_verified is False
             assert identification.details.get("error") == "no_text"
         finally:
