@@ -42,6 +42,14 @@ class IdentityTypeChoices(models.TextChoices):
     AADHAAR = "aadhaar", _("Aadhaar Card")
     PAN = "pan", _("PAN Card")
     DRIVING_LICENSE = "driving_license", _("Driving License")
+    REGISTRATION_CERTIFICATE = (
+        "registration_certificate",
+        _("Registration Certificate"),
+    )
+    PUC = "puc", _("PUC Certificate")
+    INSURANCE = "insurance", _("Vehicle Insurance")
+    PASSPORT = "passport", _("Passport")
+    VOTER_ID = "voter_id", _("Voter ID")
     SOCIAL_SECURITY = "social_security", _("Social Security")
     OTHER = "other", _("Other")
 
@@ -50,6 +58,7 @@ class IdentityStatusChoices(models.TextChoices):
     """Government and regulatory identification document status choices."""
 
     UNVERIFIED = "un-verified", _("Unverified")
+    PENDING = "pending", _("Pending Verification")
     VERIFIED = "verified", _("Verified")
     VERIFICATION_FAILED = "verification-failed", _("Verification Failed")
     VERIFICATION_EXPIRED = "verification-expired", _("Verification Expired")

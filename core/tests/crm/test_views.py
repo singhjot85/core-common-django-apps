@@ -2,6 +2,7 @@ import uuid
 from types import SimpleNamespace
 
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APIRequestFactory, force_authenticate
 
@@ -403,6 +404,25 @@ class TestNestedCustomerEntitiesAPI:
         assert not CustomerIdentification.objects.filter(
             customer=self.customer2, type=IdentityTypeChoices.DRIVING_LICENSE
         ).exists()
+
+    def test_download_identification_file(self):
+        """GET /customers/{customer_pk}/identifications/{pk}/download/ returns the file."""
+        dummy_file = SimpleUploadedFile(
+            "sample.pdf", b"%PDF-1.4 sample content", content_type="application/pdf"
+        )
+        ident = CustomerIdentification.objects.create(
+            customer=self.customer1,
+            type=IdentityTypeChoices.AADHAAR,
+            document=dummy_file,
+        )
+        view = CustomerIdentificationViewSet.as_view({"get": "download_file"})
+        request = self.factory.get(
+            f"/customers/{self.customer1.id}/identifications/{ident.id}/download/"
+        )
+        force_authenticate(request, user=self.user)
+        response = view(request, customer_pk=str(self.customer1.id), pk=str(ident.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"] == "application/pdf"
 
     def test_create_phone_uses_url_customer_pk_without_body_customer(self):
         """POST /customers/{customer_pk}/phones/ does not require customer in request body."""

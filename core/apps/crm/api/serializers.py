@@ -98,6 +98,10 @@ class CustomerAddressSerializer(DynamicReadOnlyModelSerializer):
         read_only_fields = ["id", "customer", "full_address"]
 
 
+from core.apps.crm.constants import IdentityStatusChoices
+from core.apps.crm.services.ocr.validators import validate_pdf
+
+
 class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
     """
     Serialize customer KYC, identity credentials, and verification status.
@@ -131,6 +135,35 @@ class CustomerIdentificationSerializer(DynamicReadOnlyModelSerializer):
             "verified_on",
             "details",
         ]
+
+    def validate_document(self, value):
+        """
+        Validate uploaded document file size and PDF format.
+        """
+        if not value:
+            return value
+        if value.size > 10 * 1024 * 1024:
+            raise serializers.ValidationError(
+                "Document file must not exceed 10 MB."
+            )
+        try:
+            content = value.read()
+            validate_pdf(content)
+        finally:
+            value.seek(0)
+        return value
+
+    def create(self, validated_data):
+        if validated_data.get("document"):
+            validated_data["status"] = IdentityStatusChoices.PENDING.value
+            validated_data["is_verified"] = False
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if validated_data.get("document"):
+            validated_data["status"] = IdentityStatusChoices.PENDING.value
+            validated_data["is_verified"] = False
+        return super().update(instance, validated_data)
 
 
 class CustomerPreferenceSerializer(serializers.ModelSerializer):

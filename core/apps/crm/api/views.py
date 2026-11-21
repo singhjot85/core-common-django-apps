@@ -13,9 +13,11 @@ Provides:
 - CustomerPreferenceViewSet: Customer preference value endpoints nested under customers.
 """
 
+from django.http import FileResponse
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework_nested.viewsets import NestedViewSetMixin
 
@@ -261,6 +263,25 @@ class CustomerIdentificationViewSet(BaseCustomerEntityViewSet):
 
     queryset = CustomerIdentification.available_objects.select_related("customer").all()
     serializer_class = CustomerIdentificationSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    @action(detail=True, methods=["get"], url_path="download")
+    def download_file(self, request, *args, **kwargs):
+        """
+        Stream the raw KYC identification document attachment.
+        """
+        identification = self.get_object()
+        if not identification.document:
+            return Response(
+                {"detail": "No document attached to this identification record."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return FileResponse(
+            identification.document.open("rb"),
+            as_attachment=True,
+            filename=f"{identification.pk}.pdf",
+            content_type="application/pdf",
+        )
 
 
 class CustomerPreferenceTypeViewSet(

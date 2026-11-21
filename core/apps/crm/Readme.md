@@ -95,3 +95,20 @@ Clients upload file binaries directly to cloud object storage, bypassing the Dja
 ### Security & Multi-Tenancy Rules
 - **Tenant Isolation:** Storage keys are partitioned by schema: `<tenant_schema>/<type>/<customer_id>/<filename>`.
 - **Private Access:** S3 Block Public Access must remain enabled. Identity documents contain sensitive PII and must only be accessed via expiring presigned GET URLs.
+
+## Document OCR Processing & Celery Beat Cron
+
+The `core.apps.crm.services.ocr` package provides heuristic and OCR extraction for Indian identification documents:
+- Supported document types: Aadhaar (`AADHAAR`), Driving License (`DRIVING_LICENSE`), Registration Certificate (`REGISTRATION_CERTIFICATE`), Pollution Under Control (`PUC`), and Vehicle Insurance (`INSURANCE`).
+- Text extraction pipeline: First attempts digital text extraction with PyMuPDF; if insufficient (scanned image or raster PDF), falls back to 300 DPI rendering and Tesseract OCR.
+- Verification and PII masking: Candidate numbers are validated against checksums (e.g. Verhoeff for Aadhaar) and sanitized (`XXXXXXXX<last4>`).
+
+### Periodic Batch Processing
+> **TODO:** Document scanning is a periodic Celery Beat cron-scheduled batch task (`process_unverified_identifications_cron`), **not** a per-upload manual trigger.
+> Once Celery Beat is deployed and configured in the project, periodic batch polling will process pending records automatically on a schedule.
+
+- Cron task: `core.apps.crm.tasks.process_unverified_identifications_cron(batch_size=50)`
+- Target records: `CustomerIdentification` with `status__in=["pending", "un-verified"]` and non-empty `document`.
+- On success: sets `status="verified"`, `is_verified=True`, `verified_on=today`, and saves extracted fields to `details`.
+- On failure: sets `status="verification-failed"`, `is_verified=False`, and records error code in `details`.
+
