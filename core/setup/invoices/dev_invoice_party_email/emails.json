@@ -1,11 +1,19 @@
 [
     {
-        "invoice_party__first_name": "Charlie",
+        "invoice_party": {
+            "$ref": {
+                "first_name": "Charlie"
+            }
+        },
         "email": "charlie@private.localhost",
         "email_type": "primary"
     },
     {
-        "invoice_party__first_name": "Diana",
+        "invoice_party": {
+            "$ref": {
+                "first_name": "Diana"
+            }
+        },
         "email": "diana@private.localhost",
         "email_type": "primary"
     }

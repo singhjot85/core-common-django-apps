@@ -1,0 +1,7 @@
+{
+    "code": "newsletter",
+    "label": "Newsletter Subscription",
+    "data_type": "bool",
+    "default_value": false,
+    "values": []
+}

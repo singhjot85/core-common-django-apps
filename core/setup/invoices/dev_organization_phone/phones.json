@@ -1,6 +1,10 @@
 [
     {
-        "organization__organization_name": "PrivateCo Ltd",
+        "organization": {
+            "$ref": {
+                "organization_name": "PrivateCo Ltd"
+            }
+        },
         "phone": "+911800300400",
         "type": "primary",
         "is_primary": true

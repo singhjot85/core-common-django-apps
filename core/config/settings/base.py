@@ -20,9 +20,10 @@ LOGGING_CONFIG_PATH = "config.logs"
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # Path to /backend
 APP_DIR = os.path.join(BASE_DIR, APP_NAME)  # Path to /backend/apps
-CORE_BASE_DIR = Path(__file__).resolve().parent.parent.parent
-CORE_APP_DIR = os.path.join(CORE_BASE_DIR, APP_NAME)
-CORE_SETUP_DIR = os.path.join(CORE_BASE_DIR, "setup")
+SETUP_DIR = os.path.join(BASE_DIR, "setup")  # Path to /backend/setup
+CORE_BASE_DIR = Path(__file__).resolve().parent.parent.parent  # Path to core-submodule/
+CORE_APP_DIR = os.path.join(CORE_BASE_DIR, APP_NAME)  # Path to core-submodule/apps
+CORE_SETUP_DIR = os.path.join(CORE_BASE_DIR, "setup")  # Path to core-submodule/setup
 SANDBOX_TEMPLATES_DIRS = [
     CORE_SETUP_DIR,
     os.path.join(CORE_BASE_DIR, "templates"),

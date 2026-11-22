@@ -1,7 +1,12 @@
 [
     {
-        "schema_name": "private",
-        "label": "Private Tenant",
-        "domain": "public.localhost"
+        "schema_name": "blackrock",
+        "label": "Blackrock Foundations",
+        "domain": "blackrock.localhost"
+    },
+    {
+        "schema_name": "acme",
+        "label": "ACME Technologies",
+        "domain": "acme.localhost"
     }
 ]

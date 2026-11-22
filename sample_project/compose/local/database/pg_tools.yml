@@ -1,0 +1,27 @@
+services:
+  volume_dump:
+    image: alpine
+    tty: false
+    environment:
+      VOLUME_NAME: ${VOLUME_NAME:-core_local_pg_data}
+    volumes:
+      - postgres_data:/pg_data:ro
+      - ${PG_BACKUP_DIR:-./pg_backup}:/pg_backup
+      - ./scripts:/scripts:ro
+    entrypoint: ["/bin/sh", "/scripts/volume_dump.sh"]
+
+  volume_restore:
+    image: alpine
+    tty: false
+    environment:
+      BACKUP_FILE: ${BACKUP_FILE:-}
+    volumes:
+      - postgres_data:/pg_data
+      - ${PG_BACKUP_DIR:-./pg_backup}:/pg_backup:ro
+      - ./scripts:/scripts:ro
+    entrypoint: ["/bin/sh", "/scripts/volume_restore.sh"]
+
+volumes:
+  postgres_data:
+    external: true
+    name: ${VOLUME_NAME:-core_local_pg_data}

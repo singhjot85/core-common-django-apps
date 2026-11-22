@@ -2,40 +2,50 @@
 Development mock seeders for Users app.
 """
 
-import os
+from __future__ import annotations
 
 from core.apps.users import get_user_model
-from core.seeder.base import BaseMeta, BaseSeeder
-from core.seeder.datasource import FileDataSource
+from core.libraries.seeder import BaseSeeder, FileBasedLoader, GetorCreateObject
+
+User = get_user_model()
+
+
+class UserCreationMethod(GetorCreateObject):
+    """Custom method selecting get_or_create_user vs get_or_create_superuser."""
+
+    def perform_seed(self, prepared_fields, seeder):
+        lookups, defaults, related_fields = self.split_fields(prepared_fields, seeder)
+        is_superuser = defaults.pop("create_superuser", False)
+
+        manager = self.model._default_manager
+        create_fn = (
+            manager.get_or_create_superuser
+            if is_superuser
+            else manager.get_or_create_user
+        )
+        kwargs = {**lookups, **defaults}
+        instance, created = create_fn(**kwargs)
+        self._link_related_instances(instance, related_fields)
+        return instance
 
 
 class DevUserSeeder(BaseSeeder):
-    class Meta(BaseMeta):
-        model = get_user_model()
-        object_create_method = get_user_model().objects.get_or_create_user
-        fields = [
-            "username",
+    """Development mock seeder for Users app."""
+
+    execution_order: int = 1
+    loader = FileBasedLoader(
+        directory_name="setup/users/dev_users/users.json",
+        load_method=FileBasedLoader.LOAD_COMPILED,
+    )
+    method = UserCreationMethod(
+        model=User,
+        lookup_fields=["username"],
+        default_fields=[
             "password",
             "email",
             "first_name",
             "last_name",
             "phone_number",
-            "create_superuser",  # custom field
-        ]
-        execution_order = 1
-        data_source = FileDataSource(os.path.join("setup/users/dev_users/users.json"))
-
-    def to_internal_values(self, data):
-        self.context.update({"create_superuser": data.pop("create_superuser", False)})
-        return super().to_internal_values(data)
-
-    def create(self, data):
-        # For superusers override the original create_user
-        if self.context.get("create_superuser", False):
-            self.creation_method = get_user_model().objects.get_or_create_superuser
-
-        instance = super().create(data)
-
-        # Before exiting restore original method, as one seeder object is shared by mutiple runs
-        self.creation_method = getattr(self._meta, "object_create_method")
-        return instance
+            "create_superuser",
+        ],
+    )

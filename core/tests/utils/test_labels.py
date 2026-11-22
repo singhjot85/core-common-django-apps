@@ -9,7 +9,7 @@ from django.test import RequestFactory, override_settings
 from core.apps.configurations import get_configuration_model
 from core.apps.configurations.fixtures.seeders import ConfigurationSeeder
 from core.apps.users.api.template_views import LoginView
-from core.seeder.registry import fixture_registry, seeder_registry
+from core.libraries.seeder.registry import fixture_registry, seeder_registry
 from core.setup.configurations.seeders import DevUsersTemplateLabelSeeder
 from core.utils.labels import (
     LabelDict,
@@ -179,17 +179,17 @@ class TestUsersTemplateLabelSeeders:
         )
 
     def test_fixture_seeder_meta_properties(self):
-        assert ConfigurationSeeder.Meta.is_fixture is True
-        assert ConfigurationSeeder.Meta.model == Configuration
-        assert ConfigurationSeeder.Meta.data_source.load_method == "individual"
+        assert ConfigurationSeeder.is_fixture is True
+        assert ConfigurationSeeder.method.model == Configuration
+        assert ConfigurationSeeder.loader.load_method == "individual"
         assert (
             "configurations/fixtures/configuration"
-            in ConfigurationSeeder.Meta.data_source.file_path
+            in ConfigurationSeeder.loader.dir_name
         )
 
     def test_dev_seeder_inherits_with_fixture_false(self):
-        assert DevUsersTemplateLabelSeeder.Meta.is_fixture is False
-        assert DevUsersTemplateLabelSeeder.Meta.model == Configuration
+        assert DevUsersTemplateLabelSeeder.is_fixture is False
+        assert DevUsersTemplateLabelSeeder.method.model == Configuration
 
     def test_seeder_create_uses_set_config_without_cache(self):
         seeder = ConfigurationSeeder()
@@ -202,7 +202,7 @@ class TestUsersTemplateLabelSeeders:
         with patch.object(
             Configuration, "set_config", return_value=MagicMock()
         ) as mock_set:
-            seeder.create(sample_data)
+            seeder.method.seed(sample_data, seeder)
             mock_set.assert_called_once_with(
                 interface_type="users_template_label",
                 details={"sign_in": {"en": "Sign In"}},
@@ -212,7 +212,7 @@ class TestUsersTemplateLabelSeeders:
 
     def test_fixture_file_contents_valid_json(self):
         seeder = ConfigurationSeeder()
-        data = seeder.seed_data
+        data = seeder.loader.get_data()
         assert isinstance(data, list)
         assert len(data) >= 1
         items = [d for d in data if d.get("interface_type") == "users_template_label"]

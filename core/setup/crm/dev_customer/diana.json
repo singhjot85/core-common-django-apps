@@ -1,0 +1,37 @@
+{
+    "first_name": "Diana",
+    "last_name": "Private",
+    "business_name": "Diana Solutions",
+    "customer_type": "individual",
+    "status": "onboarding",
+    "user": {
+        "$ref": {
+            "email": "client1@localhost.com"
+        }
+    },
+    "phones": [
+        {
+            "phone": "+911234567893",
+            "phone_type": "work",
+            "is_primary": true
+        }
+    ],
+    "emails": [
+        {
+            "email": "diana@private.localhost",
+            "email_type": "work",
+            "is_primary": true
+        }
+    ],
+    "addresses": [
+        {
+            "address_line_1": "404 Silicon Valley",
+            "city": "Chennai",
+            "state": "Tamil Nadu",
+            "postal_code": "600001",
+            "country": "IN",
+            "address_type": "permanent",
+            "is_primary": true
+        }
+    ]
+}

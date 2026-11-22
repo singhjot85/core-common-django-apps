@@ -1,4 +1,7 @@
-# Database Seeder Framework (`core.seeder`)
+# Database Seeder Framework (`core.seeder` - Legacy)
+
+> [!NOTE]
+> **Notice:** The seeder framework has been migrated to `core.libraries.seeder`. For modern seeder development, refer to [`core/libraries/seeder`](../libraries/seeder) and the `add-seeder` skill. This legacy module is retained for backward compatibility.
 
 Location: [`core/seeder/`](./__init__.py)
 

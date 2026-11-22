@@ -11,7 +11,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from core.apps.configurations import app_settings
-from core.seeder.runners import SeedDevelopmentData
+from core.libraries.seeder.runner import SeedDevelopmentData
 from core.utils.autodiscovery import AutoDiscovery
 from core.utils.checks import is_development
 

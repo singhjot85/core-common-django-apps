@@ -22,6 +22,7 @@ class DeletionTrackingModel(SoftDeletableModel):
     """
 
     deleted_by_fName = "deleted_by"
+
     removed_by = models.ForeignKey(
         to=settings.AUTH_USER_MODEL,
         on_delete=models.RESTRICT,

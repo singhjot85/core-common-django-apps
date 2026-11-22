@@ -1,273 +1,245 @@
 ---
 name: add-seeder
-description: Author database seeders in the core framework (core.seeder) - production fixtures (is_fixture=True) and development mock-data seeders. Use when asked to seed models, create fixtures or mock/dev data, write BaseSeeder subclasses, wire seeder dependencies (depends_on, execution_order, related_seeders), or debug seeder runs (make dev-setup, SeedFixtures).
+description: Author database seeders in the core framework (core.libraries.seeder) - production fixtures (is_fixture=True) and development mock-data seeders. Use when asked to seed models, create fixtures or mock/dev data, write BaseSeeder subclasses, wire seeder dependencies (depends_on, related_seeder_map), or debug seeder runs (make dev-setup, SeedFixtures).
 ---
 
 # Seeder Authoring (`add-seeder`)
 
-`core.seeder` is a declarative, dependency-ordered seeding engine for multi-tenant Django apps. You describe *what* to seed (model, fields, data source, dependencies); `BaseSeeder` handles ordering, schema context and per-record transactions.
+`core.libraries.seeder` is a decoupled, declarative, dependency-ordered seeding engine for multi-tenant Django apps. You describe *what* to seed via class attribute composition (`loader`, `method`, `related_seeder_map`); `BaseSeeder` and `SeederRunner` handle DAG ordering, multi-tenant schema isolation, atomic transactions, and relational graph linking.
 
 Core facts:
-- Seeders are sorted with a topological sort (Kahn's algorithm) over `depends_on`; `execution_order` breaks ties.
-- Each record is created inside its own `transaction.atomic()`.
-- Schema isolation is handled via `core_schema_context` (`public` vs tenant schemas).
-- Two registries: `seeder_registry` (everything) and `fixture_registry` (only `is_fixture = True`).
+- **No `BaseMeta`**: Configuration is declarative via top-level class attributes (`method = ...`, `loader = ...`).
+- **Persistence Strategies**: Pluggable methods: `GetorCreateObject`, `UpdateOrCreateObject`, `CreateObject`.
+- **Topological Sorting**: Handled by `SeederRunner(InstanceDAGBuilder)` over `depends_on` and model dependencies.
+- **Relational Graph Linking**: Parent seeders coordinate child seeders via `related_seeder_map` with automatic parent foreign key injection and `$ref` lookups for external dependencies.
+- **Multi-Tenant Schema Isolation**: Handled exclusively in the runner (`SeederRunner`), instantiating fresh seeder instances per tenant schema context to guarantee complete isolation.
+- **Registries**: `seeder_registry` (all seeders) and `fixture_registry` (only `is_fixture = True`).
 
 ---
 
-## 1. Step 0 - Decide the tier
+## 1. Step 0 - Decide the Tier
 
 | Question | Fixture (production) | Dev seeder |
 | :--- | :--- | :--- |
 | Must exist in production for the app to work (configs, statuses, preference types, template labels)? | Yes | No |
-| Fake/realistic sample data for local, QA or CI (users, customers)? | No | Yes |
+| Fake/realistic sample data for local, QA or CI (users, customers, sample invoices)? | No | Yes |
 | Runs via | `SeedFixtures` (uses `fixture_registry` only) | `make dev-setup` -> `python manage.py run_dev_seeders` |
 
-**Hard rule:** production must never receive mock data. Anything with fake emails, known passwords, or sample business records is a dev seeder, always. When unsure, it is a dev seeder.
+> [!IMPORTANT]
+> **Hard rule:** Production must never receive mock data. Anything with fake emails, sample users, or demo customer records is a dev seeder, always.
 
 ---
 
-## 2. Placement & naming
+## 2. Placement & Naming
 
 | | Production Fixture | Development Seeder |
 | :--- | :--- | :--- |
-| Python | `core/apps/<app>/fixtures/seeders.py` | `core/setup/<app>/seeders.py` |
-| Data dir | `core/apps/<app>/fixtures/<model_name>/` | `core/setup/<app>/dev_<model_name>/` |
-| Class name | `<Name>FixtureSeeder` (no `Dev` prefix) | `Dev<Name>Seeder` |
+| Python file | `core/apps/<app>/fixtures/seeder.py` (or `seeders.py`) | `core/setup/<app>/seeder.py` (or `seeders.py`) |
+| Data directory | `core/apps/<app>/fixtures/<directory_name>/` | `core/setup/<app>/<directory_name>/` |
+| Class name | `<ModelName>FixtureSeeder` (or `<Name>Seeder`) | `Dev<ModelName>Seeder` |
 | `is_fixture` | `True` | `False` (default) |
-| Path anchor | `settings.CORE_APP_DIR` | `settings.CORE_BASE_DIR` |
-
-Examples: `UsersTemplateLabelFixtureSeeder`, `DevUserSeeder`, `DevCustomerSeeder`; data at `core/apps/configurations/fixtures/configuration/` and `core/setup/crm/dev_customer/customers.json`.
-
-Never hardcode absolute or relative-to-cwd paths; always build them from `settings.CORE_APP_DIR` / `settings.CORE_BASE_DIR` so host projects with custom paths keep working.
+| `schemas` | `["public"]` or `[settings.TENANT_TYPE_ORGANIZATION]` | Tenant or public as required |
 
 ---
 
-## 3. Minimal template
+## 3. Class Attributes & Architecture
+
+Subclass `BaseSeeder` from `core.libraries.seeder`:
 
 ```python
-import os
 from django.conf import settings
 from core.apps.crm import get_customer_model
-from core.apps.users import get_user_model
-from core.seeder.base import BaseMeta, BaseSeeder
-from core.seeder.datasource import FileDataSource
+from core.libraries.seeder import BaseSeeder, FileBasedLoader, GetorCreateObject
 
 Customer = get_customer_model()
-User = get_user_model()
 
 
 class DevCustomerSeeder(BaseSeeder):
     """Development mock seeder for Customer records."""
 
-    class Meta(BaseMeta):
-        model = Customer
-        fields = ["first_name", "last_name", "business_name",
-                  "customer_type", "status", "user__email"]
-        tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        data_source = FileDataSource(
-            os.path.join(settings.CORE_BASE_DIR,
-                         "setup/crm/dev_customer/customers.json")
-        )
-        depends_on = [User]      # users are seeded first
-        execution_order = 2
+    method = GetorCreateObject(
+        model=Customer,
+        lookup_fields=("first_name", "last_name"),
+        default_fields=("first_name", "middle_name", "last_name", "business_name", "customer_type", "status"),
+        related_seeder_map={
+            "phones": DevCustomerPhoneSeeder,
+            "emails": DevCustomerEmailSeeder,
+            "addresses": DevCustomerAddressSeeder,
+        },
+    )
+    loader = FileBasedLoader(
+        directory_name="dev_customer",
+        load_method=FileBasedLoader.LOAD_INDIVIDUAL,
+    )
+    schemas = [settings.TENANT_TYPE_ORGANIZATION]
+    is_fixture = False
 ```
 
-Matching data file (`customers.json`, compiled mode = a JSON array):
+### Key Class Attributes
 
-```json
-[
-  {
-    "first_name": "Asha",
-    "last_name": "Verma",
-    "business_name": "Verma Traders",
-    "customer_type": "business",
-    "status": "active",
-    "user__email": "asha@example.com"
-  }
-]
-```
-
-Rules:
-1. Resolve models with the app getters (`get_user_model()`, `get_customer_model()`); never import concrete model classes.
-2. Subclass `BaseSeeder` and declare `class Meta(BaseMeta)`.
-3. Use only reserved domains (`example.com`, `localhost`) for fake emails.
+- `method`: An instance of `GetorCreateObject`, `UpdateOrCreateObject`, or `CreateObject`.
+  - `model`: Target Django model class (always resolved via `get_<model>_model()` getter).
+  - `lookup_fields`: Tuple of field names used for `get_or_create` or `update_or_create` lookups.
+  - `default_fields`: Tuple of fields passed to defaults or creation kwargs.
+  - `related_seeder_map`: Dict mapping relation keys in data to child seeder classes.
+- `loader`: An instance of `FileBasedLoader(directory_name="...", load_method=...)`.
+  - `directory_name`: Name of the folder or file.
+  - `load_method`: `FileBasedLoader.LOAD_INDIVIDUAL` (directory of individual `.json` files) or `FileBasedLoader.LOAD_COMPILED` (single `.json` file containing an array).
+- `schemas`: List of schemas or tenant types where this seeder runs (e.g. `["public"]` or `[settings.TENANT_TYPE_ORGANIZATION]`).
+- `is_fixture`: Set to `True` for production fixtures; defaults to `False`.
+- `is_root`: Defaults to `True`. Set `is_root = False` for child seeders that should only be invoked through a parent's `related_seeder_map`.
+- `depends_on`: Explicit list of prerequisite seeder classes or models.
+- `label`: Custom label string in registries (defaults to `snake_case` of class name).
 
 ---
 
-## 4. `Meta` options
+## 4. Relations and Relational Graphs
 
-**Required**
-- `model` - model class (via getter).
-- `fields` - allow-list of keys read from each record. Keys not listed are silently ignored, so a typo or a forgotten field produces missing data, not an error.
-- `data_source` - an `AbstractDataSource`, normally `FileDataSource`.
+### A. Nested Relations (`related_seeder_map`)
 
-**Optional**
-- `depends_on: list[type[Model]]` - models that must be seeded first. Required for every model referenced through `__` lookups or FKs.
-- `execution_order: int | None` - lower runs earlier; use for deterministic ordering among independent seeders. Dependencies always win over order.
-- `object_create_method` - defaults to `model._default_manager.get_or_create`. Override for custom creation (e.g. `User.objects.get_or_create_user` / `get_or_create_superuser` so passwords are hashed).
-- `related_seeders: dict[str, type[BaseSeeder]]` - nested records. If a record has a dict under a relation key (e.g. `"customer_phone": {"phone": "+15550000"}`), the named seeder creates and links the child (FK, 1-1, M2M).
-- `is_fixture: bool` - `True` registers the seeder in `fixture_registry` as well as `seeder_registry`.
-- `tenant_type` - `settings.TENANT_TYPE_ORGANIZATION` (tenant schemas, default) or `settings.TENANT_TYPE_PUBLIC` (public schema).
-- `schema_name` - pin to a specific schema, e.g. `"public"`. Prefer pinning explicitly for shared/global data; the runner may override `tenant_type` inside an active schema context, but not an explicit `schema_name`.
-- Per-record `"_schema_name": "public"` - forces one record into a given schema (e.g. a global superuser).
-
-**`__` relation lookups**: `"user__email"` in `fields` plus `{"user__email": "a@example.com"}` in data resolves `User.objects.get(email=...)` and assigns it to `user`. The referenced model must be in `depends_on`, and the target record must already exist (or be seeded earlier).
-
----
-
-## 5. Data sources
+When a parent entity owns child entities (e.g. a Customer having phones, emails, and addresses):
+1. Define child seeders with `is_root = False`.
+2. Map the relation keys in the parent seeder's `related_seeder_map`.
+3. In child records, parent foreign keys are automatically injected by `BaseSeeder.seed_data(data, parent=instance)`.
 
 ```python
-# Compiled: one JSON file containing an array of records (default)
-FileDataSource(path_to_file.json)  # same as load_method=FileDataSource.LOAD_COMPILED
+class DevCustomerPhoneSeeder(BaseSeeder):
+    method = GetorCreateObject(
+        model=CustomerPhone,
+        lookup_fields=("customer", "phone"),
+        default_fields=("customer", "phone", "phone_type", "is_primary"),
+    )
+    is_root = False  # Only executed via DevCustomerSeeder
 
-# Individual: a directory of *.json files, one record per file
-FileDataSource(path_to_dir, load_method=FileDataSource.LOAD_INDIVIDUAL)
-```
 
-Use **individual** mode for large or independently-reviewed records (multi-language templates, big config blobs); use **compiled** for small flat lists.
-
----
-
-## 6. Lifecycle & override points
-
-```
-seed_data()  -> loads raw records from data_source.get_data()
-   for each record:
-      seed()                -> opens transaction.atomic()
-        validate()          -> check raw dict; raise SeederException / ValidationError
-        to_internal_values()-> Field.clean(), resolve '__' lookups, build relation objects
-        create()            -> persist via object_create_method and link relations
-```
-
-Override only what you need:
-
-```python
-def validate(self, data):
-    if "@" not in data.get("user__email", ""):
-        raise SeederException("user__email must be a valid email")
-    return data
-
-def to_internal_values(self, data):
-    self.context.update({"is_admin": data.pop("is_admin", False)})
-    return super().to_internal_values(data)
-
-def create(self, data):
-    # e.g. configs: skip cache writes during bulk seeding
-    return self._model.set_config(
-        interface_type=data.get("interface_type"),
-        details=data.get("details", {}),
-        name=data.get("name"),
-        set_cache=False,
+class DevCustomerSeeder(BaseSeeder):
+    method = GetorCreateObject(
+        model=Customer,
+        lookup_fields=("first_name", "last_name"),
+        default_fields=("first_name", "last_name", "phones"),
+        related_seeder_map={
+            "phones": DevCustomerPhoneSeeder,
+        },
+    )
+    loader = FileBasedLoader(
+        directory_name="dev_customer",
+        load_method=FileBasedLoader.LOAD_INDIVIDUAL,
     )
 ```
 
-Prefer `object_create_method` when you only need a different manager call; override `create()` when you need more than one call or post-processing.
+Data file (`setup/crm/dev_customer/charlie.json`):
+```json
+{
+  "first_name": "Charlie",
+  "last_name": "Davis",
+  "phones": [
+    {
+      "phone": "+1-555-0101",
+      "phone_type": "mobile",
+      "is_primary": true
+    }
+  ]
+}
+```
+
+### B. Foreign Key References (`$ref`)
+
+To reference an existing object (such as a User or Tenant) from a seed file, use the `$ref` syntax:
+
+```json
+{
+  "first_name": "Charlie",
+  "last_name": "Davis",
+  "user": {
+    "$ref": {
+      "email": "charlie@example.com"
+    }
+  }
+}
+```
+`ForwardSingularRelation` resolves `User.objects.get(email="charlie@example.com")` and assigns the foreign key before saving.
 
 ---
 
-## 7. Production fixture example
+## 5. Transform Hooks (`set_<field_name>`)
 
-`core/apps/configurations/fixtures/seeders.py`
+If a field requires runtime computation or file loading (e.g. reading an external template file):
+Define a `set_<field_name>(self, value)` method on the seeder.
 
 ```python
-import os
-from typing import Any
-from django.conf import settings
-from core.apps.configurations import get_configuration_model
-from core.seeder.base import BaseMeta, BaseSeeder
-from core.seeder.datasource import FileDataSource
+class ConfigurationSeeder(BaseSeeder):
+    method = GetorCreateObject(
+        model=Configuration,
+        lookup_fields=("name", "interface_type"),
+        default_fields=("name", "interface_type", "details"),
+    )
 
-
-class UsersTemplateLabelFixtureSeeder(BaseSeeder):
-    """Production fixture: template labels."""
-
-    class Meta(BaseMeta):
-        model = get_configuration_model()
-        fields = ["name", "interface_type", "details"]
-        tenant_type = settings.TENANT_TYPE_PUBLIC
-        schema_name = "public"
-        is_fixture = True
-        execution_order = 1
-        data_source = FileDataSource(
-            os.path.join(settings.CORE_APP_DIR,
-                         "configurations/fixtures/configuration"),
-            load_method=FileDataSource.LOAD_INDIVIDUAL,
-        )
-
-    def create(self, data: dict[str, Any]):
-        return self._model.set_config(
-            interface_type=data.get("interface_type", "users_template_label"),
-            details=data.get("details", {}),
-            name=data.get("name", "Users Template Labels"),
-            set_cache=False,
-        )
+    def set_details(self, value):
+        """Transform hook: loads external template content if given a file path."""
+        if isinstance(value, str) and (value.endswith(".html") or value.endswith(".json")):
+            candidate = Path(settings.CORE_SETUP_DIR) / value
+            if candidate.is_file():
+                return candidate.read_text(encoding="utf-8")
+        return value
 ```
 
 ---
 
-## 8. Common mistakes
+## 6. Directory Resolution & Override Priority
 
-| Mistake | Consequence | Fix |
-| :--- | :--- | :--- |
-| Mock data in a fixture seeder | Fake records reach production | Move to `core/setup/...` as `Dev*Seeder` |
-| Fixture class named with `Dev` prefix, or dev class without it | Confusing intent, reviewers misjudge safety | Follow the naming table |
-| `__` lookup without `depends_on` | Lookup runs before the parent exists -> `DoesNotExist` | Add the model to `depends_on` |
-| Field missing from `fields` | Value silently dropped | Add it to the allow-list |
-| Importing concrete models | Breaks swappable/custom model setups | Use `get_*_model()` |
-| Creating users with plain `get_or_create` | Unhashed or unusable passwords | Use `get_or_create_user` / `get_or_create_superuser` |
-| Real credentials, tokens, or PII in JSON | Secrets in git | Dummy values only; read secrets from env/settings |
-| Relying on `get_or_create` with all fields as lookup | Editing a JSON value inserts a new row instead of updating | Override `create()` / `object_create_method` with a stable lookup key plus `defaults` (see Verify) |
+`FileBasedLoader` searches for data paths across the system in the following order:
+1. `settings.SETUP_DIR` (Host project overrides)
+2. `settings.BASE_DIR`
+3. `settings.CORE_SETUP_DIR` (Core default dev data)
+4. `settings.CORE_BASE_DIR`
+
+`FileBasedLoader` aggregates data from both `SETUP_DIR` and `CORE_SETUP_DIR`. Host projects overriding `SETUP_DIR` can supply custom data without breaking or modifying core data.
 
 ---
 
-## 9. Checklist before finishing
+## 7. Running & Testing Seeders
 
-- [ ] Correct tier, path, class name and `is_fixture`
-- [ ] Model resolved through getter; `fields` complete
-- [ ] `depends_on` lists every FK / `__` target; `execution_order` set if order matters
-- [ ] Schema binding is explicit for public/global data
-- [ ] Data file is valid JSON, uses dummy values, lives in the right folder
-- [ ] Seeder is idempotent: running it twice creates no duplicates
-- [ ] Registry test added or updated (below)
-- [ ] `make dev-setup` run locally (dev seeders) or `SeedFixtures` verified (fixtures)
-
----
-
-## 10. Run & test
-
+Run dev seeders via the management command:
 ```bash
-make dev-setup                      # dev seeders
-python manage.py run_dev_seeders    # same thing, direct
+make dev-setup
 ```
+
+Or trigger the runner directly in Python / tests:
+```python
+from core.libraries.seeder.runner import SeedDevelopmentData, SeedFixtures
+
+# Run fixtures (production)
+runner = SeedFixtures()
+runner.run()
+
+# Run dev seeders (development only)
+dev_runner = SeedDevelopmentData()
+dev_runner.run()
+```
+
+### Registry Verification Test Example
 
 ```python
-from core.seeder.registry import fixture_registry, seeder_registry
-from core.apps.configurations.fixtures.seeders import UsersTemplateLabelFixtureSeeder
-from core.setup.users.seeders import DevUsersTemplateLabelSeeder
+from core.libraries.seeder.registry import fixture_registry, seeder_registry
+from core.setup.crm.seeder import DevCustomerSeeder
 
 
-def test_seeder_registrations():
-    assert fixture_registry.get("users_template_label_fixture_seeder") is UsersTemplateLabelFixtureSeeder
-    assert seeder_registry.get("dev_users_template_label_seeder") is DevUsersTemplateLabelSeeder
-    assert "dev_users_template_label_seeder" not in fixture_registry.registry
-
-
-def test_seeder_is_idempotent(db):
-    # run the seeder twice, assert row count is unchanged after the second run
-    ...
+def test_seeder_registration():
+    assert seeder_registry.get("dev_customer_seeder") is DevCustomerSeeder
+    # Child seeders or non-fixtures are not in fixture_registry
+    assert "dev_customer_seeder" not in fixture_registry.registry
 ```
-
-Registry keys are the snake_case form of the class name.
 
 ---
 
-## Verify against the codebase (unconfirmed assumptions)
+## 8. Checklist Before Finishing
 
-These were inferred from the original skill's examples, not from source. Confirm and edit before relying on them:
-1. Dev data folder convention: `dev_<model_name>/` (used by all examples) vs the old table's `<model_name>/`.
-2. Fixture class suffix `FixtureSeeder` (used by the example) vs the old table's `<ModelName>Seeder`.
-3. Whether `get_or_create` receives all extracted fields as lookup kwargs or supports `defaults`.
-4. Exact precedence between explicit `schema_name` and runner schema context.
-5. How seeders get registered (import side effect / autodiscovery) so new files are picked up.
+- [ ] Model resolved through getter (`get_*_model()`); never direct concrete import.
+- [ ] Declarative attributes: `method = ...`, `loader = ...` on the class body.
+- [ ] `lookup_fields` and `default_fields` explicitly specified.
+- [ ] `is_fixture` set to `True` for production fixtures; `False` for dev seeders.
+- [ ] Child seeders marked with `is_root = False` and mapped in `related_seeder_map`.
+- [ ] External model references use `$ref` syntax.
+- [ ] JSON data contains valid structure and dummy domains (`example.com`).
+- [ ] Pre-commit passes: `poetry run pre-commit run --all-files`.
+- [ ] Tests pass via make target: `make t TEST_DIR=core/tests/libraries/`.

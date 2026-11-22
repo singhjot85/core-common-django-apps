@@ -2,9 +2,7 @@
 Development mock seeders for CRM application.
 """
 
-import os
-
-from django.conf import settings
+from __future__ import annotations
 
 from core.apps.crm import (
     get_customer_address_model,
@@ -12,77 +10,86 @@ from core.apps.crm import (
     get_customer_model,
     get_customer_phone_model,
 )
-from core.apps.users import get_user_model
-from core.seeder.base import BaseMeta, BaseSeeder
-from core.seeder.datasource import FileDataSource
+from core.libraries.seeder import (
+    BaseSeeder,
+    FileBasedLoader,
+    GetorCreateObject,
+)
+from core.setup.users.seeders import DevUserSeeder
 
-
-class DevCustomerSeeder(BaseSeeder):
-    """Dev seeder for mock customers."""
-
-    class Meta(BaseMeta):
-        model = get_customer_model()
-        fields = [
-            "first_name",
-            "last_name",
-            "business_name",
-            "customer_type",
-            "status",
-            "user__email",
-        ]
-        tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        data_source = FileDataSource(
-            os.path.join("setup/crm/dev_customer/customers.json")
-        )
-        depends_on = [get_user_model()]
-        execution_order = 2
+Customer = get_customer_model()
+CustomerPhone = get_customer_phone_model()
+CustomerEmail = get_customer_email_model()
+CustomerAddress = get_customer_address_model()
 
 
 class DevCustomerPhoneSeeder(BaseSeeder):
-    """Dev seeder for mock customer phone numbers."""
+    """Dev child seeder for customer phone numbers."""
 
-    class Meta(BaseMeta):
-        model = get_customer_phone_model()
-        fields = ["customer__first_name", "phone", "phone_type", "is_primary"]
-        tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        data_source = FileDataSource(
-            os.path.join("setup/crm/dev_customer_phone/phones.json")
-        )
-        depends_on = [get_customer_model()]
+    is_root: bool = False
+
+    method = GetorCreateObject(
+        model=CustomerPhone,
+        lookup_fields=["customer", "phone"],
+        default_fields=["phone_type", "is_primary"],
+    )
 
 
 class DevCustomerEmailSeeder(BaseSeeder):
-    """Dev seeder for mock customer email addresses."""
+    """Dev child seeder for customer email addresses."""
 
-    class Meta(BaseMeta):
-        model = get_customer_email_model()
-        fields = ["customer__first_name", "email", "email_type", "is_primary"]
-        tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        data_source = FileDataSource(
-            os.path.join("setup/crm/dev_customer_email/emails.json")
-        )
-        depends_on = [get_customer_model()]
+    is_root: bool = False
+
+    method = GetorCreateObject(
+        model=CustomerEmail,
+        lookup_fields=["customer", "email"],
+        default_fields=["email_type", "is_primary"],
+    )
 
 
 class DevCustomerAddressSeeder(BaseSeeder):
-    """Dev seeder for mock customer addresses."""
+    """Dev child seeder for customer addresses."""
 
-    class Meta(BaseMeta):
-        model = get_customer_address_model()
-        fields = [
-            "customer__first_name",
-            "address_line_1",
-            "city",
+    is_root: bool = False
+
+    method = GetorCreateObject(
+        model=CustomerAddress,
+        lookup_fields=["customer", "address_line_1", "city"],
+        default_fields=[
             "state",
             "postal_code",
             "country",
             "address_type",
             "is_primary",
-        ]
-        tenant_type = settings.TENANT_TYPE_ORGANIZATION
-        data_source = FileDataSource(
-            os.path.join(
-                "setup/crm/dev_customer_address/addresses.json",
-            )
-        )
-        depends_on = [get_customer_model()]
+        ],
+    )
+
+
+class DevCustomerSeeder(BaseSeeder):
+    """Dev root seeder for customers, coordinating nested attributes via related_seeder_map."""
+
+    depends_on = [DevUserSeeder]
+    execution_order: int = 2
+
+    loader = FileBasedLoader(
+        directory_name="setup/crm/dev_customer",
+        load_method=FileBasedLoader.LOAD_INDIVIDUAL,
+    )
+    method = GetorCreateObject(
+        model=Customer,
+        related_seeder_map={
+            "phones": DevCustomerPhoneSeeder,
+            "emails": DevCustomerEmailSeeder,
+            "addresses": DevCustomerAddressSeeder,
+        },
+        lookup_fields=["first_name", "last_name"],
+        default_fields=[
+            "business_name",
+            "customer_type",
+            "status",
+            "user",
+            "phones",
+            "emails",
+            "addresses",
+        ],
+    )

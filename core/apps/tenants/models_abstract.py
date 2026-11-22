@@ -1,3 +1,4 @@
+import typing
 import uuid
 
 from django.conf import settings
@@ -7,10 +8,18 @@ from django_tenants.models import DomainMixin, TenantMixin
 from model_utils.models import StatusModel
 
 from core.apps.tenants import get_tenant_model
-from core.apps.tenants.constants import TenantContactInfoChoices, TenantStatus
+from core.apps.tenants.constants import (
+    TenantContactInfoChoices,
+    TenantStatus,
+    TenantTypeChoices,
+)
+from core.apps.tenants.managers import TenantManager
 from core.apps.tenants.tasks import provision_tenant_schema
 from core.utils.models import BaseModel
 from core.utils.tasks import queue_task
+
+if typing.TYPE_CHECKING:
+    from core.apps.tenants.managers import TenantQuerySet
 
 
 class AbstractTenants(TenantMixin, BaseModel, StatusModel):
@@ -25,6 +34,18 @@ class AbstractTenants(TenantMixin, BaseModel, StatusModel):
     label = models.CharField(max_length=255, null=True, blank=True)
     is_active = models.BooleanField(default=True, null=True, blank=True)
     public_id = models.CharField(max_length=124, null=True, blank=True)
+    type = models.CharField(
+        max_length=124,
+        null=False,
+        blank=False,
+        default=TenantTypeChoices.ORGANIZATION,
+        choices=TenantTypeChoices.choices,
+    )
+
+    objects: TenantManager
+
+    if typing.TYPE_CHECKING:
+        objects: "TenantQuerySet"
 
     class Meta:
         abstract = True
