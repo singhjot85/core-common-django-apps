@@ -1,11 +1,11 @@
 services:
   pg_dump:
     image: postgres:16-alpine
+    env_file:
+      - .env
+    secrets:
+      - db_env
     environment:
-      PGHOST: ${DB_HOST:-postgres}
-      PGPORT: ${DB_PORT:-5432}
-      PGUSER: ${DB_USER:-postgres}
-      PGPASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME:-}
     volumes:
       - ${PG_DUMP_DIR:-./pg_dump}:/backups
@@ -16,11 +16,11 @@ services:
 
   pg_restore:
     image: postgres:16-alpine
+    env_file:
+      - .env
+    secrets:
+      - db_env
     environment:
-      PGHOST: ${DB_HOST:-postgres}
-      PGPORT: ${DB_PORT:-5432}
-      PGUSER: ${DB_USER:-postgres}
-      PGPASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME:-}
       BACKUP_FILE: ${BACKUP_FILE:-}
     volumes:
@@ -32,17 +32,21 @@ services:
 
   pg_delete:
     image: postgres:16-alpine
+    env_file:
+      - .env
+    secrets:
+      - db_env
     environment:
-      PGHOST: ${DB_HOST:-postgres}
-      PGPORT: ${DB_PORT:-5432}
-      PGUSER: ${DB_USER:-postgres}
-      PGPASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME:-}
     volumes:
       - ./scripts:/scripts:ro
     networks:
       - app_network
     entrypoint: ["/bin/sh", "/scripts/pg_delete.sh"]
+
+secrets:
+  db_env:
+    file: ./.env
 
 networks:
   app_network:

@@ -1,6 +1,23 @@
 #!/bin/sh
 set -e
 
+# If injected via Docker secrets, load from /run/secrets/db_env
+if [ -f "/run/secrets/db_env" ]; then
+  while IFS='=' read -r key val || [ -n "$key" ]; do
+    case "$key" in
+      \#*|"") continue ;;
+    esac
+    val=$(echo "$val" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^["'"'"']//' -e 's/["'"'"']$//')
+    eval "export ${key}=\"\${${key}:-$val}\""
+  done < /run/secrets/db_env
+fi
+
+# Map standard POSTGRES_* credentials to Postgres client PG* variables
+export PGHOST="${PGHOST:-${POSTGRES_HOST:-postgres}}"
+export PGPORT="${PGPORT:-${POSTGRES_PORT:-5432}}"
+export PGUSER="${PGUSER:-${POSTGRES_USER:-postgres}}"
+export PGPASSWORD="${PGPASSWORD:-${POSTGRES_PASSWORD}}"
+
 if [ -z "$BACKUP_FILE" ]; then
   echo "Error: Set BACKUP_FILE to a filename inside ./pg_dump (e.g., BACKUP_FILE=mydb_20261122_124500.dump)" >&2
   exit 1

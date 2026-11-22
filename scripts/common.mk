@@ -35,24 +35,13 @@ DEBUGPY_TEMP_DJANGO_CONTAINER ?= docker compose --env-file ./.env -p $(PROJECT_N
 CACHE_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(CACHE_SERVICE)
 BROKER_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(BROKER_SERVICE)
 
-# Database Tools Commands & Defaults
+# Database Tools
 PG_TOOLS_GRANULAR_COMPOSE ?= sample_project/compose/local/database/pg_tools_granular.yml
 PG_TOOLS_VOLUME_COMPOSE ?= sample_project/compose/local/database/pg_tools.yml
-DB_HOST ?= postgres
-DB_PORT ?= 5432
-DB_USER ?= $(or $(POSTGRES_USER),postgres)
-DB_PASSWORD ?= $(or $(POSTGRES_PASSWORD),qwerty123)
-DB_NAME ?=
-BACKUP_FILE ?=
-VOLUME_NAME ?= $(or $(STACK_NAME),core)_local_pg_data
-DOCKER_NETWORK ?= $(or $(PROJECT_NAME),core_common)_default
 POSTGRES_CONTAINER ?= $(or $(STACK_NAME),core)_postgres
-PG_DUMP_DIR ?=
-PG_BACKUP_DIR ?=
 
-PG_TOOLS_ENV = DB_HOST="$(DB_HOST)" DB_PORT="$(DB_PORT)" DB_USER="$(DB_USER)" DB_PASSWORD="$(DB_PASSWORD)" DB_NAME="$(DB_NAME)" BACKUP_FILE="$(BACKUP_FILE)" VOLUME_NAME="$(VOLUME_NAME)" DOCKER_NETWORK="$(DOCKER_NETWORK)" $(if $(PG_DUMP_DIR),PG_DUMP_DIR="$(PG_DUMP_DIR)",) $(if $(PG_BACKUP_DIR),PG_BACKUP_DIR="$(PG_BACKUP_DIR)",)
-PG_GRANULAR_CMD ?= $(PG_TOOLS_ENV) docker compose -f $(PG_TOOLS_GRANULAR_COMPOSE)
-PG_VOLUME_CMD ?= $(PG_TOOLS_ENV) docker compose -f $(PG_TOOLS_VOLUME_COMPOSE)
+PG_GRANULAR_CMD = $(if $(DB_NAME),DB_NAME="$(DB_NAME)") $(if $(BACKUP_FILE),BACKUP_FILE="$(BACKUP_FILE)") $(if $(DOCKER_NETWORK),DOCKER_NETWORK="$(DOCKER_NETWORK)") $(if $(PG_DUMP_DIR),PG_DUMP_DIR="$(PG_DUMP_DIR)") docker compose -f $(PG_TOOLS_GRANULAR_COMPOSE)
+PG_VOLUME_CMD = $(if $(BACKUP_FILE),BACKUP_FILE="$(BACKUP_FILE)") $(if $(VOLUME_NAME),VOLUME_NAME="$(VOLUME_NAME)") $(if $(PG_BACKUP_DIR),PG_BACKUP_DIR="$(PG_BACKUP_DIR)") docker compose -f $(PG_TOOLS_VOLUME_COMPOSE)
 
 # Import the envoiurnment variables
 ifneq (,$(wildcard ./.env))
