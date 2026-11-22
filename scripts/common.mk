@@ -80,6 +80,7 @@ docker-dev-setup:
 	make rund
 	make m
 	make seed-tenants
+	make ms
 	make seed-models
 setup: docker-dev-setup
 
@@ -204,7 +205,7 @@ db-volume-restore: docker-db-volume-restore
 # --------------------------
 # 	Migrations
 # --------------------------
-.PHONY: mm, m, mme
+.PHONY: mm, m, mme, ms
 
 docker-django-makemigrations:
 	@echo "⌛ Making migrations in App: ➡️[${APP_LABEL}]...\n"
@@ -216,6 +217,11 @@ docker-django-migrate:
 	@echo "⌛ Migrating Schema's now...\n"
 	${TEMP_DJANGO_CONTAINER} python ${PATH_TO_MANAGE} migrate
 m: docker-django-migrate
+
+docker-django-migrate-schemas:
+	@echo "⌛ Migrating Schema's now...\n"
+	${TEMP_DJANGO_CONTAINER} python ${PATH_TO_MANAGE} migrate_scheams $(if $(SCHEMA),)
+ms: docker-django-migrate
 
 docker-django-makemigrations-empty:
 	@echo "⌛ Making an empty migration in App: ➡️[${APP_LABEL}] with Name: ➡️[${EMN}]...\n"
