@@ -1,6 +1,6 @@
 services:
   pg_dump:
-    image: postgres:16-alpine
+    image: postgres:14-alpine
     env_file:
       - .env
     secrets:
@@ -15,7 +15,7 @@ services:
     entrypoint: ["/bin/sh", "/scripts/pg_dump.sh"]
 
   pg_restore:
-    image: postgres:16-alpine
+    image: postgres:14-alpine
     env_file:
       - .env
     secrets:
@@ -31,7 +31,7 @@ services:
     entrypoint: ["/bin/sh", "/scripts/pg_restore.sh"]
 
   pg_delete:
-    image: postgres:16-alpine
+    image: postgres:14-alpine
     env_file:
       - .env
     secrets:
