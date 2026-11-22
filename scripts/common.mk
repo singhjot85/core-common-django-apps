@@ -35,6 +35,25 @@ DEBUGPY_TEMP_DJANGO_CONTAINER ?= docker compose --env-file ./.env -p $(PROJECT_N
 CACHE_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(CACHE_SERVICE)
 BROKER_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f $(COMPOSE_YAML) exec $(BROKER_SERVICE)
 
+# Database Tools Commands & Defaults
+PG_TOOLS_GRANULAR_COMPOSE ?= sample_project/compose/local/database/pg_tools_granular.yml
+PG_TOOLS_VOLUME_COMPOSE ?= sample_project/compose/local/database/pg_tools.yml
+DB_HOST ?= postgres
+DB_PORT ?= 5432
+DB_USER ?= $(or $(POSTGRES_USER),postgres)
+DB_PASSWORD ?= $(or $(POSTGRES_PASSWORD),qwerty123)
+DB_NAME ?=
+BACKUP_FILE ?=
+VOLUME_NAME ?= $(or $(STACK_NAME),core)_local_pg_data
+DOCKER_NETWORK ?= $(or $(PROJECT_NAME),core_common)_default
+POSTGRES_CONTAINER ?= $(or $(STACK_NAME),core)_postgres
+PG_DUMP_DIR ?=
+PG_BACKUP_DIR ?=
+
+PG_TOOLS_ENV = DB_HOST="$(DB_HOST)" DB_PORT="$(DB_PORT)" DB_USER="$(DB_USER)" DB_PASSWORD="$(DB_PASSWORD)" DB_NAME="$(DB_NAME)" BACKUP_FILE="$(BACKUP_FILE)" VOLUME_NAME="$(VOLUME_NAME)" DOCKER_NETWORK="$(DOCKER_NETWORK)" $(if $(PG_DUMP_DIR),PG_DUMP_DIR="$(PG_DUMP_DIR)",) $(if $(PG_BACKUP_DIR),PG_BACKUP_DIR="$(PG_BACKUP_DIR)",)
+PG_GRANULAR_CMD ?= $(PG_TOOLS_ENV) docker compose -f $(PG_TOOLS_GRANULAR_COMPOSE)
+PG_VOLUME_CMD ?= $(PG_TOOLS_ENV) docker compose -f $(PG_TOOLS_VOLUME_COMPOSE)
+
 # Import the envoiurnment variables
 ifneq (,$(wildcard ./.env))
     include .env
@@ -125,6 +144,67 @@ vscode-debug: docker-debugpy-vscode-debug
 docker-destroy-database:
 	${COMPOSE_COMMAND} down --volumes
 db-destroy: docker-destroy-database
+
+
+# --------------------------
+# 	Database Tools (Granular & Volume)
+# --------------------------
+.PHONY: db-dump, db-restore, db-delete, db-volume-dump, db-volume-restore
+.PHONY: pg-dump, pg-restore, pg-delete
+
+docker-db-dump:
+	@echo "⌛ Running database dump..."
+	$(PG_GRANULAR_CMD) run --rm pg_dump
+db-dump: docker-db-dump
+pg-dump: docker-db-dump
+
+docker-db-restore:
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo "❌ Error: BACKUP_FILE is required. Example: make db-restore BACKUP_FILE=core_db_20261122_120000.dump [DB_NAME=core_db]" >&2; \
+		exit 1; \
+	fi
+	@echo "⌛ Running database restore from $(BACKUP_FILE)..."
+	$(PG_GRANULAR_CMD) run --rm pg_restore
+db-restore: docker-db-restore
+pg-restore: docker-db-restore
+
+docker-db-delete:
+	@echo "⚠️ Warning: Deleting database(s) $(if $(DB_NAME),$(DB_NAME),ALL user databases)..."
+	$(PG_GRANULAR_CMD) run --rm pg_delete
+db-delete: docker-db-delete
+pg-delete: docker-db-delete
+
+docker-db-volume-dump:
+	@echo "⌛ Preparing for volume dump..."
+	@WAS_RUNNING=$$(docker inspect -f '{{.State.Running}}' $(POSTGRES_CONTAINER) 2>/dev/null || echo "false"); \
+	if [ "$$WAS_RUNNING" = "true" ]; then \
+		echo "⌛ Stopping $(POSTGRES_CONTAINER) to ensure consistent snapshot..."; \
+		docker stop $(POSTGRES_CONTAINER); \
+	fi; \
+	$(PG_VOLUME_CMD) run --rm volume_dump; \
+	if [ "$$WAS_RUNNING" = "true" ]; then \
+		echo "⌛ Restarting $(POSTGRES_CONTAINER)..."; \
+		docker start $(POSTGRES_CONTAINER); \
+	fi
+db-volume-dump: docker-db-volume-dump
+
+docker-db-volume-restore:
+	@if [ -z "$(BACKUP_FILE)" ]; then \
+		echo "❌ Error: BACKUP_FILE is required. Example: make db-volume-restore BACKUP_FILE=core_local_pg_data_20261122_120000.tar.gz" >&2; \
+		exit 1; \
+	fi
+	@echo "⚠️ Warning: Overwriting volume $(VOLUME_NAME) from $(BACKUP_FILE)..."
+	@WAS_RUNNING=$$(docker inspect -f '{{.State.Running}}' $(POSTGRES_CONTAINER) 2>/dev/null || echo "false"); \
+	if [ "$$WAS_RUNNING" = "true" ]; then \
+		echo "⌛ Stopping $(POSTGRES_CONTAINER)..."; \
+		docker stop $(POSTGRES_CONTAINER); \
+	fi; \
+	$(PG_VOLUME_CMD) run --rm volume_restore; \
+	if [ "$$WAS_RUNNING" = "true" ]; then \
+		echo "⌛ Restarting $(POSTGRES_CONTAINER)..."; \
+		docker start $(POSTGRES_CONTAINER); \
+	fi
+db-volume-restore: docker-db-volume-restore
 
 
 # --------------------------

@@ -1,0 +1,50 @@
+services:
+  pg_dump:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: ${DB_HOST:-postgres}
+      PGPORT: ${DB_PORT:-5432}
+      PGUSER: ${DB_USER:-postgres}
+      PGPASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-}
+    volumes:
+      - ${PG_DUMP_DIR:-./pg_dump}:/backups
+      - ./scripts:/scripts:ro
+    networks:
+      - app_network
+    entrypoint: ["/bin/sh", "/scripts/pg_dump.sh"]
+
+  pg_restore:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: ${DB_HOST:-postgres}
+      PGPORT: ${DB_PORT:-5432}
+      PGUSER: ${DB_USER:-postgres}
+      PGPASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-}
+      BACKUP_FILE: ${BACKUP_FILE:-}
+    volumes:
+      - ${PG_DUMP_DIR:-./pg_dump}:/backups
+      - ./scripts:/scripts:ro
+    networks:
+      - app_network
+    entrypoint: ["/bin/sh", "/scripts/pg_restore.sh"]
+
+  pg_delete:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: ${DB_HOST:-postgres}
+      PGPORT: ${DB_PORT:-5432}
+      PGUSER: ${DB_USER:-postgres}
+      PGPASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-}
+    volumes:
+      - ./scripts:/scripts:ro
+    networks:
+      - app_network
+    entrypoint: ["/bin/sh", "/scripts/pg_delete.sh"]
+
+networks:
+  app_network:
+    external: true
+    name: ${DOCKER_NETWORK:-core_common_default}

@@ -171,3 +171,10 @@ tempCodeRunnerFile.py
 local_data/*
 
 **/graphify-out/*
+docs/analysis/*
+
+# Database backup and dump directories
+sample_project/compose/local/database/pg_dump/*
+!sample_project/compose/local/database/pg_dump/.gitkeep
+sample_project/compose/local/database/pg_backup/*
+!sample_project/compose/local/database/pg_backup/.gitkeep
