@@ -38,7 +38,12 @@ BROKER_CONTAINER_COMMAND ?= docker compose --env-file .env -p $(PROJECT_NAME) -f
 # Database Tools
 PG_TOOLS_GRANULAR_COMPOSE ?= sample_project/compose/local/database/pg_tools_granular.yml
 PG_TOOLS_VOLUME_COMPOSE ?= sample_project/compose/local/database/pg_tools.yml
+DOCKER_NETWORK ?= $(or $(PROJECT_NAME),core_common)_default
 POSTGRES_CONTAINER ?= $(or $(STACK_NAME),core)_postgres
+VOLUME_NAME ?= $(or $(STACK_NAME),core)_local_pg_data
+BACKUP_FILE ?=
+PG_DUMP_DIR ?=
+PG_BACKUP_DIR ?=
 
 PG_GRANULAR_CMD = $(if $(DB_NAME),DB_NAME="$(DB_NAME)") $(if $(BACKUP_FILE),BACKUP_FILE="$(BACKUP_FILE)") $(if $(DOCKER_NETWORK),DOCKER_NETWORK="$(DOCKER_NETWORK)") $(if $(PG_DUMP_DIR),PG_DUMP_DIR="$(PG_DUMP_DIR)") docker compose -f $(PG_TOOLS_GRANULAR_COMPOSE)
 PG_VOLUME_CMD = $(if $(BACKUP_FILE),BACKUP_FILE="$(BACKUP_FILE)") $(if $(VOLUME_NAME),VOLUME_NAME="$(VOLUME_NAME)") $(if $(PG_BACKUP_DIR),PG_BACKUP_DIR="$(PG_BACKUP_DIR)") docker compose -f $(PG_TOOLS_VOLUME_COMPOSE)
