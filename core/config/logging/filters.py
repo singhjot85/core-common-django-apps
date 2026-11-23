@@ -1,11 +1,12 @@
 """
 Logging filters for security and runtime environment routing.
 
-Provides filters for masking sensitive PII/secrets and gating
-log records based on the Django DEBUG state.
+Provides filters for masking sensitive PII/secrets, suppressing autoreload spam,
+filtering console noise, and gating log records based on the Django DEBUG state.
 """
 
 import logging
+import os
 from enum import Enum
 
 from core.utils.error_handling.content_masking import (
@@ -22,11 +23,93 @@ class LoggingFilters(Enum):
         SENSITIVE: Mask passwords, tokens, and PII from log records.
         DEBUG_TRUE: Only process records when DEBUG is True.
         DEBUG_FALSE: Only process records when DEBUG is False.
+        SKIP_AUTORELOAD: Suppress noisy django.utils.autoreload log records.
+        CONSOLE_NOISE: Suppress third-party clutter from terminal output.
     """
 
     SENSITIVE = "sensitive", "core.config.logging.filters.SensitiveContentFilter"
     DEBUG_TRUE = "require_debug_true", "django.utils.log.RequireDebugTrue"
     DEBUG_FALSE = "require_debug_false", "django.utils.log.RequireDebugFalse"
+    SKIP_AUTORELOAD = (
+        "skip_autoreload",
+        "core.config.logging.filters.SkipAutoreloadFilter",
+    )
+    CONSOLE_NOISE = (
+        "console_noise",
+        "core.config.logging.filters.ConsoleNoiseFilter",
+    )
+
+
+class SkipAutoreloadFilter(logging.Filter):
+    """
+    Filter that suppresses noisy autoreload logs.
+
+    Prevents frequent file-watching poll messages emitted by Django's
+    reloader from cluttering files and console output.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """
+        Determine whether the log record should be kept.
+
+        Args:
+            record (logging.LogRecord): The log record to inspect.
+
+        Returns:
+            bool: False if record originates from django.utils.autoreload, True otherwise.
+        """
+        return not record.name.startswith("django.utils.autoreload")
+
+
+class ConsoleNoiseFilter(logging.Filter):
+    """
+    Filter that restricts terminal output to app logs, allowed packages, and errors.
+
+    Allows all ERROR and CRITICAL records regardless of source, while suppressing
+    noisy third-party libraries and internal Django plumbing at DEBUG/INFO.
+    """
+
+    ALLOWED_NAMESPACES = (
+        "core",
+        "sample_project",
+        "apps",
+        "django.server",
+        "celery",
+    )
+
+    BLOCKED_PATTERNS = (
+        "django.utils.autoreload",
+        "django.db.backends",
+        "django.core.cache",
+    )
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """
+        Determine whether the log record should appear on the shell console.
+
+        Args:
+            record (logging.LogRecord): The log record to evaluate.
+
+        Returns:
+            bool: True if allowed on console, False otherwise.
+        """
+        if record.levelno >= logging.ERROR:
+            return True
+
+        for blocked in self.BLOCKED_PATTERNS:
+            if record.name == blocked or record.name.startswith(f"{blocked}."):
+                return False
+
+        project_name = os.getenv("PROJECT_NAME")
+        allowed_prefixes = list(self.ALLOWED_NAMESPACES)
+        if project_name and project_name not in allowed_prefixes:
+            allowed_prefixes.append(project_name)
+
+        for allowed in allowed_prefixes:
+            if record.name == allowed or record.name.startswith(f"{allowed}."):
+                return True
+
+        return False
 
 
 class SensitiveContentFilter(logging.Filter):

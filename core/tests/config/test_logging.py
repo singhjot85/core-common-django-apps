@@ -18,7 +18,9 @@ from core.config.logging import (
     get_logging_config,
 )
 from core.config.logging.filters import (
+    ConsoleNoiseFilter,
     SensitiveContentFilter,
+    SkipAutoreloadFilter,
     create_filters,
 )
 from core.config.logging.formatters import (
@@ -96,12 +98,114 @@ class TestLoggingFilters:
         assert "sensitive" in filters
         assert "require_debug_true" in filters
         assert "require_debug_false" in filters
+        assert "skip_autoreload" in filters
+        assert "console_noise" in filters
         assert (
             filters["require_debug_true"]["()"] == "django.utils.log.RequireDebugTrue"
         )
         assert (
             filters["require_debug_false"]["()"] == "django.utils.log.RequireDebugFalse"
         )
+        assert (
+            filters["skip_autoreload"]["()"]
+            == "core.config.logging.filters.SkipAutoreloadFilter"
+        )
+        assert (
+            filters["console_noise"]["()"]
+            == "core.config.logging.filters.ConsoleNoiseFilter"
+        )
+
+    def test_skip_autoreload_filter_drops_autoreload_records(self):
+        """
+        SkipAutoreloadFilter filters out records from django.utils.autoreload.
+        """
+        log_filter = SkipAutoreloadFilter()
+        reload_record = logging.LogRecord(
+            name="django.utils.autoreload",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="Watching for file changes",
+            args=(),
+            exc_info=None,
+        )
+        app_record = logging.LogRecord(
+            name="core.apps.users",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="User created",
+            args=(),
+            exc_info=None,
+        )
+
+        assert log_filter.filter(reload_record) is False
+        assert log_filter.filter(app_record) is True
+
+    def test_console_noise_filter_allows_app_logs_and_errors(self):
+        """
+        ConsoleNoiseFilter permits errors and app logs while blocking noisy packages.
+        """
+        noise_filter = ConsoleNoiseFilter()
+
+        # Error from any library is allowed
+        error_record = logging.LogRecord(
+            name="urllib3.connectionpool",
+            level=logging.ERROR,
+            pathname=__file__,
+            lineno=1,
+            msg="Connection failed",
+            args=(),
+            exc_info=None,
+        )
+        assert noise_filter.filter(error_record) is True
+
+        # App-level info is allowed
+        app_record = logging.LogRecord(
+            name="core.apps.users",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="User login successful",
+            args=(),
+            exc_info=None,
+        )
+        assert noise_filter.filter(app_record) is True
+
+        # Django server HTTP line is allowed
+        server_record = logging.LogRecord(
+            name="django.server",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="GET /api/v1/users/ 200",
+            args=(),
+            exc_info=None,
+        )
+        assert noise_filter.filter(server_record) is True
+
+        # Blocked noisy records
+        db_record = logging.LogRecord(
+            name="django.db.backends",
+            level=logging.DEBUG,
+            pathname=__file__,
+            lineno=1,
+            msg="SELECT * FROM users",
+            args=(),
+            exc_info=None,
+        )
+        assert noise_filter.filter(db_record) is False
+
+        third_party_record = logging.LogRecord(
+            name="urllib3.connectionpool",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="Resetting dropped connection",
+            args=(),
+            exc_info=None,
+        )
+        assert noise_filter.filter(third_party_record) is False
 
     def test_sensitive_content_filter_masks_string_message(self):
         """
@@ -239,14 +343,31 @@ class TestLoggingHandlers:
 
         info_path = CoreLoggingHandlers.FILE_INFO.path()
         assert isinstance(info_path, Path)
-        assert "info.log" in str(info_path)
+        assert info_path.name == "info.log"
+
+        perf_path = CoreLoggingHandlers.FILE_PERF.path()
+        assert isinstance(perf_path, Path)
+        assert perf_path.name == "perf.log"
+
+        error_path = CoreLoggingHandlers.FILE_ERROR.path()
+        assert isinstance(error_path, Path)
+        assert error_path.name == "errors.log"
 
     def test_core_logging_handlers_get_for_logger(self):
         """
-        Django loggers receive dependency file handler while app loggers receive standard set.
+        Logger handler routing directs performance, framework, and app loggers correctly.
         """
         django_handlers = CoreLoggingHandlers.get_for_logger("django.request")
-        assert django_handlers == [CoreLoggingHandlers.FILE_DEPS.value]
+        assert CoreLoggingHandlers.CONSOLE.value in django_handlers
+        assert CoreLoggingHandlers.FILE_ERROR.value in django_handlers
+
+        db_handlers = CoreLoggingHandlers.get_for_logger("django.db.backends")
+        assert db_handlers == [CoreLoggingHandlers.FILE_PERF.value]
+
+        autoreload_handlers = CoreLoggingHandlers.get_for_logger(
+            "django.utils.autoreload"
+        )
+        assert autoreload_handlers == []
 
         app_handlers = CoreLoggingHandlers.get_for_logger("core.apps.users")
         assert CoreLoggingHandlers.CONSOLE.value in app_handlers
