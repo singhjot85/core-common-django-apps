@@ -10,6 +10,8 @@
 - [ ] No public interface change
 - [ ] Changes models, settings keys, API contract, or task signatures (describe below, host projects must adapt)
 - [ ] Needs host migrations (`make mm` output reviewed)
+    - Host migration commands(if needed):
+    <!-- Example: `make mm APP_LABEL=users`, `make mm APP_LABEL=crm`, ... -->
 
 ## Data and safety
 - [ ] DB backup taken before running migrations or seeders (`make db-dump`)
