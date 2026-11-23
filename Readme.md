@@ -1,134 +1,110 @@
-# Core Django Apps
+# core-apps-django
 
-Core Application containing many of the common django apps pre-built production grade. Gives a common application to start a new project not from scratch but from a pre-built prodcution ready setting. The core is meant to be used as a sub-module in your project, just use the app as a submodule in you'r project and configure you'r project taking reference from sample_project.
+A production-ready Django core framework for multi-tenant SaaS backends. Instead of starting each project from scratch, add this repo as a **git submodule** and inherit a tested foundation: schema-per-tenant multi-tenancy, swappable users and auth, CRM, invoicing, versioned configuration, integration adapters, seeders and Celery plumbing.
 
-## Tech Stack
+Your project keeps ownership of its settings, its migrations and any model overrides. `sample_project/` is the reference to copy from.
 
 <p align="center">
   <img src="logos/django-logo-negative.png" width="150" height="80" alt="Django Logo" />
   <img src="logos/drf-logo-dark.png" width="150" height="80" alt="DRF Logo" />
-  <img src="logos/vue-logo.png" width="100" height="80" alt="Vue Logo" />
-  <img src="logos/celery-logo.webp" width="100" height="80" alt="celery logo" />
-  <img src="logos/elephant.png" width="100" height="80" alt="postgres logo" />
-  <img src="logos/docker-mark-ocean-blue.svg" width="100" height="80" alt="docker logo" />
+  <img src="logos/celery-logo.webp" width="100" height="80" alt="Celery Logo" />
+  <img src="logos/elephant.png" width="100" height="80" alt="Postgres Logo" />
+  <img src="logos/docker-mark-ocean-blue.svg" width="100" height="80" alt="Docker Logo" />
 </p>
 
----
+## What you get
 
-| Component          | Technologies                                                          |
-| :----------------- | :-------------------------------------------------------------------- |
-| **Backend**        | django (5.2), django-rest-framework, django-tenants, django-constance |
-| **Frontend**       | Vue 3 (Composition API), Vite, Vuetify 3, Pinia                       |
-| **Worker/Queue**   | Celery, Valkey                                                        |
-| **Database**       | PostgreSQL                                                            |
-| **Infrastructure** | Docker, Compose, Poetry, Pre-Commit                                   |
+| App | Schema | Provides |
+| :-- | :-- | :-- |
+| [`tenants`](core/apps/tenants/Readme.md) | public | tenants, domains, branding, async schema provisioning |
+| [`users`](core/apps/users/Readme.md) | public + tenant | accounts, OTP (email/SMS), lockout, JWT, Google login |
+| [`configurations`](core/apps/configurations/Readme.md) | tenant | versioned JSON settings validated by JSONSchema |
+| [`crm`](core/apps/crm/Readme.md) | tenant | customers, contacts, addresses, KYC documents, OCR pipeline |
+| [`invoices`](core/apps/invoices/Readme.md) | tenant | billing organizations, parties, invoices, items, fees |
+| [`integrations`](core/apps/integrations/Readme.md) | tenant | provider credentials; email, SMS and payment adapters |
 
-## Core Directory Structure
+Shared building blocks live in `core/libraries/` (seeder, and others as they move in) and `core/utils/` (base models, soft delete, versioning, error handling, routers, `queue_task`).
+
+## Tech stack
+
+| Component | Technologies |
+| :-- | :-- |
+| Backend | Django 5.2, Django REST Framework, django-tenants, django-constance |
+| Worker / queue | Celery, Valkey |
+| Database | PostgreSQL |
+| Tooling | Docker, Compose, Poetry, pre-commit, pytest |
+
+Exact versions: `pyproject.toml` and `poetry.lock`.
+
+## Use it in a new project
+
+1. Add this repo as a submodule of your project.
+2. Copy the starting points from `sample_project/` (settings, `compose/`, `.env.example`, pre-commit config) and adapt them.
+3. Point `MIGRATION_MODULES` at your own `db_migrations/` folder. Core apps ship models, not migrations.
+4. Substitute any model by overriding its swappable setting key (for example `CRM_CUSTOMER_MODEL`) in your settings.
+5. Run `make setup`.
+
+Single-tenant projects can opt out of tenancy with the override in `core/config/settings/single_tenant.py`.
+
+## Repository layout
 
 ```
-core-django-apps/
-|	|- .agents/ 			# Common agentic configs, skills, plugins
-|	|- .vscode/				# IDE settings for vscode
-|	|- .github/				# Core Github Workflows, Actions and settings
-|	|- apps/				  # Core apps, swappable apps comes pre-installed in core
-|	|- config/				# Django Configurations
-|	|- scripts/				# Core Common scripts shipped by core
-|	|- tests/				  # Core Common tests shipped by core
-|	|- utils/				  # Core Common utils shipped by core
-| |- sample_project/      # A sample project shipped with core, easy to copy-paste the CI/CD and other setups in a new project
-|	|- .gitignore
-|	|- .dockerignore
-|	|- .env.example
-|	|- .pre-commit-config.yaml
+core/
+  apps/         swappable domain apps (tenants, users, configurations, crm, invoices, integrations)
+  libraries/    reusable libraries (seeder today; more moving in)
+  utils/        cross-cutting helpers (models, error handling, routers, tasks)
+  config/       base settings, Celery and logging config
+  templates/    Jinja2 UI (see core/templates/Readme.md)
+  tests/        shared test setup and tests
+  seeder/       legacy seeder, being migrated to core/libraries/seeder
+scripts/        make recipes (common.mk) and agent/skill link scripts
+sample_project/ reference host project (compose files, settings, db_migrations)
+docs/           working notes for AI agents (not user documentation)
+.agents/        agent skills
 ```
 
-## Sample Project Directory Structure
+## Local development
 
-This directory struture is supposed to be followed by any inheriting sub-project that used this core as a submodule.
-
-```
-core-django-apps/
-|	|- .vscode/				# IDE settings for vscode
-|	|- apps/				# Sample apps core inherits/overrides or new apps
-|   |- compose/             # Compose configuration for sample_project, can be copied as-it-is in any project
-```
-
-### Reason behind the directory structure
-
-This structure is designed to leverage **Docker BuildKit's** context isolation:
-
-- During the backend build, only the `backend/` directory is provided as context.
-- During the frontend build, only the `frontend/` directory is provided as context.
-
-This eliminates accidental leakage of irrelevant code (e.g., frontend source in the backend image) and ensures that changes in one domain do not unnecessarily invalidate the build cache of the other.
-This also gives us future scope of easily splitting backend from frontend.
-
-## Local Development Setup
-
-### Makefile hierarchy
-
-### Quick Start Local Setup
+Everything runs in Docker through `make`. Targets are defined in `scripts/common.mk`.
 
 ```bash
-make build 		# Builds the entire project image(S)
-make run 		# Run (Build Conatiners) from built image(s) attached
+make setup        # build, migrate, seed tenants and dev data (first run)
+make clean-setup  # DESTROYS the dev database volume, then setup again
+make run          # start containers in the foreground
+make rund         # start containers in the background
 ```
 
----
+| Task | Command |
+| :-- | :-- |
+| Run tests | `make t`, `make t TEST_DIR=<path>`, `make tf TEST_FILTER=<expr>` |
+| Make / apply migrations | `make mm APP_LABEL=<app>`, `make m` (public), `make ms` (all tenants) |
+| Seed dev data | `make seed-tenants`, `make seed-models` |
+| Shell | `make s`, `make sp` (shell_plus), `make ts SCHEMA=<name>` (tenant shell) |
+| New app | `make start-app APP_LABEL=<name>` |
+| Link skills into a host project | `make link-skills` |
 
-## Core Architecture Guidelines & App Design Standards
+### Back up before you change data
 
-This repository follows a strict modular design pattern to ensure swappability, multi-tenant isolation, and clean separation of concerns across consuming projects.
+```bash
+make db-dump            # logical dump (pg_dump)
+make db-volume-dump     # cold snapshot of the Postgres volume
+make db-restore BACKUP_FILE=<file>
+```
 
-### 1. Models (`models_abstract.py` & `models.py`)
+Destructive targets: `db-destroy`, `clean`, `clean-setup`, `db-delete`, `db-restore`, `db-volume-restore`. Take a dump first.
 
-- **Architecture in 1–2 Lines**: Abstract models (`models_abstract.py`) define all fields, managers, clean methods, and business logic. Concrete models (`models.py`) subclass abstract models, add no new fields, and declare swappability (`swappable = "APP_MODEL_KEY"`).
-- **How to Work with Models**:
-  - **Never Import Concrete Models Directly**: Do not do `from core.apps.<app>.models import <Model>`. Direct imports bypass Django's swappable model mechanism and break custom overrides provided by consuming projects.
-  - **Dynamic Model Getters**: Always export and use getter functions in the app's root `__init__.py` (e.g. `get_user_model()`, `get_customer_model()`) backed by `django.apps.apps.get_model(settings.<APP>_<MODEL>_MODEL, require_ready=False)`.
-  - **Resolve at Module Level**: Assign `Model = get_<model>_model()` once at module top level in serializers, views, and services. Avoid calling `get_<model>_model()` repeatedly inside method loops.
-  - **Static Type Safety**: Use `if typing.TYPE_CHECKING:` to import abstract classes (e.g. `from .models_abstract import AbstractUser`) for type annotations without runtime circular dependencies.
-  - **Foreign Keys**: Always reference models via settings strings (e.g., `to=settings.AUTH_USER_MODEL`), never concrete classes.
-  - **Single Concrete Table per Entity**: Multi-Table Inheritance (MTI) is strictly prohibited. Use discriminator fields and abstract mixins instead.
+## Architecture in brief
 
-### 2. App Settings (`app_settings.py` & `__init__.py`)
+- **Swappable models.** Abstract models hold the logic (`models_abstract.py`); concrete models are thin subclasses declared `swappable`. Resolve models with the app's `get_<model>_model()` getters, never by importing the concrete class.
+- **App settings.** Each app declares typed settings, live admin flags and versioned JSON configuration through descriptors in `app_settings.py`. See `core/utils/app_settings/Readme.md`.
+- **Async work.** Background jobs go through `queue_task()`, which defers dispatch until commit and carries the tenant schema to the worker.
+- **Tenancy.** Public apps live in the shared schema and tenant apps in each tenant schema. Schemas are provisioned asynchronously, never on the request thread.
 
-- **Architecture in 1–2 Lines**: App settings declare descriptor-based static defaults (`Settings`), live admin flags (`Constance`), and versioned JSON (`Configuration`) on an app-specific `BaseSettings` class, instantiated as a shared singleton in the app's root `__init__.py`.
-- **How to Work with App Settings**:
-  - **Never Instantiate inside `app_settings.py`**: Define only `class <App>Settings(BaseSettings):` in `app_settings.py`. Instantiate `app_settings = <App>Settings()` inside `core/apps/<app>/__init__.py`.
-  - **Descriptor Lifecycle Awareness**: In Python (PEP 487), descriptor `__init__` runs during class body execution, before `__set_name__` is called. Descriptors initialize `name` and `app_settings_key` safely and never assume `app_settings_key` is present during early `validate()` calls.
-  - **Deferred Imports**: Descriptors handling deferred model imports (`SettingsType.DEFFERED_IMPORT`) safely tolerate `AppRegistryNotReady` during Django's app population phase.
-  - **Zero Heavy Dependencies**: Default adapter backends and descriptors prefer Python's standard library (e.g., `http.client`) over heavy optional packages.
+Each module's `Readme.md` documents its models, settings and public API.
 
-### 3. Views & Serializers (`api/views.py`, `api/serializers.py`)
+## Contributing
 
-- **Architecture in 1–2 Lines**: Views act as lightweight HTTP request orchestrators delegating business logic to managers and services; serializers validate request schemas and format output data using dynamically resolved models.
-- **How to Work with Views & Serializers**:
-  - **No Lazy Inline Imports**: Keep imports clean at module level. Avoid inline `from ... import ...` inside method bodies.
-  - **Module-Level Model Resolution**: Resolve models once at the top of serializers and views using `get_<model>_model()`.
-  - **Type Annotations**: Annotate parameters with quoted type names backed by `if typing.TYPE_CHECKING:` imports.
-  - **Explicit Serializer Fields**: Always declare explicit `fields` and `read_only_fields` lists. Never use `fields = "__all__"` on mutable entities.
-  - **Asynchronous View Invariants**: Return `202 Accepted` immediately for asynchronous dispatches (such as OTP dispatch) without leaking user existence.
-  - **No Synchronous External Calls or Network I/O in Request Thread**: Never execute network calls, third-party APIs (such as SMS or email delivery), heavy computations, or schema migrations in the main HTTP request thread. All external delivery calls must be delegated to background worker tasks (`queue_task()`). If queuing a background task encounters an error, log the failure; never fall back to executing blocking external calls synchronously in the request-response thread.
-
-### 4. URLs & Routers (`urls.py`)
-
-- **Architecture in 1–2 Lines**: Modular app routing registers ViewSets on environment-aware DRF routers configured via `get_api_router_instance()`.
-- **How to Work with URLs**:
-  - Always register endpoints using `get_api_router_instance()` (`SimpleRouter` in production, `DefaultRouter` in development).
-  - Use kebab-case plural resource paths with explicit `basename` definitions (e.g., `router.register("users", UserViewSet, basename="users")`).
-
-### 5. Pre-Commit Quality & Hook Verification
-
-- Always run pre-commit hooks post-changes and ensure all checks pass cleanly before committing:
-  ```bash
-  poetry run pre-commit run --all-files
-  ```
-- Ensures consistent Black formatting, isort import ordering, and flake8 compliance across the codebase.
-
-### 6. Testing Norms & Anti-Patterns
-
-- **Never Accommodate `Mock` in Production Code (Anti-Pattern)**:
-  Production framework code (such as `BaseMeta`, `BaseSeeder`, managers, descriptors) must never import `unittest.mock` or check `isinstance(..., Mock)`. Production validation must enforce genuine domain types (`isinstance(model, type) and issubclass(model, models.Model)`).
-- **Use Real Entities or Factories in Tests**:
-  Tests must use genuine models or dedicated model factories rather than raw mocks that bypass or pollute production type contracts.
+- Read [`AGENTS.md`](AGENTS.md). It is the source of truth for conventions and workflow, for people and AI agents alike.
+- Run `poetry run pre-commit run --all-files` before committing. All hooks must pass.
+- Add tests with your change and run them through `make t`.
+- Keep the Readme of any module you change accurate.
