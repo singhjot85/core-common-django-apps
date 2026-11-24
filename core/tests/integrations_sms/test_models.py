@@ -22,6 +22,11 @@ Integration = get_integration_model()
 @pytest.mark.django_db
 class TestSMSIntegration:
     def test_sms_template_render(self):
+        Integration.objects.create(
+            integration_key=IntegrationKeyChoices.SMS,
+            label="Dev Mock SMS",
+            mock=True,
+        )
         template = SMSTemplate.objects.create(
             interface_type=SMSTemplateInterfaceTypeChoices.OTP,
             template="Your code is {{ code }}",
@@ -40,7 +45,7 @@ class TestSMSIntegration:
             label="Dev Mock SMS",
             mock=True,
         )
-        service = get_sms_service(name="Dev Mock SMS")
+        service = get_sms_service()
         assert isinstance(service, MockSMSService)
         success = service.send(
             to="+15551234567",
