@@ -2,7 +2,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connection, models
-from django.template import Context, Template
+from django.template import Context, RequestContext, Template
 from django.utils.translation import gettext_lazy as _
 
 from core.utils.models.base_models.version_base import BaseSemanticVersionModel
@@ -143,14 +143,20 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         return obj.template
 
     @classmethod
-    def _render_using_django(cls, template: str, rendering_context: str, **kwargs):
+    def _render_using_django(cls, template: str, rendering_context: dict, **kwargs):
         """
         Render using django env
         """
-        context = Context(
-            rendering_context, autoescape=False, use_l10n=True, use_tz=True
-        )
-        return Template(template).render(context, request=kwargs.get("request"))
+        request = kwargs.get("request")
+        if request is not None:
+            context = RequestContext(
+                request, rendering_context, autoescape=False, use_l10n=True, use_tz=True
+            )
+        else:
+            context = Context(
+                rendering_context, autoescape=False, use_l10n=True, use_tz=True
+            )
+        return Template(template).render(context)
 
     @classmethod
     def render_template(
@@ -181,7 +187,7 @@ class BaseTemplateModel(BaseSemanticVersionModel):
             backend = cls.TEMPLATE_BACKEND_DJANGO
 
         if backend == cls.TEMPLATE_BACKEND_DJANGO:
-            cls._render_using_django(template, rendering_context, **kwargs)
+            return cls._render_using_django(template, rendering_context, **kwargs)
 
         raise ImproperlyConfigured(
             f"Given backend is not configured, backend: {backend}"

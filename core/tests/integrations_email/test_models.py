@@ -22,6 +22,11 @@ Integration = get_integration_model()
 @pytest.mark.django_db
 class TestEmailIntegration:
     def test_email_template_render(self):
+        Integration.objects.create(
+            integration_key=IntegrationKeyChoices.EMAIL,
+            label="Dev Mock Email",
+            mock=True,
+        )
         template = EmailTemplate.objects.create(
             interface_type=EmailTemplateInterfaceTypeChoices.AUTH,
             subject="Welcome {{ name }}",
@@ -49,7 +54,7 @@ class TestEmailIntegration:
             label="Dev Mock Email",
             mock=True,
         )
-        service = get_email_service(name="Dev Mock Email")
+        service = get_email_service()
         assert isinstance(service, MockEmailService)
         success = service.send(
             to="test@example.com",

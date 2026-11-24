@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
+from django.test import RequestFactory
 
 from core.apps.configurations import get_configuration_model
 from core.apps.invoices import get_invoice_template_model
@@ -394,60 +396,35 @@ class TestBaseTemplateModel:
         """Ensure BaseTemplateModel is marked abstract."""
         assert BaseTemplateModel._meta.abstract is True
 
-    def test_render_using_django_engine(self):
-        """Test rendering plain and HTML template content using Django engine."""
-        template = InvoiceTemplate(
-            html_content="<h1>Hello {{ name }}</h1>",
-            plain_content="Hello {{ name }}",
-        )
-        html_out, text_out = template.render_using_django_engine({"name": "Alice"})
-        assert html_out == "<h1>Hello Alice</h1>"
-        assert text_out == "Hello Alice"
+    def test_render_using_django(self):
+        """Test rendering template string using Django engine."""
+        out = BaseTemplateModel.render_template("Hello {{ name }}", {"name": "Alice"})
+        assert out == "Hello Alice"
 
-    def test_render_using_django_engine_partial_content(self):
-        """Test rendering when one of the template fields is empty or None."""
-        template = InvoiceTemplate(
-            html_content=None,
-            plain_content="Text only for {{ user }}",
+    def test_render_template_django_backend(self):
+        """Test rendering with explicit django backend."""
+        out = BaseTemplateModel.render_template(
+            "<b>{{ title }}</b>",
+            {"title": "Test"},
+            backend=BaseTemplateModel.TEMPLATE_BACKEND_DJANGO,
         )
-        html_out, text_out = template.render_using_django_engine({"user": "Bob"})
-        assert html_out is None
-        assert text_out == "Text only for Bob"
+        assert out == "<b>Test</b>"
 
-    def test_render_template_context_merging_and_defaults(self):
-        """Test that render_template merges template_mapping with dynamic rendering_context."""
-        template = InvoiceTemplate(
-            html_content="<p>{{ app_name }}: {{ user_msg }}</p>",
-            plain_content="{{ app_name }}: {{ user_msg }}",
-            template_mapping={"app_name": "CoreApp", "user_msg": "Default"},
+    def test_render_template_with_request(self):
+        """Test rendering with a request passed in kwargs uses RequestContext."""
+        factory = RequestFactory()
+        request = factory.get("/")
+        out = BaseTemplateModel.render_template(
+            "Path is {{ request.path }}",
+            {},
+            request=request,
         )
-        html_out, text_out = template.render_template({"user_msg": "Custom Message"})
-        assert html_out == "<p>CoreApp: Custom Message</p>"
-        assert text_out == "CoreApp: Custom Message"
+        assert "Path is /" in out
 
-    def test_render_template_with_none_mapping_and_none_context(self):
-        """Test that render_template handles None template_mapping and None rendering_context gracefully."""
-        template = InvoiceTemplate(
-            html_content="Static HTML",
-            plain_content="Static Plain",
-            template_mapping=None,
-        )
-        html_out, text_out = template.render_template(None)
-        assert html_out == "Static HTML"
-        assert text_out == "Static Plain"
-
-    def test_render_template_engine_django_case_insensitive(self):
-        """Test that specifying 'Django' or 'DJANGO' as engine works properly."""
-        template = InvoiceTemplate(
-            html_content="<b>{{ title }}</b>",
-            template_mapping={"title": "Test"},
-        )
-        html_out, _ = template.render_template(engine="DJANGO")
-        assert html_out == "<b>Test</b>"
-
-    def test_render_template_unsupported_engine_raises_not_implemented(self):
-        """Test that requesting an unsupported engine raises NotImplementedError."""
-        template = InvoiceTemplate(html_content="Hello")
-        with pytest.raises(NotImplementedError) as exc_info:
-            template.render_template(engine="jinja2")
-        assert "Template engine 'jinja2' is not supported" in str(exc_info.value)
+    def test_render_template_unsupported_backend_raises_improperly_configured(self):
+        """Test that requesting an unsupported backend raises ImproperlyConfigured."""
+        with pytest.raises(ImproperlyConfigured) as exc_info:
+            BaseTemplateModel.render_template(
+                "Hello", {}, backend="unsupported_backend"
+            )
+        assert "Given backend is not configured" in str(exc_info.value)

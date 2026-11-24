@@ -1,6 +1,6 @@
 import pytest
 
-from core.seeder.registry import fixture_registry, seeder_registry
+from core.libraries.seeder.registry import fixture_registry, seeder_registry
 from core.utils.registry import ClassRegistry
 
 
