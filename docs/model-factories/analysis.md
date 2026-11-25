@@ -82,7 +82,7 @@ The goal of this initiative is to:
 ---
 
 ## 3. Rollout Phases (one commit per phase per `vcs-workflow`)
-- **Phase 1**: Analysis & approval gate (this document).
-- **Phase 2**: Implement `factories.py` in each app (`users`, `tenants`, `configurations`, `crm`, `invoices`, `integrations`).
-- **Phase 3**: Refactor tests (`core/tests/users/`, `core/tests/crm/`, `core/tests/invoices/`, `core/tests/integrations*/`, etc.) to use factories.
-- **Phase 4**: Update `AGENTS.md`, `backend-pytest/SKILL.md`, and module `Readme.md` files. Run full test suite & pre-commit.
+- **Phase 1**: Analysis & approval gate (Completed in `849e2d1`).
+- **Phase 2**: Implement `factories.py` in each app (`users`, `tenants`, `configurations`, `crm`, `invoices`, `integrations`) (Completed in `849e2d1`).
+- **Phase 3**: Refactor tests (`core/tests/users/`, `core/tests/crm/`, `core/tests/invoices/`, `core/tests/integrations*/`, etc.) to use factories (Completed in `72f0d28`).
+- **Phase 4**: Update `AGENTS.md`, `backend-pytest/SKILL.md`, and module `Readme.md` files. Run full test suite & pre-commit (This phase).
