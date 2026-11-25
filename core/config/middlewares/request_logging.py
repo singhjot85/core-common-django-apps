@@ -9,6 +9,7 @@ import time
 import typing
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.db import connection
 from django.http import HttpRequest, HttpResponse
 
@@ -103,13 +104,16 @@ class RequestLoggingMiddleware:
 
             schema_name = getattr(connection, "schema_name", "public")
 
-            # Sanitize query parameters to prevent leaking secrets/PII
+            # Sanitize query parameters to prevent leaking secrets/PII unless disabled in local env
             query_str = ""
             if request.GET:
-                sanitized_dict = ContentMaskingUtils.filter_sensitive_content(
-                    **request.GET.dict()
-                )
-                query_str = f"?{urlencode(sanitized_dict)}"
+                if getattr(settings, "DISABLE_SENSITIVE_CONTENT_FILTER", False):
+                    params = request.GET.dict()
+                else:
+                    params = ContentMaskingUtils.filter_sensitive_content(
+                        **request.GET.dict()
+                    )
+                query_str = f"?{urlencode(params)}"
 
             log_message = (
                 f"[{method}] {path}{query_str} -> {status_code} "

@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 from django.core.exceptions import ImproperlyConfigured
+from django.test import override_settings
 
 from core.config.logging import (
     convert_loglevel,
@@ -207,6 +208,7 @@ class TestLoggingFilters:
         )
         assert noise_filter.filter(third_party_record) is False
 
+    @override_settings(DISABLE_SENSITIVE_CONTENT_FILTER=False)
     def test_sensitive_content_filter_masks_string_message(self):
         """
         SensitiveContentFilter replaces sensitive patterns in record.msg.
@@ -227,6 +229,7 @@ class TestLoggingFilters:
         assert "secret" not in record.msg
         assert "*******" in record.msg
 
+    @override_settings(DISABLE_SENSITIVE_CONTENT_FILTER=False)
     def test_sensitive_content_filter_masks_dict_message(self):
         """
         SensitiveContentFilter sanitizes dictionary keys and values in record.msg.
@@ -250,6 +253,7 @@ class TestLoggingFilters:
         assert record.msg["password"] == "********"  # pragma: allowlist secret
         assert record.msg["username"] == "alice"
 
+    @override_settings(DISABLE_SENSITIVE_CONTENT_FILTER=False)
     def test_sensitive_content_filter_masks_tuple_args(self):
         """
         SensitiveContentFilter sanitizes string and dict items within record.args tuple.
@@ -270,6 +274,24 @@ class TestLoggingFilters:
         assert isinstance(record.args, tuple)
         assert record.args[0] == ContentMaskingUtils.mask_value
         assert record.args[1]["secret_key"] == "********"
+
+    @override_settings(DISABLE_SENSITIVE_CONTENT_FILTER=True)
+    def test_sensitive_content_filter_disabled_for_local_env(self):
+        """When DISABLE_SENSITIVE_CONTENT_FILTER is True, records pass through unmasked."""
+        log_filter = SensitiveContentFilter()
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="User with password is secret",
+            args=(),
+            exc_info=None,
+        )
+
+        log_filter.filter(record)
+
+        assert record.msg == "User with password is secret"
 
     def test_sensitive_content_filter_handles_none_args(self):
         """

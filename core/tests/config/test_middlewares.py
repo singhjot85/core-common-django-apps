@@ -13,7 +13,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -145,7 +145,7 @@ class TestRequestLoggingMiddleware:
     @patch("core.config.middlewares.request_logging.REQUEST_LOGGER.info")
     @patch("core.config.middlewares.request_logging.PERF_LOGGER.debug")
     def test_request_logging_middleware_success(self, mock_perf, mock_request_log):
-        """Middleware records HTTP request metadata and latency, masking sensitive query params."""
+        """Middleware records HTTP request metadata and latency, unmasking in local env."""
         request = self.factory.get(
             "/api/v1/customers/?page=1&password=mysecret"
         )  # pragma: allowlist secret
@@ -163,14 +163,37 @@ class TestRequestLoggingMiddleware:
         assert "[GET] /api/v1/customers/" in log_msg
         assert "-> 200" in log_msg
         assert "req_log_user:" in log_msg
-        # Sensitive query parameter should be masked
-        assert "mysecret" not in log_msg
+        # In local dev (DISABLE_SENSITIVE_CONTENT_FILTER=True), parameter is unmasked
+        assert "password=mysecret" in log_msg
 
         mock_perf.assert_called_once()
         perf_args = mock_perf.call_args[0]
         assert perf_args[1] == "GET"
         assert perf_args[2] == "/api/v1/customers/"
         assert perf_args[3] == 200
+
+    @override_settings(DISABLE_SENSITIVE_CONTENT_FILTER=False)
+    @patch("core.config.middlewares.request_logging.REQUEST_LOGGER.info")
+    @patch("core.config.middlewares.request_logging.PERF_LOGGER.debug")
+    def test_request_logging_middleware_masks_when_filter_enabled(
+        self, mock_perf, mock_request_log
+    ):
+        """When DISABLE_SENSITIVE_CONTENT_FILTER is False, query params are scrubbed."""
+        request = self.factory.get(
+            "/api/v1/customers/?page=1&password=mysecret"
+        )  # pragma: allowlist secret
+        request.user = self.user
+
+        def dummy_view(req):
+            return HttpResponse("OK", status=200)
+
+        middleware = RequestLoggingMiddleware(dummy_view)
+        response = middleware(request)
+
+        assert response.status_code == 200
+        mock_request_log.assert_called_once()
+        log_msg = mock_request_log.call_args[0][0]
+        assert "mysecret" not in log_msg
 
     @patch("core.config.middlewares.request_logging.REQUEST_LOGGER.info")
     @patch("core.config.middlewares.request_logging.PERF_LOGGER.debug")

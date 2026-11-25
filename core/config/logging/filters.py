@@ -9,6 +9,8 @@ import logging
 import os
 from enum import Enum
 
+from django.conf import settings
+
 from core.utils.error_handling.content_masking import (
     ContentMaskingUtils,
     get_sensitive_matcher,
@@ -134,6 +136,11 @@ class SensitiveContentFilter(logging.Filter):
         Returns:
             bool: Always True to allow record processing to continue.
         """
+        if settings.configured and getattr(
+            settings, "DISABLE_SENSITIVE_CONTENT_FILTER", False
+        ):
+            return True
+
         if record.msg:
             if isinstance(record.msg, str):
                 matcher = get_sensitive_matcher()

@@ -29,7 +29,7 @@ All log files reside directly in the directory configured by `BACKEND_LOG_DIRECT
 
 ## Filters & Security
 
-- **SensitiveContentFilter**: Scans messages and argument payloads to automatically mask passwords, tokens, API keys, and PII using `ContentMaskingUtils`.
+- **SensitiveContentFilter**: Scans messages and argument payloads to automatically mask passwords, tokens, API keys, and PII using `ContentMaskingUtils`. In local development (`core/config/settings/local.py`), set `DISABLE_SENSITIVE_CONTENT_FILTER = True` to disable masking for easier UI and mobile client debugging.
 - **ConsoleNoiseFilter**: Filters terminal stream output to keep developer shells uncluttered, allowing only app logs, whitelisted packages, and errors.
 - **SkipAutoreloadFilter**: Drops repetitive file-watching events from `django.utils.autoreload`.
 
