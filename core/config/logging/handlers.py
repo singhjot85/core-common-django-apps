@@ -36,6 +36,7 @@ class CoreLoggingHandlers(Enum):
         FILE_JSON: Rotating file handler formatted for JSON ingestion.
         FILE_DEPS: Rotating file handler dedicated to third-party/django dependencies.
         FILE_PERF: Rotating file handler dedicated to performance telemetry.
+        FILE_REQUESTS: Rotating file handler dedicated to incoming HTTP request logs.
         MAIL_ADMIN: Email handler dispatching errors to administrators in production.
     """
 
@@ -45,6 +46,7 @@ class CoreLoggingHandlers(Enum):
     FILE_JSON = "file_json"
     FILE_DEPS = "file_dependencies"
     FILE_PERF = "file_performance"
+    FILE_REQUESTS = "file_requests"
     MAIL_ADMIN = "mail_admins"
 
     def path(self) -> typing.Optional[Path]:
@@ -57,8 +59,16 @@ class CoreLoggingHandlers(Enum):
         if self in (self.__class__.CONSOLE, self.__class__.MAIL_ADMIN):
             return None
 
-        folder_name = self.value.replace("file_", "")
-        return LOG_DIR / folder_name / f"{folder_name}.log"
+        file_name_map = {
+            self.__class__.FILE_INFO: "info.log",
+            self.__class__.FILE_PERF: "perf.log",
+            self.__class__.FILE_REQUESTS: "requests.log",
+            self.__class__.FILE_ERROR: "errors.log",
+            self.__class__.FILE_JSON: "json.log",
+            self.__class__.FILE_DEPS: "dependencies.log",
+        }
+        filename = file_name_map.get(self, f"{self.value}.log")
+        return LOG_DIR / filename
 
     def log_level(self) -> int:
         """
@@ -69,6 +79,7 @@ class CoreLoggingHandlers(Enum):
         """
         logger_level_map = {
             self.__class__.FILE_INFO.value: LOG_LEVELS[LOG_LEVEL_INFO],
+            self.__class__.FILE_REQUESTS.value: LOG_LEVELS[LOG_LEVEL_INFO],
             self.__class__.FILE_ERROR.value: LOG_LEVELS[LOG_LEVEL_ERROR],
             self.__class__.FILE_PERF.value: LOG_LEVELS[LOG_LEVEL_DEBUG],
         }
@@ -85,14 +96,34 @@ class CoreLoggingHandlers(Enum):
         Returns:
             list[str]: List of handler name strings to attach.
         """
+        if logger_name in ("django.db.backends", "django.core.cache"):
+            return [cls.FILE_PERF.value]
+
+        if logger_name in ("performance", "perf"):
+            return [cls.FILE_PERF.value, cls.FILE_ERROR.value]
+
+        if logger_name in ("core.requests", "requests"):
+            return [cls.FILE_REQUESTS.value, cls.FILE_ERROR.value]
+
+        if logger_name == "django.utils.autoreload":
+            return []
+
+        if logger_name == "django.server":
+            return [cls.CONSOLE.value, cls.FILE_INFO.value]
+
+        if logger_name in ("django.request", "django.security"):
+            return [cls.CONSOLE.value, cls.FILE_ERROR.value, cls.FILE_INFO.value]
+
+        if logger_name == "celery.task":
+            return [cls.CONSOLE.value, cls.FILE_PERF.value, cls.FILE_ERROR.value]
+
         if logger_name.startswith("django"):
-            return [cls.FILE_DEPS.value]
+            return [cls.FILE_INFO.value, cls.FILE_ERROR.value]
 
         return [
             cls.CONSOLE.value,
             cls.FILE_INFO.value,
             cls.FILE_ERROR.value,
-            cls.FILE_PERF.value,
         ]
 
 
@@ -103,7 +134,10 @@ def create_console_handler() -> dict[str, typing.Any]:
     Returns:
         dict[str, typing.Any]: dictConfig handler dictionary.
     """
-    filter_names = [LoggingFilters.SENSITIVE.value[0]]
+    filter_names = [
+        LoggingFilters.SENSITIVE.value[0],
+        LoggingFilters.CONSOLE_NOISE.value[0],
+    ]
     if is_production():
         filter_names.append(LoggingFilters.DEBUG_FALSE.value[0])
 
@@ -151,13 +185,19 @@ def create_file_handler(
         else LoggingFormatters.STANDARD.value
     )
 
+    filters = [
+        LoggingFilters.SENSITIVE.value[0],
+    ]
+    if handler_enum == CoreLoggingHandlers.FILE_INFO:
+        filters.append(LoggingFilters.SKIP_AUTORELOAD.value[0])
+
     return {
         "class": "logging.handlers.RotatingFileHandler",
         "filename": str(log_file_path),
         "maxBytes": APP_LOGFILE_BYTES,
         "backupCount": APP_LOGFILE_BACKUP_COUNT,
         "formatter": formatter,
-        "filters": [LoggingFilters.DEBUG_TRUE.value[0]],
+        "filters": filters,
         "level": handler_enum.log_level(),
     }
 

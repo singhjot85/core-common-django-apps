@@ -27,6 +27,15 @@ from core.apps.crm.constants import (
     IdentityTypeChoices,
     PreferenceDataTypeChoices,
 )
+from core.apps.crm.factories import (
+    CustomerAddressFactory,
+    CustomerEmailFactory,
+    CustomerFactory,
+    CustomerIdentificationFactory,
+    CustomerPhoneFactory,
+    CustomerPreferenceFactory,
+    CustomerPreferenceTypeFactory,
+)
 
 Customer = get_customer_model()
 CustomerAddress = get_customer_address_model()
@@ -59,25 +68,25 @@ class TestCRMSerializers:
 
     def test_customer_details_serializer_read_only_embedding(self):
         """CustomerDetailsSerializer embeds nested contact collections and computed properties."""
-        customer = Customer.objects.create(
+        customer = CustomerFactory(
             first_name="Charles",
             last_name="Babbage",
             suffix="Esq.",
             customer_type=CustomerTypeChoices.INDIVIDUAL,
         )
-        CustomerPhone.objects.create(
+        CustomerPhoneFactory(
             customer=customer,
             phone="+919876543210",
             phone_type=ContactTypeChoices.PERSONAL,
             is_primary=True,
         )
-        CustomerEmail.objects.create(
+        CustomerEmailFactory(
             customer=customer,
             email="babbage@example.com",
             email_type=ContactTypeChoices.WORK,
             is_primary=True,
         )
-        CustomerAddress.objects.create(
+        CustomerAddressFactory(
             customer=customer,
             address_line_1="1 Computer Way",
             city="London",
@@ -85,17 +94,17 @@ class TestCRMSerializers:
             address_type=AddressTypeChoices.OFFICE,
             is_primary=True,
         )
-        CustomerIdentification.objects.create(
+        CustomerIdentificationFactory(
             customer=customer,
             type=IdentityTypeChoices.SOCIAL_SECURITY,
         )
-        pref_type = CustomerPreferenceType.objects.create(
+        pref_type = CustomerPreferenceTypeFactory(
             code="notifications",
             label="Email Notifications",
             data_type=PreferenceDataTypeChoices.BOOLEAN,
             default_value=True,
         )
-        CustomerPreference.objects.create(
+        CustomerPreferenceFactory(
             customer=customer,
             preference_type=pref_type,
             value=True,
@@ -119,15 +128,15 @@ class TestCRMSerializers:
 
     def test_customer_preference_serializer_resolves_type_code_and_label(self):
         """CustomerPreferenceSerializer resolves preference_code and preference_label from foreign key."""
-        customer = Customer.objects.create(first_name="Margaret", last_name="Hamilton")
-        pref_type = CustomerPreferenceType.objects.create(
+        customer = CustomerFactory(first_name="Margaret", last_name="Hamilton")
+        pref_type = CustomerPreferenceTypeFactory(
             code="theme",
             label="UI Theme",
             data_type=PreferenceDataTypeChoices.CHOICES,
             values=["light", "dark"],
             default_value="dark",
         )
-        pref = CustomerPreference.objects.create(
+        pref = CustomerPreferenceFactory(
             customer=customer,
             preference_type=pref_type,
             value="dark",
@@ -142,7 +151,7 @@ class TestCRMSerializers:
 
     def test_customer_preference_type_serializer_data_type_display(self):
         """CustomerPreferenceTypeSerializer exposes human-readable data_type_display."""
-        pref_type = CustomerPreferenceType.objects.create(
+        pref_type = CustomerPreferenceTypeFactory(
             code="multi_channel",
             label="Notification Channels",
             data_type=PreferenceDataTypeChoices.MULTI_SELECT,

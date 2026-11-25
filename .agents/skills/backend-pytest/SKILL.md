@@ -56,7 +56,7 @@ Rules:
 ## Setup: fixtures, factories, database
 
 - Prefer pytest fixtures over `setup_method`. Use `setup_method` only when it is clearly simpler and the project already does it.
-- Create database objects with factories (for example `factory_boy`, or the factories already in the project). Factories create real rows. That is the right way, and it is not mocking.
+- Create database objects with model factories from `core.apps.<app>.factories` (using `factory_boy`). Never use raw `Model.objects.create(...)` or `User.objects.create_user(...)` in tests. Factories create real rows with valid default relationships and dynamic swappable model resolution. That is the right way, and it is not mocking.
 - Never mock the ORM, models, querysets or serializers. Use the real test database.
 - Mark any test that touches the database with `@pytest.mark.django_db` (on the class when every test needs it).
 - Make a factory or fixture return the minimum valid object. Override only the fields the test cares about, so the test shows what matters:
@@ -66,6 +66,7 @@ shipment = ShipmentFactory(status=Shipment.Status.IN_TRANSIT)
 ```
 
 - Put sensible defaults in the factory, not in every test.
+- When creating a new app or new models, always define their factories in `core/apps/<app>/factories.py` resolving models via dynamic getters (`get_<model>_model()`).
 
 ## What to mock (and what not to)
 

@@ -1,20 +1,34 @@
 """
 Logger hierarchy and routing configuration.
 
-Defines default logger configurations for Django framework namespaces
-and application loggers.
+Defines default logger configurations for Django framework namespaces,
+Celery execution, performance telemetry, and application loggers.
 """
 
 import typing
 
-from core.config.logging import APP_LOG_LEVEL
+from core.config.logging import (
+    LOG_LEVEL_DEBUG,
+    LOG_LEVEL_ERROR,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_WARN,
+)
 from core.config.logging.handlers import CoreLoggingHandlers
 
 CONFIGURED_LOGGERS = [
-    # "django",
+    "django",
+    "django.server",
     "django.request",
     "django.db.backends",
+    "django.core.cache",
+    "django.utils.autoreload",
     "django.security",
+    "celery",
+    "celery.task",
+    "performance",
+    "perf",
+    "core.requests",
+    "requests",
 ]
 
 
@@ -25,13 +39,104 @@ def create_loggers() -> dict[str, dict[str, typing.Any]]:
     Returns:
         dict[str, dict[str, typing.Any]]: Dictionary of loggers compatible with dictConfig.
     """
-    loggers = {}
-    for logger_name in CONFIGURED_LOGGERS:
-        config = {
+    return {
+        "django": {
+            "handlers": [
+                CoreLoggingHandlers.FILE_INFO.value,
+                CoreLoggingHandlers.FILE_ERROR.value,
+            ],
+            "level": LOG_LEVEL_INFO,
             "propagate": False,
-            "level": APP_LOG_LEVEL,
-            "handlers": CoreLoggingHandlers.get_for_logger(logger_name),
-        }
-        loggers[logger_name] = config
-
-    return loggers
+        },
+        "django.server": {
+            "handlers": [
+                CoreLoggingHandlers.CONSOLE.value,
+                CoreLoggingHandlers.FILE_INFO.value,
+            ],
+            "level": LOG_LEVEL_INFO,
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": [
+                CoreLoggingHandlers.CONSOLE.value,
+                CoreLoggingHandlers.FILE_ERROR.value,
+                CoreLoggingHandlers.FILE_INFO.value,
+            ],
+            "level": LOG_LEVEL_ERROR,
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": [CoreLoggingHandlers.FILE_PERF.value],
+            "level": LOG_LEVEL_DEBUG,
+            "propagate": False,
+        },
+        "django.core.cache": {
+            "handlers": [CoreLoggingHandlers.FILE_PERF.value],
+            "level": LOG_LEVEL_DEBUG,
+            "propagate": False,
+        },
+        "django.utils.autoreload": {
+            "handlers": [],
+            "level": LOG_LEVEL_WARN,
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": [
+                CoreLoggingHandlers.CONSOLE.value,
+                CoreLoggingHandlers.FILE_ERROR.value,
+                CoreLoggingHandlers.FILE_INFO.value,
+            ],
+            "level": LOG_LEVEL_WARN,
+            "propagate": False,
+        },
+        "celery": {
+            "handlers": [
+                CoreLoggingHandlers.CONSOLE.value,
+                CoreLoggingHandlers.FILE_INFO.value,
+                CoreLoggingHandlers.FILE_ERROR.value,
+            ],
+            "level": LOG_LEVEL_INFO,
+            "propagate": False,
+        },
+        "celery.task": {
+            "handlers": [
+                CoreLoggingHandlers.CONSOLE.value,
+                CoreLoggingHandlers.FILE_PERF.value,
+                CoreLoggingHandlers.FILE_ERROR.value,
+            ],
+            "level": LOG_LEVEL_INFO,
+            "propagate": False,
+        },
+        "performance": {
+            "handlers": [
+                CoreLoggingHandlers.FILE_PERF.value,
+                CoreLoggingHandlers.FILE_ERROR.value,
+            ],
+            "level": LOG_LEVEL_DEBUG,
+            "propagate": False,
+        },
+        "perf": {
+            "handlers": [
+                CoreLoggingHandlers.FILE_PERF.value,
+                CoreLoggingHandlers.FILE_ERROR.value,
+            ],
+            "level": LOG_LEVEL_DEBUG,
+            "propagate": False,
+        },
+        "core.requests": {
+            "handlers": [
+                CoreLoggingHandlers.FILE_REQUESTS.value,
+                CoreLoggingHandlers.FILE_ERROR.value,
+            ],
+            "level": LOG_LEVEL_INFO,
+            "propagate": False,
+        },
+        "requests": {
+            "handlers": [
+                CoreLoggingHandlers.FILE_REQUESTS.value,
+                CoreLoggingHandlers.FILE_ERROR.value,
+            ],
+            "level": LOG_LEVEL_INFO,
+            "propagate": False,
+        },
+    }

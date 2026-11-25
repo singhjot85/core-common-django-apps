@@ -28,6 +28,7 @@ LOG_LEVELS: dict[str, int] = {
     "ERROR": logging.ERROR,
     "CRITICAL": logging.CRITICAL,
 }
+logging.addLevelName(LOG_LEVELS[LOG_LEVEL_PERF], LOG_LEVEL_PERF)
 
 
 def convert_loglevel(level: typing.Union[str, int]) -> int:
@@ -65,11 +66,11 @@ def convert_loglevel(level: typing.Union[str, int]) -> int:
 # ------------------------
 #   Logging Variables
 # ------------------------
-LOG_DIR_PATH = os.getenv("BACKEND_LOG_DIRECTORY", "backend/logs")
-APP_LOG_LEVEL = convert_loglevel(os.getenv("BACKEND_LOG_LEVEL", LOG_LEVEL_ERROR))
+LOG_DIR_PATH = os.getenv("BACKEND_LOG_DIRECTORY", "logs")
+APP_LOG_LEVEL = convert_loglevel(os.getenv("BACKEND_LOG_LEVEL", LOG_LEVEL_INFO))
 
-APP_LOGFILE_BYTES = int(os.getenv("BACKEND_LOGFILE_BYTES", 50 * 1024 * 1024))  # 50MB
-APP_LOGFILE_BACKUP_COUNT = int(os.getenv("BACKEND_LOGFILE_BACKUPS", 2))
+APP_LOGFILE_BYTES = int(os.getenv("BACKEND_LOGFILE_BYTES", 5 * 1024 * 1024))  # 5MB
+APP_LOGFILE_BACKUP_COUNT = int(os.getenv("BACKEND_LOGFILE_BACKUPS", 5))
 LOG_DIR = Path(LOG_DIR_PATH)
 
 

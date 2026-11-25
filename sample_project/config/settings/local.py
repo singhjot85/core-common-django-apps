@@ -1,4 +1,4 @@
-from core.config.settings.base import *  # noqa: F401
+from core.config.settings.local import *  # noqa: F401
 
 PROJECT_NAME = "sample_project"
 PROJECT_LABEL = "Sample Project"
