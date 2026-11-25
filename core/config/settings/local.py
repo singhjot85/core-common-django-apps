@@ -27,3 +27,14 @@ STORAGES = {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
+
+# -----------------------------
+#   Local Request Logging Middleware
+# -----------------------------
+MIDDLEWARE = [
+    "core.config.middlewares.request_logging.RequestLoggingMiddleware",
+    *MIDDLEWARE,
+]
+
+# Disable sensitive content masking in local development for easier UI/mobile debugging
+DISABLE_SENSITIVE_CONTENT_FILTER = True

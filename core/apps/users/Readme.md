@@ -125,7 +125,7 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 - Under no circumstance should external delivery calls (SMS/Email) execute directly on the main HTTP request thread; if queuing fails, the error is logged without executing blocking external calls synchronously.
 
 ### 4. Server-Side Cookie Authentication & Middleware (`JWTCookieAuthenticationMiddleware`)
-- **Location**: `core.utils.middleware.JWTCookieAuthenticationMiddleware`
+- **Location**: `core.config.middlewares.jwt_cookie_auth.JWTCookieAuthenticationMiddleware`
 - **Request Authentication**:
   - Automatically inspects incoming `request.COOKIES` for the access token (`access_token`, configurable via `settings.ACCESS_TOKEN_COOKIE_NAME`).
   - If valid and active, sets `request.user` to the authenticated user instance.
