@@ -21,7 +21,9 @@ from core.apps.users.api.views import (
 )
 from core.apps.users.factories import UserFactory
 from core.apps.users.services.auth_lockout import AuthLockoutService
-from core.utils.middleware import JWTCookieAuthenticationMiddleware
+from core.config.middlewares.jwt_cookie_auth import (
+    JWTCookieAuthenticationMiddleware,
+)
 
 User = get_user_model()
 

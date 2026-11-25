@@ -27,6 +27,8 @@ CONFIGURED_LOGGERS = [
     "celery.task",
     "performance",
     "perf",
+    "core.requests",
+    "requests",
 ]
 
 
@@ -119,6 +121,22 @@ def create_loggers() -> dict[str, dict[str, typing.Any]]:
                 CoreLoggingHandlers.FILE_ERROR.value,
             ],
             "level": LOG_LEVEL_DEBUG,
+            "propagate": False,
+        },
+        "core.requests": {
+            "handlers": [
+                CoreLoggingHandlers.FILE_REQUESTS.value,
+                CoreLoggingHandlers.FILE_ERROR.value,
+            ],
+            "level": LOG_LEVEL_INFO,
+            "propagate": False,
+        },
+        "requests": {
+            "handlers": [
+                CoreLoggingHandlers.FILE_REQUESTS.value,
+                CoreLoggingHandlers.FILE_ERROR.value,
+            ],
+            "level": LOG_LEVEL_INFO,
             "propagate": False,
         },
     }

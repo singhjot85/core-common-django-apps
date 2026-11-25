@@ -224,10 +224,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "core.utils.middleware.JWTCookieAuthenticationMiddleware",
+    "core.config.middlewares.jwt_cookie_auth.JWTCookieAuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # "backend.config.middlewares.RequestLoggingMiddleware",
 ]
 
 # -----------------------------
@@ -292,6 +291,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "core.config.api_exception_handler.api_exception_handler",
 }
 
 SPECTACULAR_SETTINGS = {

@@ -353,10 +353,17 @@ class TestLoggingHandlers:
         assert isinstance(error_path, Path)
         assert error_path.name == "errors.log"
 
+        requests_path = CoreLoggingHandlers.FILE_REQUESTS.path()
+        assert isinstance(requests_path, Path)
+        assert requests_path.name == "requests.log"
+
     def test_core_logging_handlers_get_for_logger(self):
         """
         Logger handler routing directs performance, framework, and app loggers correctly.
         """
+        requests_handlers = CoreLoggingHandlers.get_for_logger("core.requests")
+        assert CoreLoggingHandlers.FILE_REQUESTS.value in requests_handlers
+
         django_handlers = CoreLoggingHandlers.get_for_logger("django.request")
         assert CoreLoggingHandlers.CONSOLE.value in django_handlers
         assert CoreLoggingHandlers.FILE_ERROR.value in django_handlers

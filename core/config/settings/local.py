@@ -27,3 +27,11 @@ STORAGES = {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
+
+# -----------------------------
+#   Local Request Logging Middleware
+# -----------------------------
+MIDDLEWARE = [
+    "core.config.middlewares.request_logging.RequestLoggingMiddleware",
+    *MIDDLEWARE,
+]

@@ -13,7 +13,8 @@ All log files reside directly in the directory configured by `BACKEND_LOG_DIRECT
 | --- | --- | --- | --- |
 | `console` | `stdout` | Dynamic (`APP_LOG_LEVEL`) | Terminal output colorized by level. Restricted to app-level code, whitelisted packages (`django.server`, `celery`), and all `ERROR`/`CRITICAL` events. Suppresses autoreload and DB queries. |
 | `file_info` | `logs/info.log` | `INFO` | Informational logs from external packages and application code. Suppresses `django.utils.autoreload` polling noise. |
-| `file_performance` | `logs/perf.log` | `DEBUG` | Dedicated performance metrics: database queries (`django.db.backends`), cache queries (`django.core.cache`), and Celery task telemetry (`celery.task`). |
+| `file_requests` | `logs/requests.log` | `INFO` | HTTP requests made to backend, recording method, path, status, latency, IP, user, and schema context. |
+| `file_performance` | `logs/perf.log` | `DEBUG` | Dedicated performance metrics: database queries (`django.db.backends`), cache queries (`django.core.cache`), Celery task telemetry (`celery.task`), and API request latency. |
 | `file_error` | `logs/errors.log` | `ERROR` | System-wide error and critical log records. |
 | `mail_admins` | Admin Email | `ERROR` | Production-only error reporting dispatched to `ADMINS`. |
 

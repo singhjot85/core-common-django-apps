@@ -36,6 +36,7 @@ class CoreLoggingHandlers(Enum):
         FILE_JSON: Rotating file handler formatted for JSON ingestion.
         FILE_DEPS: Rotating file handler dedicated to third-party/django dependencies.
         FILE_PERF: Rotating file handler dedicated to performance telemetry.
+        FILE_REQUESTS: Rotating file handler dedicated to incoming HTTP request logs.
         MAIL_ADMIN: Email handler dispatching errors to administrators in production.
     """
 
@@ -45,6 +46,7 @@ class CoreLoggingHandlers(Enum):
     FILE_JSON = "file_json"
     FILE_DEPS = "file_dependencies"
     FILE_PERF = "file_performance"
+    FILE_REQUESTS = "file_requests"
     MAIL_ADMIN = "mail_admins"
 
     def path(self) -> typing.Optional[Path]:
@@ -60,6 +62,7 @@ class CoreLoggingHandlers(Enum):
         file_name_map = {
             self.__class__.FILE_INFO: "info.log",
             self.__class__.FILE_PERF: "perf.log",
+            self.__class__.FILE_REQUESTS: "requests.log",
             self.__class__.FILE_ERROR: "errors.log",
             self.__class__.FILE_JSON: "json.log",
             self.__class__.FILE_DEPS: "dependencies.log",
@@ -76,6 +79,7 @@ class CoreLoggingHandlers(Enum):
         """
         logger_level_map = {
             self.__class__.FILE_INFO.value: LOG_LEVELS[LOG_LEVEL_INFO],
+            self.__class__.FILE_REQUESTS.value: LOG_LEVELS[LOG_LEVEL_INFO],
             self.__class__.FILE_ERROR.value: LOG_LEVELS[LOG_LEVEL_ERROR],
             self.__class__.FILE_PERF.value: LOG_LEVELS[LOG_LEVEL_DEBUG],
         }
@@ -97,6 +101,9 @@ class CoreLoggingHandlers(Enum):
 
         if logger_name in ("performance", "perf"):
             return [cls.FILE_PERF.value, cls.FILE_ERROR.value]
+
+        if logger_name in ("core.requests", "requests"):
+            return [cls.FILE_REQUESTS.value, cls.FILE_ERROR.value]
 
         if logger_name == "django.utils.autoreload":
             return []
