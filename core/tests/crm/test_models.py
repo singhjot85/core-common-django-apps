@@ -19,7 +19,17 @@ from core.apps.crm.constants import (
     IdentityTypeChoices,
     PreferenceDataTypeChoices,
 )
+from core.apps.crm.factories import (
+    CustomerAddressFactory,
+    CustomerEmailFactory,
+    CustomerFactory,
+    CustomerIdentificationFactory,
+    CustomerPhoneFactory,
+    CustomerPreferenceFactory,
+    CustomerPreferenceTypeFactory,
+)
 from core.apps.users import get_user_model
+from core.apps.users.factories import UserFactory
 
 User = get_user_model()
 Customer = get_customer_model()
@@ -144,14 +154,14 @@ class TestCRMModelsDB:
 
     def test_customer_phone_primary_manager(self):
         """Test get_primary and set_primary on CustomerPhone manager."""
-        customer = Customer.objects.create(first_name="Alice", last_name="Smith")
-        phone1 = CustomerPhone.objects.create(
+        customer = CustomerFactory(first_name="Alice", last_name="Smith")
+        phone1 = CustomerPhoneFactory(
             customer=customer,
             phone="+919876543210",
             phone_type=ContactTypeChoices.PERSONAL,
             is_primary=True,
         )
-        phone2 = CustomerPhone.objects.create(
+        phone2 = CustomerPhoneFactory(
             customer=customer,
             phone="+919123456780",
             phone_type=ContactTypeChoices.WORK,
@@ -173,13 +183,13 @@ class TestCRMModelsDB:
 
     def test_customer_email_primary_manager(self):
         """Test get_primary and set_primary on CustomerEmail manager."""
-        customer = Customer.objects.create(first_name="Bob", last_name="Smith")
-        email1 = CustomerEmail.objects.create(
+        customer = CustomerFactory(first_name="Bob", last_name="Smith")
+        email1 = CustomerEmailFactory(
             customer=customer,
             email="bob.primary@example.com",
             is_primary=True,
         )
-        email2 = CustomerEmail.objects.create(
+        email2 = CustomerEmailFactory(
             customer=customer,
             email="bob.work@example.com",
             is_primary=False,
@@ -189,9 +199,10 @@ class TestCRMModelsDB:
         assert customer.primary_email == email1
 
         # Creating a 3rd email with is_primary=True automatically unsets previous
-        email3 = CustomerEmail.objects.create(
+        email3 = CustomerEmailFactory(
             customer=customer,
             email="bob.new@example.com",
+            is_primary=False,
         )
         CustomerEmail.objects.set_primary(email3)
         email1.refresh_from_db()
@@ -204,13 +215,13 @@ class TestCRMModelsDB:
 
     def test_customer_address_primary_manager(self):
         """Test get_primary and set_primary on CustomerAddress manager."""
-        customer = Customer.objects.create(first_name="Charlie", last_name="Brown")
-        addr1 = CustomerAddress.objects.create(
+        customer = CustomerFactory(first_name="Charlie", last_name="Brown")
+        addr1 = CustomerAddressFactory(
             customer=customer,
             address_line_1="Addr 1",
             is_primary=True,
         )
-        addr2 = CustomerAddress.objects.create(
+        addr2 = CustomerAddressFactory(
             customer=customer,
             address_line_1="Addr 2",
             is_primary=False,
@@ -229,10 +240,10 @@ class TestCRMModelsDB:
 
     def test_customer_identification_gfk(self):
         """Test GenericForeignKey linking on CustomerIdentification."""
-        customer = Customer.objects.create(first_name="Diana", last_name="Prince")
+        customer = CustomerFactory(first_name="Diana", last_name="Prince")
         customer_ct = ContentType.objects.get_for_model(Customer)
 
-        ident = CustomerIdentification.objects.create(
+        ident = CustomerIdentificationFactory(
             customer=customer,
             type=IdentityTypeChoices.AADHAAR,
             content_type=customer_ct,
@@ -245,7 +256,7 @@ class TestCRMModelsDB:
 
     def test_customer_soft_delete(self):
         """Test soft deletion and exclusion from available_objects."""
-        customer = Customer.objects.create(first_name="Eve", last_name="Johnson")
+        customer = CustomerFactory(first_name="Eve", last_name="Johnson")
         cust_id = customer.id
 
         assert Customer.available_objects.filter(id=cust_id).exists()
@@ -260,14 +271,14 @@ class TestCRMModelsDB:
 
     def test_customer_preference_db(self):
         """Test saving and retrieving CustomerPreference in database."""
-        customer = Customer.objects.create(first_name="Frank", last_name="Castle")
-        pref_type = CustomerPreferenceType.objects.create(
+        customer = CustomerFactory(first_name="Frank", last_name="Castle")
+        pref_type = CustomerPreferenceTypeFactory(
             code="dark_mode",
             label="Dark Mode",
             data_type=PreferenceDataTypeChoices.BOOLEAN,
             default_value=False,
         )
-        pref = CustomerPreference.objects.create(
+        pref = CustomerPreferenceFactory(
             customer=customer,
             preference_type=pref_type,
             value=True,
@@ -277,7 +288,7 @@ class TestCRMModelsDB:
 
     def test_customer_get_or_create_for_user_creates_customer_and_contacts(self):
         """Test CustomerQuerySet.get_or_create_for_user provisioning customer, phone and email."""
-        user = User.objects.create_user(
+        user = UserFactory(
             username="johndoe_crm",
             first_name="John",
             last_name="Doe",
@@ -323,8 +334,8 @@ class TestCRMModelsDB:
 
     def test_customer_unique_primary_constraints_enforced(self):
         """Test UniqueConstraint prevents duplicate active primary records but allows after soft delete."""
-        customer = Customer.objects.create(first_name="Grace", last_name="Hopper")
-        phone1 = CustomerPhone.objects.create(
+        customer = CustomerFactory(first_name="Grace", last_name="Hopper")
+        phone1 = CustomerPhoneFactory(
             customer=customer,
             phone="+919876543210",
             is_primary=True,
@@ -333,7 +344,7 @@ class TestCRMModelsDB:
         # Inserting a second active primary phone raises IntegrityError
         with pytest.raises(IntegrityError):
             with transaction.atomic():
-                CustomerPhone.objects.create(
+                CustomerPhoneFactory(
                     customer=customer,
                     phone="+919123456789",
                     is_primary=True,
@@ -344,11 +355,14 @@ class TestCRMModelsDB:
         assert phone1.is_removed is True
 
         # Now creating another primary phone succeeds because is_removed=False
-        phone2 = CustomerPhone.objects.create(
+        phone2 = CustomerPhoneFactory(
             customer=customer,
             phone="+919123456789",
             is_primary=True,
         )
+        assert phone2.is_primary is True
+        assert CustomerPhone.objects.get_primary(customer) == phone2
+        assert customer.primary_phone == phone2
         assert phone2.is_primary is True
         assert CustomerPhone.objects.get_primary(customer) == phone2
         assert customer.primary_phone == phone2

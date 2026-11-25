@@ -1,23 +1,23 @@
 import pytest
 
-from core.apps.integrations import (
-    get_credentials_manager_model,
-    get_integration_model,
-)
+from core.apps.integrations import get_credentials_manager_model
 from core.apps.integrations.constants import (
     CredentialsNameChoices,
     IntegrationKeyChoices,
 )
+from core.apps.integrations.factories import (
+    CredentialsManagerFactory,
+    IntegrationFactory,
+)
 from core.apps.integrations.utils import send_email, send_sms
 
-Integration = get_integration_model()
 CredentialsManager = get_credentials_manager_model()
 
 
 @pytest.mark.django_db
 class TestIntegrationsModels:
     def test_credentials_manager_lifecycle(self):
-        creds = CredentialsManager.objects.create(
+        creds = CredentialsManagerFactory(
             name=CredentialsNameChoices.TWILIO,
             details={
                 "account_sid": "AC123",
@@ -32,11 +32,11 @@ class TestIntegrationsModels:
         assert "credentials/twilio_cert.pem" in path
 
     def test_integration_lifecycle(self):
-        creds = CredentialsManager.objects.create(
+        creds = CredentialsManagerFactory(
             name=CredentialsNameChoices.SENDGRID,
             details={"api_key": "SG.mock_key"},  # pragma: allowlist secret
         )
-        integration = Integration.objects.create(
+        integration = IntegrationFactory(
             integration_key=IntegrationKeyChoices.EMAIL,
             label="Corporate SendGrid",
             credentials=creds,
@@ -53,12 +53,12 @@ class TestIntegrationsModels:
 
     def test_send_email_and_sms_facades(self):
         # With mock=True on integration
-        email_integration = Integration.objects.create(
+        email_integration = IntegrationFactory(
             integration_key=IntegrationKeyChoices.EMAIL,
             label="Mock Email",
             mock=True,
         )
-        sms_integration = Integration.objects.create(
+        sms_integration = IntegrationFactory(
             integration_key=IntegrationKeyChoices.SMS,
             label="Mock SMS",
             mock=True,

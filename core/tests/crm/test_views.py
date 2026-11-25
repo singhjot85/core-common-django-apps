@@ -31,7 +31,17 @@ from core.apps.crm.constants import (
     IdentityTypeChoices,
     PreferenceDataTypeChoices,
 )
+from core.apps.crm.factories import (
+    CustomerAddressFactory,
+    CustomerEmailFactory,
+    CustomerFactory,
+    CustomerIdentificationFactory,
+    CustomerPhoneFactory,
+    CustomerPreferenceFactory,
+    CustomerPreferenceTypeFactory,
+)
 from core.apps.users import get_user_model
+from core.apps.users.factories import UserFactory
 
 User = get_user_model()
 Customer = get_customer_model()
@@ -142,7 +152,7 @@ class TestCustomerViewSetAPI:
     @pytest.fixture(autouse=True)
     def setup_fixtures(self):
         self.factory = APIRequestFactory()
-        self.user = User.objects.create_user(
+        self.user = UserFactory(
             username="crm_tester",
             email="tester@example.com",
             first_name="Jane",
@@ -151,26 +161,26 @@ class TestCustomerViewSetAPI:
 
     def test_customer_retrieve_returns_detailed_embedded_relations(self):
         """Retrieve customer endpoint returns prefetched phones, emails, addresses, identifications, preferences."""
-        customer = Customer.objects.create(
+        customer = CustomerFactory(
             first_name="Ada",
             last_name="Lovelace",
             customer_type=CustomerTypeChoices.INDIVIDUAL,
         )
-        CustomerPhone.objects.create(
+        CustomerPhoneFactory(
             customer=customer,
             phone="+919876543210",
             phone_type=ContactTypeChoices.PERSONAL,
             is_primary=True,
             is_verified=True,
         )
-        CustomerEmail.objects.create(
+        CustomerEmailFactory(
             customer=customer,
             email="ada@example.com",
             email_type=ContactTypeChoices.WORK,
             is_primary=True,
             is_verified=True,
         )
-        CustomerAddress.objects.create(
+        CustomerAddressFactory(
             customer=customer,
             address_line_1="10 Babbage Way",
             city="London",
@@ -178,19 +188,19 @@ class TestCustomerViewSetAPI:
             address_type=AddressTypeChoices.PERMANENT,
             is_primary=True,
         )
-        CustomerIdentification.objects.create(
+        CustomerIdentificationFactory(
             customer=customer,
             type=IdentityTypeChoices.SOCIAL_SECURITY,
             is_verified=True,
         )
-        pref_type = CustomerPreferenceType.objects.create(
+        pref_type = CustomerPreferenceTypeFactory(
             code="lang",
             label="Language",
             data_type=PreferenceDataTypeChoices.CHOICES,
             values=["en", "es", "fr"],
             default_value="en",
         )
-        CustomerPreference.objects.create(
+        CustomerPreferenceFactory(
             customer=customer,
             preference_type=pref_type,
             value="en",
@@ -235,7 +245,7 @@ class TestCustomerViewSetAPI:
 
     def test_customer_update_endpoint(self):
         """Update customer endpoint modifies profile fields."""
-        customer = Customer.objects.create(first_name="Alan", last_name="Turing")
+        customer = CustomerFactory(first_name="Alan", last_name="Turing")
         view = CustomerViewSet.as_view({"put": "update"})
         payload = {
             "first_name": "Alan",
@@ -259,21 +269,21 @@ class TestNestedCustomerEntitiesAPI:
     @pytest.fixture(autouse=True)
     def setup_fixtures(self):
         self.factory = APIRequestFactory()
-        self.user = User.objects.create_user(
+        self.user = UserFactory(
             username="nested_tester",
             email="nested@example.com",
         )
-        self.customer1 = Customer.objects.create(first_name="Cust1")
-        self.customer2 = Customer.objects.create(first_name="Cust2")
+        self.customer1 = CustomerFactory(first_name="Cust1")
+        self.customer2 = CustomerFactory(first_name="Cust2")
 
     def test_nested_phones_list_isolated_per_customer(self):
         """GET /customers/{customer_pk}/phones/ lists only phones belonging to specified customer."""
-        phone1 = CustomerPhone.objects.create(
+        phone1 = CustomerPhoneFactory(
             customer=self.customer1,
             phone="+919876543210",
             is_primary=True,
         )
-        CustomerPhone.objects.create(
+        CustomerPhoneFactory(
             customer=self.customer2,
             phone="+919123456789",
             is_primary=True,
@@ -290,12 +300,12 @@ class TestNestedCustomerEntitiesAPI:
 
     def test_phone_set_primary_action(self):
         """POST /customers/{customer_pk}/phones/{pk}/set-primary/ toggles primary phone."""
-        phone1 = CustomerPhone.objects.create(
+        phone1 = CustomerPhoneFactory(
             customer=self.customer1,
             phone="+919876543210",
             is_primary=True,
         )
-        phone2 = CustomerPhone.objects.create(
+        phone2 = CustomerPhoneFactory(
             customer=self.customer1,
             phone="+919123456780",
             is_primary=False,
@@ -317,12 +327,12 @@ class TestNestedCustomerEntitiesAPI:
 
     def test_email_set_primary_action(self):
         """POST /customers/{customer_pk}/emails/{pk}/set-primary/ toggles primary email."""
-        email1 = CustomerEmail.objects.create(
+        email1 = CustomerEmailFactory(
             customer=self.customer1,
             email="primary@example.com",
             is_primary=True,
         )
-        email2 = CustomerEmail.objects.create(
+        email2 = CustomerEmailFactory(
             customer=self.customer1,
             email="secondary@example.com",
             is_primary=False,
@@ -343,12 +353,12 @@ class TestNestedCustomerEntitiesAPI:
 
     def test_address_set_primary_action(self):
         """POST /customers/{customer_pk}/addresses/{pk}/set-primary/ toggles primary address."""
-        addr1 = CustomerAddress.objects.create(
+        addr1 = CustomerAddressFactory(
             customer=self.customer1,
             address_line_1="Home",
             is_primary=True,
         )
-        addr2 = CustomerAddress.objects.create(
+        addr2 = CustomerAddressFactory(
             customer=self.customer1,
             address_line_1="Work",
             is_primary=False,
@@ -410,7 +420,7 @@ class TestNestedCustomerEntitiesAPI:
         dummy_file = SimpleUploadedFile(
             "sample.pdf", b"%PDF-1.4 sample content", content_type="application/pdf"
         )
-        ident = CustomerIdentification.objects.create(
+        ident = CustomerIdentificationFactory(
             customer=self.customer1,
             type=IdentityTypeChoices.AADHAAR,
             document=dummy_file,
@@ -493,7 +503,7 @@ class TestNestedCustomerEntitiesAPI:
 
     def test_create_preference_uses_url_customer_pk_without_body_customer(self):
         """POST /customers/{customer_pk}/preferences/ does not require customer in request body."""
-        pref_type = CustomerPreferenceType.objects.create(
+        pref_type = CustomerPreferenceTypeFactory(
             code="sms_alerts",
             label="SMS Alerts",
             data_type=PreferenceDataTypeChoices.BOOLEAN.value,
@@ -537,7 +547,7 @@ class TestCustomerPreferenceTypeViewSetAPI:
     @pytest.fixture(autouse=True)
     def setup_fixtures(self):
         self.factory = APIRequestFactory()
-        self.user = User.objects.create_user(
+        self.user = UserFactory(
             username="pref_type_tester",
             email="pref_type@example.com",
         )
@@ -546,7 +556,7 @@ class TestCustomerPreferenceTypeViewSetAPI:
         """Preference types can be listed via top-level catalog endpoint and create is disallowed."""
         assert not hasattr(CustomerPreferenceTypeViewSet, "create")
 
-        CustomerPreferenceType.objects.create(
+        CustomerPreferenceTypeFactory(
             code="theme_mode",
             label="Theme Mode",
             data_type=PreferenceDataTypeChoices.CHOICES.value,

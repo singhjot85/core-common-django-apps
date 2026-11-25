@@ -13,6 +13,7 @@ from core.apps.users.api.views import (
     get_auth_redirect_url,
 )
 from core.apps.users.constants import OTPPurposeChoices
+from core.apps.users.factories import UserFactory
 
 User = get_user_model()
 
@@ -183,7 +184,7 @@ class TestUsersViews:
     @pytest.mark.django_db
     def test_login_view_trims_password_whitespace(self):
         """Password containing leading and trailing spaces is trimmed during login."""
-        User.objects.create_user(
+        UserFactory(
             username="spaced_password_user",
             email="spaced@example.com",
             password="SecretPass123!",  # pragma: allowlist secret
@@ -209,7 +210,7 @@ class TestUsersViews:
     def test_otp_verify_view_case_insensitive_email(self, mock_verify):
         """EmailOTPAuthViewSet matches registered email case-insensitively."""
         mock_verify.return_value = (True, "OTP verified")
-        user = User.objects.create_user(
+        user = UserFactory(
             username="mixed_case_user",
             email="john.doe@example.com",
             is_active=True,
