@@ -19,6 +19,7 @@ from core.apps.users.api.views import (
     SMSOTPAuthViewSet,
     get_jwt_tokens_for_user,
 )
+from core.apps.users.factories import UserFactory
 from core.apps.users.services.auth_lockout import AuthLockoutService
 from core.utils.middleware import JWTCookieAuthenticationMiddleware
 
@@ -35,7 +36,7 @@ def clear_test_cache():
 @pytest.mark.django_db
 class TestJWTJitterAndCookies:
     def test_jwt_tokens_have_65_to_75_percent_jitter(self):
-        user = User.objects.create_user(
+        user = UserFactory(
             username="jitter_user",
             email="jitter@test.com",
             password="TestPassword123!",  # pragma: allowlist secret
@@ -96,7 +97,7 @@ class TestAuthLockoutService:
 
     @pytest.mark.django_db
     def test_verify_and_unlock_account_reactivates_user(self):
-        user = User.objects.create_user(
+        user = UserFactory(
             username="locked_user",
             email="locked@test.com",
             password="TestPassword123!",  # pragma: allowlist secret

@@ -1,33 +1,29 @@
 import pytest
 
-from core.apps.integrations import get_integration_model
 from core.apps.integrations.constants import IntegrationKeyChoices
-from core.apps.integrations.email import (
-    get_email_log_model,
-    get_email_template_model,
-)
+from core.apps.integrations.email import get_email_log_model
 from core.apps.integrations.email.constants import (
     EmailLogStatusChoices,
     EmailTemplateInterfaceTypeChoices,
 )
+from core.apps.integrations.email.factories import EmailTemplateFactory
 from core.apps.integrations.email.service import get_email_service
 from core.apps.integrations.email.service.mock import MockEmailService
 from core.apps.integrations.email.tasks import log_email_dispatch
+from core.apps.integrations.factories import IntegrationFactory
 
 EmailLog = get_email_log_model()
-EmailTemplate = get_email_template_model()
-Integration = get_integration_model()
 
 
 @pytest.mark.django_db
 class TestEmailIntegration:
     def test_email_template_render(self):
-        Integration.objects.create(
+        IntegrationFactory(
             integration_key=IntegrationKeyChoices.EMAIL,
             label="Dev Mock Email",
             mock=True,
         )
-        template = EmailTemplate.objects.create(
+        template = EmailTemplateFactory(
             interface_type=EmailTemplateInterfaceTypeChoices.AUTH,
             subject="Welcome {{ name }}",
             template="Hello {{ name }}, your code is {{ code }}.",
@@ -49,7 +45,7 @@ class TestEmailIntegration:
         assert "<p>Hello Alice" in html
 
     def test_email_service_mock_routing(self):
-        Integration.objects.create(
+        IntegrationFactory(
             integration_key=IntegrationKeyChoices.EMAIL,
             label="Dev Mock Email",
             mock=True,

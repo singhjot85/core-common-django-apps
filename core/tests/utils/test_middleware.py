@@ -15,6 +15,7 @@ from django.test import RequestFactory
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
+from core.apps.users.factories import UserFactory
 from core.utils.middleware import (
     ACCESS_TOKEN_COOKIE_NAME,
     REFRESH_TOKEN_COOKIE_NAME,
@@ -30,7 +31,7 @@ class TestJWTCookieAuthenticationMiddleware:
 
     def setup_method(self):
         self.factory = RequestFactory()
-        self.user = User.objects.create_user(
+        self.user = UserFactory(
             username="jwt_middleware_user",
             email="jwt_middleware@example.com",
             password="SecurePassword123!",  # pragma: allowlist secret
