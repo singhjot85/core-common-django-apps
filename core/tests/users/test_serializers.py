@@ -17,6 +17,7 @@ from core.apps.users.api.serializers import (
     SignupSerializer,
 )
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
+from core.apps.users.factories import UserFactory
 
 User = get_user_model()
 Customer = get_customer_model()
@@ -210,7 +211,7 @@ class TestLoginSerializer:
 
     def test_login_serializer_valid_credentials(self):
         """Active user with correct credentials validates successfully."""
-        user = User.objects.create_user(
+        user = UserFactory(
             username="valid_login_user",
             email="valid@example.com",
             password="MyPassword123!",  # pragma: allowlist secret
@@ -227,7 +228,7 @@ class TestLoginSerializer:
 
     def test_login_serializer_trims_password_whitespace(self):
         """Password containing whitespace is trimmed to authenticate against trimmed password."""
-        user = User.objects.create_user(
+        user = UserFactory(
             username="space_login_user",
             password="SpacePass123!",  # pragma: allowlist secret
             is_active=True,
@@ -251,7 +252,7 @@ class TestLoginSerializer:
 
     def test_login_serializer_wrong_password_returns_generic_error(self):
         """Incorrect password returns generic error message."""
-        User.objects.create_user(
+        UserFactory(
             username="wrong_pass_user",
             password="CorrectPassword123!",  # pragma: allowlist secret
             is_active=True,
@@ -272,7 +273,7 @@ class TestLoginSerializer:
         self,
     ):
         """Inactive user with incorrect password receives generic error (no account enumeration)."""
-        User.objects.create_user(
+        UserFactory(
             username="disabled_user",
             password="CorrectPassword123!",  # pragma: allowlist secret
             is_active=False,
@@ -294,7 +295,7 @@ class TestLoginSerializer:
         self,
     ):
         """Inactive user with correct password reports that the account is disabled."""
-        User.objects.create_user(
+        UserFactory(
             username="disabled_user_auth",
             password="CorrectPassword123!",  # pragma: allowlist secret
             is_active=False,

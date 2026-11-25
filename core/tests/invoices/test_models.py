@@ -21,6 +21,7 @@ from core.apps.invoices import (
     get_organization_phone_model,
 )
 from core.apps.invoices.constants import PartyTypeChoices
+from core.apps.invoices.factories import BillingOrganizationFactory
 
 Invoice = get_invoice_model()
 InvoiceAddress = get_invoice_address_model()
@@ -154,7 +155,7 @@ class TestInvoiceModelDB:
 
     def test_db_billing_organization_flow(self):
         """Test DB persistence and invoice creation."""
-        org = BillingOrganization.objects.create(
+        org = BillingOrganizationFactory(
             organization_name="TechCorp India",
             billing_suffix="/2026-27",
             billing_start_sequence=100,

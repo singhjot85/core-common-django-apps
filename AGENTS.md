@@ -82,6 +82,7 @@ App order (each depends only on those above it): `tenants`/`integrations` → `c
 12. **Never bypass pre-commit** (`--no-verify`, disabling rules). Fix the cause.
 13. **Documentation stays clear and crisp.** Update the module `Readme.md` in the same change that alters documented behavior. No code dumps, no `TODO` stubs, no stale claims. Agent working notes go in `docs/<feature>/analysis.md`, never in Readmes. Load `backend-docs`.
 14. **Templates:** read `core/templates/Readme.md` first. No inline JS, no hardcoded colors (use `variables.css` tokens).
+15. **Use model factories for test objects and fixtures.** Always use `factory_boy` factories from `core.apps.<app>.factories` (e.g. `UserFactory`, `CustomerFactory`) in tests. Never use raw `Model.objects.create(...)` or `User.objects.create_user(...)`. When new models are introduced, create their factory in `core/apps/<app>/factories.py` using dynamic model getters (`get_<model>_model()`). *Why:* factories keep tests resilient to schema changes and enforce swappable model support.
 
 **Precedence:** these rules > the workflow skill > `ponytail`. Ponytail decides how little code to write. It never skips the analysis gate, the backup, tests, pre-commit, or documentation.
 
@@ -121,7 +122,6 @@ Module `Readme.md` first (every app and util has one; the `integrations/{email,s
 
 ## 9. Known gaps (do not assume these exist)
 
-- No `factories.py` exists yet. Create one when you need it.
 - No tenant-isolation tests exist yet. Add one when touching tenant-scoped code.
 - No on-commit capture helper is used in tests yet.
 - No CI and no coverage config. `celerybeat` is disabled in compose.

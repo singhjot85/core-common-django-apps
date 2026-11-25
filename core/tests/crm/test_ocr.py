@@ -15,6 +15,10 @@ from core.apps.crm import (
     get_customer_model,
 )
 from core.apps.crm.constants import IdentityStatusChoices, IdentityTypeChoices
+from core.apps.crm.factories import (
+    CustomerFactory,
+    CustomerIdentificationFactory,
+)
 from core.apps.crm.services.ocr import (
     InvalidDocumentError,
     classify,
@@ -253,11 +257,11 @@ class TestOCRTasksAndBeatCron:
     """Test Celery background execution and Beat cron batch processing."""
 
     def test_process_identification_record_success(self):
-        customer = Customer.objects.create(first_name="Jane", last_name="Doe")
+        customer = CustomerFactory(first_name="Jane", last_name="Doe")
         dummy_pdf = SimpleUploadedFile(
             "aadhaar.pdf", b"%PDF-1.4 mock content", content_type="application/pdf"
         )
-        identification = CustomerIdentification.objects.create(
+        identification = CustomerIdentificationFactory(
             customer=customer,
             type=IdentityTypeChoices.AADHAAR,
             document=dummy_pdf,
@@ -292,11 +296,11 @@ class TestOCRTasksAndBeatCron:
                 identification.document.delete(save=False)
 
     def test_process_identification_record_failure(self):
-        customer = Customer.objects.create(first_name="John", last_name="Doe")
+        customer = CustomerFactory(first_name="John", last_name="Doe")
         dummy_pdf = SimpleUploadedFile(
             "doc.pdf", b"%PDF-1.4 empty", content_type="application/pdf"
         )
-        identification = CustomerIdentification.objects.create(
+        identification = CustomerIdentificationFactory(
             customer=customer,
             type=IdentityTypeChoices.AADHAAR,
             document=dummy_pdf,
@@ -319,7 +323,7 @@ class TestOCRTasksAndBeatCron:
                 identification.document.delete(save=False)
 
     def test_process_unverified_identifications_cron_batch(self):
-        customer = Customer.objects.create(first_name="Batch", last_name="User")
+        customer = CustomerFactory(first_name="Batch", last_name="User")
         dummy_pdf1 = SimpleUploadedFile(
             "doc1.pdf", b"%PDF-1.4 doc1", content_type="application/pdf"
         )
@@ -327,13 +331,13 @@ class TestOCRTasksAndBeatCron:
             "doc2.pdf", b"%PDF-1.4 doc2", content_type="application/pdf"
         )
 
-        id1 = CustomerIdentification.objects.create(
+        id1 = CustomerIdentificationFactory(
             customer=customer,
             type=IdentityTypeChoices.DRIVING_LICENSE,
             document=dummy_pdf1,
             status=IdentityStatusChoices.PENDING.value,
         )
-        id2 = CustomerIdentification.objects.create(
+        id2 = CustomerIdentificationFactory(
             customer=customer,
             type=IdentityTypeChoices.AADHAAR,
             document=dummy_pdf2,
