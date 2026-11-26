@@ -15,6 +15,7 @@ from core.apps.users.api.serializers import (
     PhoneOTPSendSerializer,
     PhoneOTPSignupSerializer,
     SignupSerializer,
+    UserDetailsSerializer,
 )
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
 
@@ -409,3 +410,70 @@ class TestSignupCustomerAutoCreation:
         primary_phone = customer.primary_phone
         assert primary_phone is not None
         assert primary_phone.is_verified is True
+
+
+@pytest.mark.django_db
+class TestUserDetailsSerializer:
+    """Tests for UserDetailsSerializer serialization and field resolution."""
+
+    def test_serialization_with_associated_customer(self):
+        """
+        UserDetailsSerializer returns customer_id when customer is linked.
+        """
+        user = User.objects.create_user(
+            username="test_customer_user",
+            email="custuser@example.com",
+            first_name="Jane",
+            last_name="Doe",
+        )
+        customer = Customer.objects.create(
+            user=user, first_name="Jane", last_name="Doe"
+        )
+
+        serializer = UserDetailsSerializer(user)
+        data = serializer.data
+
+        assert data["id"] == str(user.id)
+        assert data["customer_id"] == str(customer.pk)
+        assert data["username"] == "test_customer_user"
+        assert data["email"] == "custuser@example.com"
+        assert data["full_name"] == "Jane Doe"
+
+    def test_serialization_without_associated_customer(self):
+        """
+        UserDetailsSerializer returns customer_id as None when no customer is linked.
+        """
+        user = User.objects.create_user(
+            username="no_customer_user",
+            email="nocust@example.com",
+            first_name="John",
+            last_name="Smith",
+        )
+
+        serializer = UserDetailsSerializer(user)
+        data = serializer.data
+
+        assert data["id"] == str(user.id)
+        assert data["customer_id"] is None
+        assert data["username"] == "no_customer_user"
+
+    def test_customer_id_is_read_only(self):
+        """
+        UserDetailsSerializer does not allow updating customer_id directly.
+        """
+        user = User.objects.create_user(
+            username="readonly_test_user",
+            email="readonly@example.com",
+        )
+        serializer = UserDetailsSerializer(
+            instance=user,
+            data={"customer_id": "99999", "first_name": "UpdatedName"},
+            partial=True,
+        )
+        assert serializer.is_valid(), serializer.errors
+        serializer.save()
+        user.refresh_from_db()
+
+        assert user.first_name == "UpdatedName"
+        assert not Customer.objects.filter(user=user).exists()
+        assert serializer.data["customer_id"] is None
