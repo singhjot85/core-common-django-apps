@@ -23,6 +23,7 @@ class TestUsersViews:
     def setup_method(self):
         self.factory = APIRequestFactory()
 
+    @pytest.mark.django_db
     @patch(
         "core.apps.users.api.serializers.base.Customer.objects.get_or_create_for_user"
     )
@@ -130,6 +131,7 @@ class TestUsersViews:
         response = view(request)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    @pytest.mark.django_db
     @patch("core.apps.users.api.views.get_jwt_tokens_for_user")
     @patch(
         "core.apps.users.api.views.SocialAuthServiceFactory.authenticate_or_register"

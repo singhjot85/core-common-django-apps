@@ -33,21 +33,24 @@ class UserDetailsSerializer(serializers.ModelSerializer):
     """
     Convert authenticated User instances into detailed JSON representations.
 
-    Exposes read-only identity, profile, contact attributes, and verification status flags.
-    Never exposes sensitive authentication hashes or security tokens.
+    Exposes read-only identity, profile, contact attributes, CRM customer linkage,
+    and verification status flags. Never exposes sensitive authentication hashes
+    or security tokens.
 
     Read-only fields:
-    - ``id``, ``full_name``, ``is_phone_verified``, ``is_email_verified``,
-      ``has_password``, ``created``, ``modified``.
+    - ``id``, ``customer_id``, ``full_name``, ``is_phone_verified``,
+      ``is_email_verified``, ``has_password``, ``created``, ``modified``.
     """
 
     full_name = serializers.CharField(read_only=True)
     has_password = serializers.BooleanField(read_only=True)
+    customer_id = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
         fields = [
             "id",
+            "customer_id",
             "username",
             "email",
             "phone_number",
@@ -69,6 +72,23 @@ class UserDetailsSerializer(serializers.ModelSerializer):
             "created",
             "modified",
         ]
+
+    def get_customer_id(self, instance) -> typing.Optional[str]:
+        """
+        Retrieve the primary CRM Customer ID associated with this user.
+
+        Queries the reverse ``customer_set`` relation on the user instance
+        and returns the string representation of the linked Customer primary key.
+
+        Args:
+            instance (User): The user model instance being serialized.
+
+        Returns:
+            str or None: Primary key of the associated customer as a string,
+            or None if no linked customer exists.
+        """
+        customer = instance.customer_set.first()
+        return str(customer.pk) if customer else None
 
 
 class BaseSignupSerializer(serializers.Serializer):
