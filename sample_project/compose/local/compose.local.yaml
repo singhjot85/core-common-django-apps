@@ -25,7 +25,6 @@ services:
       start_period: 10s
     volumes:
       - ../../..:/backend
-      - ./backend/scripts:/scripts
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1

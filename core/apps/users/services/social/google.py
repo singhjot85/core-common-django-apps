@@ -3,8 +3,13 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from google.auth.transport._http_client import Request as GoogleAuthRequest
-from google.oauth2 import id_token as google_id_token
+
+try:
+    from google.auth.transport._http_client import Request as GoogleAuthRequest
+    from google.oauth2 import id_token as google_id_token
+except ImportError:
+    GoogleAuthRequest = None
+    google_id_token = None
 
 from core.apps.users.constants import SocialProviderChoices
 from core.apps.users.services.social.base import BaseSocialAuthService

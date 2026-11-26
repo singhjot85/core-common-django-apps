@@ -60,6 +60,7 @@ RUN pip install --no-cache-dir \
 WORKDIR /backend
 COPY . /backend
 COPY ./sample_project/compose/local/backend/scripts /scripts
-RUN chmod +x /scripts/*.sh
+RUN sed -i 's/\r$//' /scripts/*.sh \
+    && chmod +x /scripts/*.sh
 
 CMD ["/scripts/django-start.sh"]
