@@ -1,5 +1,8 @@
 from core.apps.users import app_settings
-from core.apps.users.api.serializers import SignupSerializer, UserDetailsSerializer
+from core.apps.users.api.serializers import (
+    PasswordSignupSerializer,
+    UserDetailsSerializer,
+)
 from core.apps.users.app_settings import UsersSettings
 from core.utils.backends.sms import ConsoleSMSBackend
 from core.utils.generators.username import generate_unique_username
@@ -21,7 +24,7 @@ class TestUsersAppSettings:
     def test_serializer_resolutions(self):
         """Serializers should resolve to declared classes."""
         assert app_settings.USER_DETAILS_SERIALIZER == UserDetailsSerializer
-        assert app_settings.SIGNUP_SERIALIZER == SignupSerializer
+        assert app_settings.SIGNUP_SERIALIZER == PasswordSignupSerializer
 
     def test_sms_backend_resolution(self):
         """SMS_BACKEND should resolve to ConsoleSMSBackend by default."""
