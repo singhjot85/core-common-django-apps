@@ -8,13 +8,13 @@ from core.apps.users import get_user_model
 from core.apps.users.api.serializers import (
     EmailOTPSignupSerializer,
     GoogleLoginSerializer,
-    LoginSerializer,
     OTPSendSerializer,
     OTPVerifySerializer,
+    PasswordLoginSerializer,
+    PasswordSignupSerializer,
     PhoneOTPLoginSerializer,
     PhoneOTPSendSerializer,
     PhoneOTPSignupSerializer,
-    SignupSerializer,
     UserDetailsSerializer,
 )
 from core.apps.users.constants import OTPChannelChoices, OTPPurposeChoices
@@ -23,8 +23,8 @@ User = get_user_model()
 Customer = get_customer_model()
 
 
-class TestSignupSerializer:
-    """Tests for SignupSerializer validation logic."""
+class TestPasswordSignupSerializer:
+    """Tests for PasswordSignupSerializer validation logic."""
 
     @patch.object(User.objects, "filter")
     def test_signup_validation_success_full(self, mock_filter):
@@ -37,7 +37,7 @@ class TestSignupSerializer:
             "email": "alice@example.com",
             "phone_number": "+12025550123",
         }
-        serializer = SignupSerializer(data=data)
+        serializer = PasswordSignupSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
 
     @patch.object(User.objects, "filter")
@@ -50,7 +50,7 @@ class TestSignupSerializer:
             "password": "Password123!",  # pragma: allowlist secret
             "phone_number": "+12025550123",
         }
-        serializer = SignupSerializer(data=data)
+        serializer = PasswordSignupSerializer(data=data)
         assert not serializer.is_valid()
         assert "phone_number" in serializer.errors
 
@@ -64,7 +64,7 @@ class TestSignupSerializer:
             "password": "Password123!",  # pragma: allowlist secret
             "phone_number": "invalid-phone",
         }
-        serializer = SignupSerializer(data=data)
+        serializer = PasswordSignupSerializer(data=data)
         assert not serializer.is_valid()
         assert "phone_number" in serializer.errors
 
@@ -78,7 +78,7 @@ class TestSignupSerializer:
             "password": "Password123!",  # pragma: allowlist secret
             "phone_number": "",
         }
-        serializer = SignupSerializer(data=data)
+        serializer = PasswordSignupSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
         assert serializer.validated_data.get("phone_number") is None
 
@@ -206,8 +206,8 @@ class TestGoogleLoginSerializer:
 
 
 @pytest.mark.django_db
-class TestLoginSerializer:
-    """Tests for LoginSerializer credentials verification, whitespace preservation, and zero enumeration."""
+class TestPasswordLoginSerializer:
+    """Tests for PasswordLoginSerializer credentials verification, whitespace preservation, and zero enumeration."""
 
     def test_login_serializer_valid_credentials(self):
         """Active user with correct credentials validates successfully."""
@@ -217,7 +217,7 @@ class TestLoginSerializer:
             password="MyPassword123!",  # pragma: allowlist secret
             is_active=True,
         )
-        serializer = LoginSerializer(
+        serializer = PasswordLoginSerializer(
             data={
                 "username": "valid_login_user",
                 "password": "MyPassword123!",  # pragma: allowlist secret
@@ -233,7 +233,7 @@ class TestLoginSerializer:
             password="SpacePass123!",  # pragma: allowlist secret
             is_active=True,
         )
-        serializer = LoginSerializer(
+        serializer = PasswordLoginSerializer(
             data={"username": "space_login_user", "password": "  SpacePass123!  "}
         )
         assert serializer.is_valid()
@@ -241,7 +241,7 @@ class TestLoginSerializer:
 
     def test_login_serializer_blank_fields_raise_flat_error(self):
         """Blank username and password should raise flat error messages without nested dicts."""
-        serializer = LoginSerializer(data={"username": "   ", "password": ""})
+        serializer = PasswordLoginSerializer(data={"username": "   ", "password": ""})
         assert not serializer.is_valid()
         errors = serializer.errors
         assert "username" in errors
@@ -257,7 +257,7 @@ class TestLoginSerializer:
             password="CorrectPassword123!",  # pragma: allowlist secret
             is_active=True,
         )
-        serializer = LoginSerializer(
+        serializer = PasswordLoginSerializer(
             data={
                 "username": "wrong_pass_user",
                 "password": "BadPassword",  # pragma: allowlist secret
@@ -265,7 +265,7 @@ class TestLoginSerializer:
         )
         assert not serializer.is_valid()
         assert (
-            LoginSerializer.USER_NOT_FOUND_ERROR
+            PasswordLoginSerializer.USER_NOT_FOUND_ERROR
             in serializer.errors["non_field_errors"]
         )
 
@@ -278,7 +278,7 @@ class TestLoginSerializer:
             password="CorrectPassword123!",  # pragma: allowlist secret
             is_active=False,
         )
-        serializer = LoginSerializer(
+        serializer = PasswordLoginSerializer(
             data={
                 "username": "disabled_user",
                 "password": "WrongPassword",  # pragma: allowlist secret
@@ -287,7 +287,7 @@ class TestLoginSerializer:
         assert not serializer.is_valid()
         # Must return generic error, NOT "This account is disabled."
         assert (
-            LoginSerializer.USER_NOT_FOUND_ERROR
+            PasswordLoginSerializer.USER_NOT_FOUND_ERROR
             in serializer.errors["non_field_errors"]
         )
 
@@ -300,7 +300,7 @@ class TestLoginSerializer:
             password="CorrectPassword123!",  # pragma: allowlist secret
             is_active=False,
         )
-        serializer = LoginSerializer(
+        serializer = PasswordLoginSerializer(
             data={
                 "username": "disabled_user_auth",
                 "password": "CorrectPassword123!",  # pragma: allowlist secret
@@ -315,7 +315,7 @@ class TestSignupCustomerAutoCreation:
     """Integration tests verifying automatic CRM Customer provisioning upon user signup."""
 
     def test_signup_auto_creates_customer_profile_and_primary_contacts(self):
-        """SignupSerializer provisions a Customer profile with primary phone and email."""
+        """PasswordSignupSerializer provisions a Customer profile with primary phone and email."""
         data = {
             "first_name": "Rosalind",
             "last_name": "Franklin",
@@ -324,7 +324,7 @@ class TestSignupCustomerAutoCreation:
             "phone_number": "+12025550199",
             "password": "StrongPassword123!",  # pragma: allowlist secret
         }
-        serializer = SignupSerializer(data=data)
+        serializer = PasswordSignupSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
         user = serializer.save()
 
@@ -357,7 +357,7 @@ class TestSignupCustomerAutoCreation:
             "phone_number": "+12025550188",
             "password": "StrongPassword123!",  # pragma: allowlist secret
         }
-        serializer = SignupSerializer(data=data)
+        serializer = PasswordSignupSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
         user = serializer.save()
 

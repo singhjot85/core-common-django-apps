@@ -16,7 +16,7 @@ from core.apps.users.constants import (
     SocialProviderChoices,
 )
 from core.apps.users.signals import create_system_user_callback
-from core.utils.models import BaseModel, BaseUserModel
+from core.utils.models import BaseModel
 from core.utils.models.soft_delete import DeletionTrackingModel
 
 User = get_user_model()
@@ -28,10 +28,16 @@ class TestUserModelUnits:
     """Unit tests verifying User model architecture and properties without DB."""
 
     def test_user_model_inheritance(self):
-        """User must inherit from Django's AbstractUser and Core's BaseUserModel."""
+        """User must inherit from Django's AbstractUser and Core's BaseModel."""
         assert issubclass(User, DjangoAbstractUser)
-        assert issubclass(User, BaseUserModel)
         assert issubclass(User, BaseModel)
+
+    def test_user_model_fields(self):
+        """User model must directly declare phone_number, is_phone_verified, and is_email_verified."""
+        field_names = [f.name for f in User._meta.get_fields()]
+        assert "phone_number" in field_names
+        assert "is_phone_verified" in field_names
+        assert "is_email_verified" in field_names
 
     def test_user_id_field_is_uuid(self):
         """User model primary key must be a UUIDField."""

@@ -12,6 +12,7 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser as DjangoAbstractUser
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from phonenumber_field.modelfields import PhoneNumberField
 
 from core.apps.users import app_settings
 from core.apps.users.constants import (
@@ -23,21 +24,29 @@ from core.apps.users.constants import (
 from core.apps.users.managers import UserManager
 from core.utils.models import BaseLogModel, BaseModel
 
-if typing.TYPE_CHECKING:
-    from core.utils.models import BaseUserModel as AbstractUserModel
-
 LOGGER = logging.getLogger(__name__)
 
-# Dynamically resolve BaseUserModel from app_settings
-BaseUserModel: type["AbstractUserModel"] = app_settings.BASE_USER_MODEL
 
-
-class AbstractUser(DjangoAbstractUser, BaseUserModel):
+class AbstractUser(DjangoAbstractUser, BaseModel):
     """
     Abstract user model inheriting Django's AbstractUser for standard auth
-    and Core's BaseUserModel for UUID, timestamps, soft-delete, and phone attributes.
+    and Core's BaseModel for UUID PK, timestamps, and soft-delete attributes.
     """
 
+    phone_number = PhoneNumberField(
+        null=True,
+        blank=True,
+        unique=True,
+        verbose_name=_("Phone Number"),
+    )
+    is_phone_verified = models.BooleanField(
+        default=False,
+        verbose_name=_("Is Phone Verified"),
+    )
+    is_email_verified = models.BooleanField(
+        default=False,
+        verbose_name=_("Is Email Verified"),
+    )
     username = models.CharField(
         _("username"),
         max_length=150,
@@ -65,6 +74,14 @@ class AbstractUser(DjangoAbstractUser, BaseUserModel):
 
     def __str__(self):
         return self.get_full_name() or self.username or self.email or str(self.pk)
+
+    @property
+    def full_name(self) -> str:
+        """Return the combined first and last name, or username."""
+        first = self.first_name or ""
+        last = self.last_name or ""
+        name = f"{first} {last}".strip()
+        return name or self.username or str(self.pk)
 
     @property
     def has_password(self) -> bool:

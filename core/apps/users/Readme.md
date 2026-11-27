@@ -8,7 +8,6 @@ The `users` app provides a modular, multi-tenant-ready authentication framework 
 
 - **Django Auth Backend Compatibility**: By default, the app behaves identically to standard Django authentication using `django.contrib.auth.backends.ModelBackend`, Django's permission framework (`PermissionsMixin`), groups, and Django Admin.
 - **Layered Swappability**:
-  - **Base Model Swapping**: The user model dynamically resolves its base class (`BaseUserModel`) via `users/app_settings.py`. Inheriting projects can inject custom fields or mixins into the User model without replacing the concrete entity.
   - **Concrete Model Swapping**: Standard Django `AUTH_USER_MODEL = "users.User"` swappability is preserved for consuming projects requiring a fully custom user model.
   - **Service & Strategy Swapping**: SMS backends, username generators, and serializers are swappable via `app_settings.py`.
 - **Decoupled Imports**: Following repository standards, concrete models are never imported directly. Code resolves models via dynamic getters (`get_user_model()`, etc.) exported from the app root.
@@ -29,7 +28,7 @@ core/apps/users/
 
 | Model | Abstract Base Class | Key Fields & Responsibilities |
 | :--- | :--- | :--- |
-| **`User`** | `AbstractUser` | Inherits both `django.contrib.auth.models.AbstractUser` and `BaseUserModel` (UUID PK, created/modified timestamps, soft delete tracking, phone number, and verification flags). |
+| **`User`** | `AbstractUser` | Inherits `django.contrib.auth.models.AbstractUser` and `BaseModel` (UUID PK, created/modified timestamps, soft delete tracking, phone number, and verification flags). |
 | **`SocialAccount`** | `AbstractSocialAccount` | Extends `BaseModel`. Links third-party OAuth providers (Google, Apple) to user accounts with unique provider UID and metadata JSON snapshots. |
 | **`OTPLog`** | `AbstractOTPLog` | Extends `BaseLogModel`. Audit trail capturing OTP recipient, channel, purpose (login/signup), and lifecycle delivery status. |
 
@@ -59,8 +58,7 @@ All behaviors, base model bindings, and operational toggles are governed by `Use
 
 ### Declared Descriptors
 
-- **`BASE_USER_MODEL`** (`SettingsType.DEFFERED_IMPORT`): Dotted path to the abstract base model class that `AbstractUser` inherits from (default: `"core.utils.models.BaseUserModel"`).
-- **`SIGNUP_SERIALIZER`** (`SettingsType.IMPORT`): Serializer used for new user registration (default: `"core.apps.users.api.serializers.SignupSerializer"`).
+- **`SIGNUP_SERIALIZER`** (`SettingsType.IMPORT`): Serializer used for new user registration (default: `"core.apps.users.api.serializers.PasswordSignupSerializer"`).
 - **`USER_DETAILS_SERIALIZER`** (`SettingsType.IMPORT`): Serializer used for user profile retrieval and updates (default: `"core.apps.users.api.serializers.UserDetailsSerializer"`).
 - **`SMS_BACKEND`** (`SettingsType.IMPORT`): Adapter class responsible for SMS dispatch (default: `"core.utils.backends.sms.console.ConsoleSMSBackend"`).
 - **`USERNAME_GENERATOR`** (`SettingsType.IMPORT`): Strategy callable for generating unique usernames when omitted during signup (default: `"core.utils.generators.username.generate_unique_username"` backed by `core.utils.generators.UsernameGenerator`).

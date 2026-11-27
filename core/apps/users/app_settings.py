@@ -4,9 +4,11 @@ from core.utils.app_settings import BaseSettings
 from core.utils.app_settings.types import Constance, Settings, SettingsType
 
 if typing.TYPE_CHECKING:
-    from core.apps.users.api.serializers import SignupSerializer, UserDetailsSerializer
+    from core.apps.users.api.serializers import (
+        PasswordSignupSerializer,
+        UserDetailsSerializer,
+    )
     from core.utils.backends.sms.console import ConsoleSMSBackend
-    from core.utils.models import BaseUserModel
 
 
 class UsersSettings(BaseSettings):
@@ -16,12 +18,6 @@ class UsersSettings(BaseSettings):
 
     SETTINGS_KEY = "CORE_USERS_SETTINGS"
 
-    # Base Model Swappability (swappable without replacing concrete User)
-    BASE_USER_MODEL: type["BaseUserModel"] = Settings(
-        default="core.utils.models.BaseUserModel",
-        data_type=SettingsType.DEFFERED_IMPORT.value,
-        help_text="Base user model from which AbstractUser inherits.",
-    )
     AUTO_CREATE_CUSTOMER = Settings(
         default=True,
         data_type=bool,
@@ -34,8 +30,8 @@ class UsersSettings(BaseSettings):
         data_type=SettingsType.IMPORT.value,
         help_text="Serializer class for serializing authenticated user details.",
     )
-    SIGNUP_SERIALIZER: type["SignupSerializer"] = Settings(
-        default="core.apps.users.api.serializers.SignupSerializer",
+    SIGNUP_SERIALIZER: type["PasswordSignupSerializer"] = Settings(
+        default="core.apps.users.api.serializers.PasswordSignupSerializer",
         data_type=SettingsType.IMPORT.value,
         help_text="Serializer class for user signup / registration.",
     )
