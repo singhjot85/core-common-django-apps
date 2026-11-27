@@ -18,6 +18,17 @@ from core.utils.database import get_public_schema_name
 LOGGER = logging.getLogger(__name__)
 
 
+def _filter_fields(kls, **kwargs) -> dict:
+    """
+    Filter fields from a given model fields
+    """
+    return {
+        field.name: kwargs[field.name]
+        for field in kls._meta.fields
+        if field.name in kwargs
+    }
+
+
 def _create_tenant(schema_name: str, domain: str, **kwargs):
     if not is_multi_tenant():
         return
@@ -29,10 +40,15 @@ def _create_tenant(schema_name: str, domain: str, **kwargs):
     tenant, created = Tenants.objects.get_or_create(
         schema_name=schema_name,
         is_active=True,
-        defaults={"label": tenant_label, **kwargs},
+        defaults={"label": tenant_label, **_filter_fields(Tenants, **kwargs)},
     )
     domain, _ = Domain.objects.get_or_create(
-        tenant=tenant, defaults={"domain": domain, "label": tenant_label, **kwargs}
+        tenant=tenant,
+        defaults={
+            "domain": domain,
+            "label": tenant_label,
+            **_filter_fields(Domain, **kwargs),
+        },
     )
     if created:
         return tenant
@@ -56,16 +72,18 @@ def _seed_dev_tenants():
     LOGGER.info(f"Paths >>> {file_path}, {settings.BASE_DIR}, {setup_path}")
     data = None
 
-    with open(file_path, "r") as f:
-        data = json.load(f)
+    if os.path.exists(file_path):
+        with open(file_path, "r") as f:
+            data = json.load(f)
 
     if not data:
         # Host doesn't have fixture, fallback to core fixture
         file_path = os.path.join(
             settings.CORE_BASE_DIR, setup_path, "tenants", "tenants.json"
         )
-        with open(file_path, "r") as f:
-            data = json.load(f)
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                data = json.load(f)
 
     if data:
         for tenant_data in data:
