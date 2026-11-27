@@ -9,7 +9,6 @@ if typing.TYPE_CHECKING:
         UserDetailsSerializer,
     )
     from core.utils.backends.sms.console import ConsoleSMSBackend
-    from core.utils.models import BaseUserModel
 
 
 class UsersSettings(BaseSettings):
@@ -19,12 +18,6 @@ class UsersSettings(BaseSettings):
 
     SETTINGS_KEY = "CORE_USERS_SETTINGS"
 
-    # Base Model Swappability (swappable without replacing concrete User)
-    BASE_USER_MODEL: type["BaseUserModel"] = Settings(
-        default="core.utils.models.BaseUserModel",
-        data_type=SettingsType.DEFFERED_IMPORT.value,
-        help_text="Base user model from which AbstractUser inherits.",
-    )
     AUTO_CREATE_CUSTOMER = Settings(
         default=True,
         data_type=bool,

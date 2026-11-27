@@ -6,7 +6,6 @@ from core.apps.users.api.serializers import (
 from core.apps.users.app_settings import UsersSettings
 from core.utils.backends.sms import ConsoleSMSBackend
 from core.utils.generators.username import generate_unique_username
-from core.utils.models import BaseUserModel
 
 
 class TestUsersAppSettings:
@@ -15,11 +14,6 @@ class TestUsersAppSettings:
     def test_settings_key(self):
         """Settings key should match CORE_USERS_SETTINGS."""
         assert app_settings.SETTINGS_KEY == "CORE_USERS_SETTINGS"
-
-    def test_base_user_model_resolution(self):
-        """BASE_USER_MODEL should resolve to core BaseUserModel by default."""
-        resolved = app_settings.BASE_USER_MODEL
-        assert resolved == BaseUserModel
 
     def test_serializer_resolutions(self):
         """Serializers should resolve to declared classes."""
