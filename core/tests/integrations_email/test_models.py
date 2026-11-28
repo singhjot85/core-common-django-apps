@@ -21,6 +21,15 @@ Integration = get_integration_model()
 
 @pytest.mark.django_db
 class TestEmailIntegration:
+    @pytest.fixture(autouse=True)
+    def email_integration(self):
+        Integration.objects.create(
+            integration_key=IntegrationKeyChoices.EMAIL,
+            label="Dev Mock Email",
+            mock=True,
+        )
+        return
+
     def test_email_template_render(self):
         template = EmailTemplate.objects.create(
             interface_type=EmailTemplateInterfaceTypeChoices.AUTH,
@@ -44,12 +53,7 @@ class TestEmailIntegration:
         assert "<p>Hello Alice" in html
 
     def test_email_service_mock_routing(self):
-        Integration.objects.create(
-            integration_key=IntegrationKeyChoices.EMAIL,
-            label="Dev Mock Email",
-            mock=True,
-        )
-        service = get_email_service(name="Dev Mock Email")
+        service = get_email_service()
         assert isinstance(service, MockEmailService)
         success = service.send(
             to="test@example.com",

@@ -21,6 +21,15 @@ Integration = get_integration_model()
 
 @pytest.mark.django_db
 class TestSMSIntegration:
+    @pytest.fixture(autouse=True)
+    def sms_integration(self):
+        Integration.objects.create(
+            integration_key=IntegrationKeyChoices.SMS,
+            label="Dev Mock SMS",
+            mock=True,
+        )
+        return
+
     def test_sms_template_render(self):
         template = SMSTemplate.objects.create(
             interface_type=SMSTemplateInterfaceTypeChoices.OTP,
@@ -35,12 +44,7 @@ class TestSMSIntegration:
         assert "Your code is 654321" in rendered
 
     def test_sms_service_mock_routing(self):
-        Integration.objects.create(
-            integration_key=IntegrationKeyChoices.SMS,
-            label="Dev Mock SMS",
-            mock=True,
-        )
-        service = get_sms_service(name="Dev Mock SMS")
+        service = get_sms_service()
         assert isinstance(service, MockSMSService)
         success = service.send(
             to="+15551234567",

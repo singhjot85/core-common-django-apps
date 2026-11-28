@@ -170,6 +170,7 @@ TENANT_DB_ALIAS = DEAFULT_DATABASE
 # -----------------------------
 TEMPLATES = [
     {
+        "NAME": "jinja2",
         "BACKEND": "core.utils.jinja2.Jinja2Backend",
         "DIRS": [
             os.path.join(BASE_DIR, "templates"),
@@ -182,6 +183,7 @@ TEMPLATES = [
         },
     },
     {
+        "NAME": "django",
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [TEMPLATES_DIR],
         "APP_DIRS": True,
