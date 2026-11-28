@@ -2,11 +2,13 @@
     {
         "schema_name": "blackrock",
         "label": "Blackrock Foundations",
-        "domain": "blackrock.localhost"
+        "domain": "blackrock.localhost",
+        "type": "organization"
     },
     {
         "schema_name": "acme",
         "label": "ACME Technologies",
-        "domain": "acme.localhost"
+        "domain": "acme.localhost",
+        "type": "organization"
     }
 ]

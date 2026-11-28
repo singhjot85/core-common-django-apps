@@ -15,11 +15,9 @@ class TestFixtureJSONFiles:
     """Validate that all production fixture JSON files exist and are valid JSON."""
 
     FIXTURE_PATHS = [
-        APPS_DIR
-        / "crm"
-        / "fixtures"
-        / "customer_preference_type"
-        / "preference_types.json",
+        APPS_DIR / "crm" / "fixtures" / "customer_preference_type" / "language.json",
+        APPS_DIR / "crm" / "fixtures" / "customer_preference_type" / "newsletter.json",
+        APPS_DIR / "crm" / "fixtures" / "customer_preference_type" / "dark_mode.json",
         APPS_DIR
         / "configurations"
         / "fixtures"
@@ -64,20 +62,16 @@ class TestFixtureJSONFiles:
         )
         assert len(data) > 0, f"{fixture_path.name} should not be empty"
 
-    def test_preference_types_have_required_fields(self):
+    @pytest.mark.parametrize(
+        "filename", ["language.json", "newsletter.json", "dark_mode.json"]
+    )
+    def test_preference_types_have_required_fields(self, filename):
         """CustomerPreferenceType fixture entries must have code, label, data_type."""
-        path = (
-            APPS_DIR
-            / "crm"
-            / "fixtures"
-            / "customer_preference_type"
-            / "preference_types.json"
-        )
+        path = APPS_DIR / "crm" / "fixtures" / "customer_preference_type" / filename
         data = json.loads(path.read_text())
-        for entry in data:
-            assert "code" in entry, f"Missing 'code' in {entry}"
-            assert "label" in entry, f"Missing 'label' in {entry}"
-            assert "data_type" in entry, f"Missing 'data_type' in {entry}"
+        assert "code" in data, f"Missing 'code' in {data}"
+        assert "label" in data, f"Missing 'label' in {data}"
+        assert "data_type" in data, f"Missing 'data_type' in {data}"
 
     @pytest.mark.parametrize(
         "filename", ["ui_configuration.json", "users_template_label.json"]
@@ -143,17 +137,15 @@ class TestFixtureSeedersSchemaConfiguration:
 
     def test_configuration_seeders_are_public_tenant_type(self):
         """Configuration seeder must be registered as a fixture seeder."""
-        meta = getattr(ConfigurationSeeder, "Meta", None)
-        assert meta is not None
-        assert meta.is_fixture is True
+        assert ConfigurationSeeder.is_fixture is True
 
     def test_customer_preference_type_seeder_is_organization_tenant_type(self):
-        """CustomerPreferenceTypeSeeder without explicit schema_name resolves to ALL_SCHEMAS."""
-        meta = getattr(CustomerPreferenceTypeSeeder, "Meta", None)
-        assert meta is not None
-        assert meta.tenant_type == settings.TENANT_TYPE_ORGANIZATION
-        instance = CustomerPreferenceTypeSeeder()
-        assert instance.schema_name == CustomerPreferenceTypeSeeder.ALL_SCHEMAS
+        """CustomerPreferenceTypeSeeder is configured for organization tenant type."""
+        assert CustomerPreferenceTypeSeeder.is_fixture is True
+        assert (
+            CustomerPreferenceTypeSeeder.tenant_type
+            == settings.TENANT_TYPE_ORGANIZATION
+        )
 
 
 class TestDevSetupJSONFiles:
@@ -162,10 +154,8 @@ class TestDevSetupJSONFiles:
     DEV_PATHS = [
         SETUP_DIR / "tenants" / "tenants.json",
         SETUP_DIR / "users" / "dev_users" / "users.json",
-        SETUP_DIR / "crm" / "dev_customer" / "customers.json",
-        SETUP_DIR / "crm" / "dev_customer_phone" / "phones.json",
-        SETUP_DIR / "crm" / "dev_customer_email" / "emails.json",
-        SETUP_DIR / "crm" / "dev_customer_address" / "addresses.json",
+        SETUP_DIR / "crm" / "dev_customer" / "charlie.json",
+        SETUP_DIR / "crm" / "dev_customer" / "diana.json",
         SETUP_DIR / "invoices" / "dev_billing_organization" / "organizations.json",
         SETUP_DIR / "invoices" / "dev_organization_email" / "emails.json",
         SETUP_DIR / "invoices" / "dev_organization_phone" / "phones.json",
@@ -191,7 +181,7 @@ class TestDevSetupJSONFiles:
             pytest.skip(f"File missing: {dev_path}")
 
         data = json.loads(dev_path.read_text())
-        assert isinstance(data, list)
+        assert isinstance(data, (list, dict))
         assert len(data) > 0
 
     def test_dev_tenants_have_schema_definition(self):
@@ -199,7 +189,7 @@ class TestDevSetupJSONFiles:
         path = SETUP_DIR / "tenants" / "tenants.json"
         data = json.loads(path.read_text())
         schemas = {entry["schema_name"] for entry in data}
-        assert "private" in schemas
+        assert {"acme", "blackrock"}.issubset(schemas)
 
     def test_dev_users_cover_superusers_and_regular(self):
         """Dev users should define superuser and regular users."""

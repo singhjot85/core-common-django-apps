@@ -150,7 +150,7 @@ class BaseTemplateModel(BaseSemanticVersionModel):
         context = Context(
             rendering_context, autoescape=False, use_l10n=True, use_tz=True
         )
-        return Template(template).render(context, request=kwargs.get("request"))
+        return Template(template).render(context)
 
     @classmethod
     def render_template(
@@ -181,7 +181,7 @@ class BaseTemplateModel(BaseSemanticVersionModel):
             backend = cls.TEMPLATE_BACKEND_DJANGO
 
         if backend == cls.TEMPLATE_BACKEND_DJANGO:
-            cls._render_using_django(template, rendering_context, **kwargs)
+            return cls._render_using_django(template, rendering_context, **kwargs)
 
         raise ImproperlyConfigured(
             f"Given backend is not configured, backend: {backend}"
